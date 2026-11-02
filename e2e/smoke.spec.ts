@@ -62,3 +62,24 @@ test("?fx=0: 隣の部屋だけ移動ボタンが出て、スキルの結果が�
   await page.getByRole("button", { name: /ホットフィックス/ }).click();
   await expect(page.getByRole("status")).toHaveText("バグに 3 ダメージ");
 });
+
+test("演出あり: 戦闘のグリッチが終わるとフォーカスが HUD に戻り、キーボードだけで操作できる", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/?seed=e2e");
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
+  await page.getByRole("navigation", { name: "隣の部屋" }).getByRole("button").first().click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "battle");
+  // 演出中は inert、終わったら解除される
+  await expect(page.locator("#hud")).toHaveAttribute("aria-busy", "false");
+  await expect(page.locator("#hud")).not.toHaveAttribute("inert");
+  const first = page.getByRole("button", { name: /再現手順/ });
+  await expect(first).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("region", { name: "症状" }).getByRole("listitem")).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
