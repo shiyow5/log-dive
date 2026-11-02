@@ -6,9 +6,13 @@
 
 ## 試遊方法
 
-このリポジトリは Private で、現在のプラン（GitHub Free）では **GitHub Pages を Private リポジトリで使えない**ため、次のどちらかで遊ぶ。
+**ブラウザで開くだけで遊べる → https://shiyow5.github.io/log-dive/**
 
-### A. CI のビルド済みファイルで遊ぶ（Node.js 不要）
+（`main` に反映されるたび GitHub Pages に自動で公開される。）
+
+以下は補助の手順。
+
+### A. CI のビルド済みファイルで遊ぶ（補助）（Node.js 不要）
 
 1. GitHub の **Actions** タブ → `CI` ワークフロー → main の最新の成功した実行を開く
 2. 下の **Artifacts** から `game-build` をダウンロードして解凍する（14日で消える）
@@ -22,7 +26,7 @@
 
 gh CLI なら: `gh run download -R shiyow5/log-dive -n game-build -D game-build`（最新の実行）
 
-### B. 手元でソースから起動する（Node.js 22 以上）
+### B. 手元でソースから起動する（補助）（Node.js 22 以上）
 
 ```bash
 git clone https://github.com/shiyow5/log-dive.git
