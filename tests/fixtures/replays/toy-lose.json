@@ -1,0 +1,12 @@
+{
+  "name": "toy-lose",
+  "reducer": "toy",
+  "note": "足場確認用のおもちゃ。待ち続けて HP 0（本物の Log Dive ではない）",
+  "replay": {
+    "game": "toy",
+    "version": 1,
+    "seed": "golden-lose",
+    "actions": ["wait", "wait", "wait", "wait", "wait", "wait", "wait", "wait", "wait"]
+  },
+  "expected": { "stateHash": "8edd8cbb", "result": "lose", "turn": 9 }
+}
