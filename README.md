@@ -1,6 +1,6 @@
-# log-dive
+# ログ潜り ― Log Dive
 
-《Log Dive — ログ潜り》ローグライク×デバッグ推理（ブラウザゲーム / Vite + TypeScript + Phaser 3 + pixelfx）
+《ログ潜り ― Log Dive》ローグライク×デバッグ推理（ブラウザゲーム / Vite + TypeScript + Phaser 3 + pixelfx）
 
 > 状態: 基盤のみ（2週間の最小版を 2026-11-16 に向けて開発中）。リポジトリは Private。
 
