@@ -4,10 +4,13 @@
  * apply(state, action) → state の Reducer で進める（src/core/replay.ts に乗せる）。
  * 不正な操作は例外にせず、状態を変えずに lastError を立てる（UI がメッセージを出す）。
  *
- * この PR（dev-plan-v3 §3 S1）は型だけ。apply() は S2（A-run-battle）で入る。
+ * 縦切り（dev-plan-v3 §3 S2）: 固定の小さな階（src/core/floor.ts）＋ off-by-one 1種＋スキル4枚。
  */
-import type { BugId, SkillId } from "./data";
-import type { RngState } from "./rng";
+import { bugTurn, isRunError, startBattle, useSkill } from "./battle";
+import { loadGameData, type BugId, type GameData, type SkillId } from "./data";
+import { FIXED_START_ROOM, candidatesForFloor, fixedFloor } from "./floor";
+import type { Reducer } from "./replay";
+import { seedFrom, type RngState } from "./rng";
 
 // ---- Action ----
 
@@ -155,3 +158,222 @@ export interface RunState {
   readonly lastError: RunError | null;
   readonly events: readonly RunEvent[];
 }
+
+// ---- ルール ----
+
+/** ルール＋data のバージョン。ルールか data を変えたら上げる（v0.2 決定10）。 */
+export const RULES_VERSION = 1;
+
+/** デグレで次の階に増えるバグの上限（v0.2 決定2）。 */
+export const MAX_REINFORCEMENTS = 2;
+
+/** 新しいランを始める。 */
+export function initRun(seed: string, data: GameData = loadGameData()): RunState {
+  const starters = data.skills.skills.filter((s) => s.starter).map((s) => s.id);
+  return {
+    version: RULES_VERSION,
+    seed,
+    phase: "map",
+    floor: fixedFloor(),
+    roomId: FIXED_START_ROOM,
+    player: {
+      hp: data.player.hp,
+      maxHp: data.player.hp,
+      cpu: data.player.cpuPerTurn,
+      cpuMax: data.player.cpuPerTurn,
+      skills: starters,
+    },
+    battle: null,
+    floorRng: seedFrom(`floor:${seed}:1`),
+    battleCount: 0,
+    reinforcements: 0,
+    stats: { bugsClosed: 0, turns: 0, degrades: 0 },
+    lastError: null,
+    events: [],
+  };
+}
+
+function fail(state: RunState, code: RunErrorCode, message: string): RunState {
+  // 不正な操作: 状態は変えず、lastError だけ立てる
+  return { ...state, lastError: { code, message }, events: [] };
+}
+
+function updateRoom(floor: FloorState, id: string, f: (r: RoomState) => RoomState): FloorState {
+  return { ...floor, rooms: floor.rooms.map((r) => (r.id === id ? f(r) : r)) };
+}
+
+function hasBugsLeft(floor: FloorState): boolean {
+  return floor.rooms.some((r) => r.content.kind === "bug" && r.content.bugs.length > 0);
+}
+
+/** 部屋に残っている先頭のバグと戦闘を始める（いなければ map のまま）。 */
+function enterRoom(state: RunState, data: GameData, events: RunEvent[]): RunState {
+  const room = state.floor.rooms.find((r) => r.id === state.roomId);
+  if (!room || room.content.kind !== "bug") return state;
+  const bug = room.content.bugs[0];
+  if (bug === undefined) return state;
+  const battle = startBattle({
+    data,
+    runSeed: state.seed,
+    n: state.battleCount,
+    roomId: room.id,
+    bug,
+    candidates: candidatesForFloor(state.floor.number),
+  });
+  events.push({ t: "battleStart", room: room.id });
+  return {
+    ...state,
+    phase: "battle",
+    battle,
+    battleCount: state.battleCount + 1,
+    player: { ...state.player, cpu: state.player.cpuMax },
+  };
+}
+
+function applyMove(state: RunState, data: GameData, room: string): RunState {
+  if (state.phase === "battle") return fail(state, "in_battle", "戦闘中は移動できません");
+  const target = state.floor.rooms.find((r) => r.id === room);
+  if (!target) return fail(state, "unknown_room", "その部屋はありません");
+  const here = state.floor.rooms.find((r) => r.id === state.roomId);
+  if (!here?.neighbors.includes(room)) return fail(state, "not_adjacent", "隣の部屋ではありません");
+
+  const events: RunEvent[] = [{ t: "moved", room }];
+  const moved: RunState = {
+    ...state,
+    roomId: room,
+    floor: updateRoom(state.floor, room, (r) => ({ ...r, visited: true })),
+  };
+  const next = enterRoom(moved, data, events);
+  return { ...next, lastError: null, events };
+}
+
+/** バグを倒したあとの後片付け（部屋から消す・クリア判定・同じ部屋の次のバグ）。 */
+function closeBug(
+  state: RunState,
+  data: GameData,
+  battle: BattleState,
+  events: RunEvent[],
+): RunState {
+  events.push({ t: "bugClosed", bug: battle.bug });
+  const floor = updateRoom(state.floor, battle.roomId, (r) => {
+    if (r.content.kind !== "bug") return r;
+    const bugs = r.content.bugs.slice(1);
+    return { ...r, content: bugs.length > 0 ? { ...r.content, bugs } : { kind: "empty" } };
+  });
+  const closed: RunState = {
+    ...state,
+    phase: "map",
+    battle: null,
+    floor,
+    stats: { ...state.stats, bugsClosed: state.stats.bugsClosed + 1 },
+  };
+  if (!hasBugsLeft(floor)) {
+    // 縦切りでは固定の1階がラン全体。階段・次の階は 11/06 の PR で入れる
+    events.push({ t: "runEnd", phase: "won" });
+    return { ...closed, phase: "won" };
+  }
+  return enterRoom(closed, data, events);
+}
+
+function applySkill(
+  state: RunState,
+  data: GameData,
+  id: SkillId,
+  arg: BugId | undefined,
+): RunState {
+  const battle = state.battle;
+  if (state.phase !== "battle" || !battle) {
+    return fail(state, "not_in_battle", "スキルは戦闘中だけ使えます");
+  }
+  const r = useSkill(data, battle, state.player, id, arg);
+  if (isRunError(r)) return fail(state, r.code, r.message);
+
+  const events: RunEvent[] = [...r.events];
+  let next: RunState = { ...state, battle: r.battle, player: r.player };
+  if (r.degraded) {
+    next = {
+      ...next,
+      reinforcements: Math.min(MAX_REINFORCEMENTS, next.reinforcements + 1),
+      stats: { ...next.stats, degrades: next.stats.degrades + 1 },
+    };
+  }
+  if (r.battle.hp <= 0) next = closeBug(next, data, r.battle, events);
+  return { ...next, lastError: null, events };
+}
+
+function applyEndTurn(state: RunState, data: GameData): RunState {
+  const battle = state.battle;
+  if (state.phase !== "battle" || !battle) {
+    return fail(state, "not_in_battle", "ターン終了は戦闘中だけです");
+  }
+  const r = bugTurn(data, battle, state.player);
+  const events: RunEvent[] = [...r.events];
+  let next: RunState = {
+    ...state,
+    battle: r.battle,
+    player: r.player,
+    stats: { ...state.stats, turns: state.stats.turns + 1 },
+  };
+  if (r.player.hp <= 0) {
+    events.push({ t: "runEnd", phase: "lost" });
+    next = { ...next, phase: "lost" };
+  }
+  return { ...next, lastError: null, events };
+}
+
+function isOver(phase: RunPhase): boolean {
+  return phase === "won" || phase === "lost" || phase === "abandoned";
+}
+
+/**
+ * 1手進める。入力の state は変更しない。
+ * 不正な操作は例外にせず、状態はそのままで lastError を立てて返す。
+ */
+export function apply(state: RunState, action: Action, data: GameData = loadGameData()): RunState {
+  if (isOver(state.phase)) return fail(state, "run_over", "ランは終わっています");
+  switch (action.t) {
+    case "move":
+      return applyMove(state, data, action.room);
+    case "skill":
+      return applySkill(state, data, action.id, action.arg);
+    case "endTurn":
+      return applyEndTurn(state, data);
+    case "loot":
+      // 宝箱は 11/06 の PR で入れる。それまでは常に「宝箱が無い」
+      return fail(state, "no_loot", "ここに宝箱はありません");
+    case "abandon":
+      return {
+        ...state,
+        phase: "abandoned",
+        lastError: null,
+        events: [{ t: "runEnd", phase: "abandoned" }],
+      };
+  }
+}
+
+/** 今の状態で lastError にならない操作の一覧（BOT・ボタンの有効/無効に使う）。 */
+export function legalActions(state: RunState, data: GameData = loadGameData()): Action[] {
+  if (isOver(state.phase)) return [];
+  const all: Action[] = [{ t: "abandon" }];
+  if (state.phase === "map") {
+    const here = state.floor.rooms.find((r) => r.id === state.roomId);
+    for (const room of here?.neighbors ?? []) all.push({ t: "move", room });
+  }
+  if (state.phase === "battle" && state.battle) {
+    all.push({ t: "endTurn" });
+    for (const id of state.player.skills) {
+      if (id === "patch") {
+        for (const c of state.battle.candidates) all.push({ t: "skill", id, arg: c });
+      } else {
+        all.push({ t: "skill", id });
+      }
+    }
+  }
+  return all.filter((a) => apply(state, a, data).lastError === null);
+}
+
+/** src/core/replay.ts の runReplay に渡す Reducer。 */
+export const runReducer: Reducer<RunState, Action> = {
+  init: (seed) => initRun(seed),
+  apply: (state, action) => apply(state, action),
+};
