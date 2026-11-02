@@ -1,0 +1,9 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Rng > 既知の値に固定（実装を変えるとリプレイが壊れることを検出する） 1`] = `
+[
+  2766989514,
+  3739548914,
+  2626252340,
+]
+`;

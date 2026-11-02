@@ -1,0 +1,37 @@
+name: main-guard
+
+# Free プランの Private リポジトリではブランチ保護が使えないため、その代わりの「検出」。
+# main への push が、マージ済み PR 経由でない場合（直接 push）に失敗させて目立たせる。
+# 防止はできない。運用ルール(CONTRIBUTING.md)と組み合わせて使う。
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  guard:
+    name: main-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the pushed commit came from a merged PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # 初回 push（README だけの Initial commit 等）は対象外
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "first push to main; skip"; exit 0
+          fi
+          prs=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | length')
+          if [ "$prs" -ge 1 ]; then
+            echo "OK: $SHA is from a merged PR"
+          else
+            echo "::error::$SHA was pushed to main without a merged PR. Report to rei/haruto."
+            exit 1
+          fi
