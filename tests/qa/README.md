@@ -29,7 +29,7 @@ npm ci
 npm run format:check && npm run lint && npm run typecheck
 npm test                                 # Vitest
 npm run build && npm run test:e2e        # Playwright
-grep -rnE 'it\.todo|test\.fixme|it\.skip|test\.skip|describe\.skip' tests e2e   # 対象範囲で 0 件か
+grep -rnE --include='*.ts' --include='*.tsx' 'it\.todo|test\.fixme|it\.skip|test\.skip|describe\.skip' tests e2e   # テストソースだけを見る。対象範囲で 0 件か
 ```
 
 ## 縦切りの判定（11/04 21:00〜、23:00 報告。qa-plan-v3 §3-1）
