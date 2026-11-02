@@ -6,16 +6,9 @@ import { Rng } from "../core/rng";
 import { fxEnabled } from "../ui/flags";
 import { button, el, renderHud, setHudBusy } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
-import { BUG_NAME, SKILL_COST, current, dispatch, sceneFor } from "./run-port";
+import { bugName, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, BattleState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
-
-/** 縦切りで使うスキル4枚（breakpoint・bisect は宝箱で入るので 11/05 以降）。 */
-const SKILLS = [
-  { id: "reproduce", name: "再現手順" },
-  { id: "read-log", name: "ログ確認" },
-  { id: "hotfix", name: "ホットフィックス" },
-] as const;
 
 const FX_KEY = "fx-battle";
 const BUG_X = GAME_WIDTH / 2;
@@ -95,13 +88,23 @@ export class BattleScene extends Phaser.Scene {
   private renderHud(s: RunState): void {
     const b = s.battle;
     if (!b) return;
-    const here = s.rooms[s.current];
+    const here = s.floor.rooms.find((r) => r.id === s.roomId);
+    const legal = legality(s);
+    /** 押せないボタンの理由（core の lastError.message）。ボタンから aria-describedby で指す。 */
+    const reasons: HTMLElement[] = [];
+    const withReason = (btn: HTMLButtonElement, name: string, why: string | null) => {
+      if (!btn.disabled || !why) return btn;
+      const id = `why-${reasons.length}`;
+      reasons.push(el("li", { id, class: "hud-stat" }, `${name}: ${why}`));
+      btn.setAttribute("aria-describedby", id);
+      return btn;
+    };
 
     const candidates = el(
       "section",
       { "aria-label": "候補" },
       el("h3", {}, `候補（${b.candidates.length}）`),
-      el("ul", { class: "hud-list" }, ...b.candidates.map((c) => el("li", {}, BUG_NAME[c]))),
+      el("ul", { class: "hud-list" }, ...b.candidates.map((c) => el("li", {}, bugName(c)))),
     );
     const symptoms = el(
       "section",
@@ -116,47 +119,68 @@ export class BattleScene extends Phaser.Scene {
         : el("p", { class: "hud-stat" }, b.reproduced ? "（なし）" : "まだ再現していない"),
     );
 
+    const owned = s.player.skills.filter((id) => id !== "patch");
+    const hasPatch = s.player.skills.includes("patch");
+    const patchActions = b.candidates.map((c): Action => ({ t: "skill", id: "patch", arg: c }));
+    const canPatch = patchActions.some((a) => legal.can(a));
+
     const skillRow = el(
       "div",
       { class: "hud-row", role: "group", "aria-label": "スキル" },
-      ...SKILLS.map((k) =>
-        button(`${k.name}（CPU ${SKILL_COST[k.id]}）`, () => this.act({ t: "skill", id: k.id }), {
-          disabled: s.cpu < SKILL_COST[k.id],
-        }),
-      ),
-      button(
-        `修正パッチ（CPU ${SKILL_COST.patch}）`,
-        () => {
-          this.picking = true;
-          this.renderHud(current());
-        },
-        { disabled: s.cpu < SKILL_COST.patch },
-      ),
+      ...owned.map((id) => {
+        const k = skillInfo(id);
+        const a: Action = { t: "skill", id };
+        const btn = button(`${k.name}（CPU ${k.cpu}）`, () => this.act(a), {
+          disabled: !legal.can(a),
+        });
+        return withReason(btn, k.name, legal.why(a));
+      }),
+      hasPatch
+        ? (() => {
+            const k = skillInfo("patch");
+            const btn = button(
+              `${k.name}（CPU ${k.cpu}）`,
+              () => {
+                this.picking = true;
+                this.renderHud(current());
+              },
+              { disabled: !canPatch },
+            );
+            // 候補ぜんぶ押せないときは先頭の候補の理由を出す（未再現なら not_reproduced が先に来る）
+            const first = patchActions[0];
+            return withReason(btn, k.name, first ? legal.why(first) : null);
+          })()
+        : null,
     );
 
-    const picker = this.picking
-      ? el(
-          "div",
-          { class: "hud-row", role: "group", "aria-label": "パッチの種類" },
-          el("span", { class: "hud-stat" }, "どの種類として直す？"),
-          ...b.candidates.map((c, i) => {
-            const btn = button(BUG_NAME[c], () => this.act({ t: "skill", id: "patch", arg: c }), {
-              label: `パッチを当てる: ${BUG_NAME[c]}`,
-            });
-            if (i === 0) btn.dataset.autofocus = "";
-            return btn;
-          }),
-          button(
-            "やめる",
-            () => {
-              this.picking = false;
-              this.renderHud(current());
-            },
-            { label: "パッチをやめる" },
-          ),
-        )
-      : null;
+    const picker =
+      this.picking && canPatch
+        ? el(
+            "div",
+            { class: "hud-row", role: "group", "aria-label": "パッチの種類" },
+            el("span", { class: "hud-stat" }, "どの種類として直す？"),
+            ...patchActions.map((a, i) => {
+              const c = a.t === "skill" ? a.arg : undefined;
+              const name = c ? bugName(c) : "";
+              const btn = button(name, () => this.act(a), {
+                label: `パッチを当てる: ${name}`,
+                disabled: !legal.can(a),
+              });
+              if (i === 0) btn.dataset.autofocus = "";
+              return withReason(btn, name, legal.why(a));
+            }),
+            button(
+              "やめる",
+              () => {
+                this.picking = false;
+                this.renderHud(current());
+              },
+              { label: "パッチをやめる" },
+            ),
+          )
+        : null;
 
+    const endTurn: Action = { t: "endTurn" };
     const panel = el(
       "section",
       { class: "hud-panel", "aria-label": "バトル" },
@@ -171,6 +195,9 @@ export class BattleScene extends Phaser.Scene {
         { class: "hud-stat" },
         "予告: 次のターン ",
         el("strong", { class: "hud-danger" }, `${b.intent.damage} ダメージ`),
+        b.intent.countdown !== undefined
+          ? el("span", {}, `（大ダメージまで ${b.intent.countdown}）`)
+          : null,
         b.reproduced ? el("span", { class: "hud-ok" }, "　✓ 再現済み") : null,
       ),
       statsRow(s),
@@ -180,9 +207,15 @@ export class BattleScene extends Phaser.Scene {
       el(
         "div",
         { class: "hud-row" },
-        button("ターン終了", () => this.act({ t: "endTurn" }), { primary: true }),
+        button("ターン終了", () => this.act(endTurn), {
+          primary: true,
+          disabled: !legal.can(endTurn),
+        }),
         abandonButton(() => this.act({ t: "abandon" })),
       ),
+      reasons.length
+        ? el("ul", { class: "hud-list", "aria-label": "使えない理由" }, ...reasons)
+        : null,
       logLine(s),
     );
     renderHud("battle", panel);

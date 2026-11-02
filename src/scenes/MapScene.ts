@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import { button, el, renderHud } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
-import { current, dispatch, sceneFor } from "./run-port";
-import type { Action, Room, RunState } from "./run-port";
+import { current, dispatch, legality, sceneFor } from "./run-port";
+import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 
 const CELL = 32;
@@ -20,19 +20,21 @@ const COLOR = {
   weak: "#8fa9a3",
 };
 
-function center(r: Room): { x: number; y: number } {
+function center(r: RoomState): { x: number; y: number } {
   return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
 }
 
 /** 部屋の名前。未踏なら「?」（spec-a v0.2 §9: 未訪問は隣接のみ ? 表示）。 */
-export function roomName(s: RunState, r: Room): string {
-  return s.visited.includes(r.id) ? r.label : "?";
+export function roomName(r: RoomState): string {
+  return r.visited ? r.label : "?";
 }
 
-/** 移動ボタンの読み上げ名。Playwright では getByRole("button", { name: /部屋2へ移動/ }) で取れる。 */
-export function moveLabel(s: RunState, r: Room): string {
-  const known = s.visited.includes(r.id);
-  return `部屋${r.id + 1}へ移動${known ? `: ${r.label}` : "（未踏）"}`;
+/**
+ * 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
+ * Playwright では getByRole("button", { name: /r1へ移動/ }) で取れる。
+ */
+export function moveLabel(r: RoomState): string {
+  return r.visited ? `${r.id}へ移動: ${r.label}` : `${r.id}へ移動（未踏）`;
 }
 
 export class MapScene extends Phaser.Scene {
@@ -60,16 +62,15 @@ export class MapScene extends Phaser.Scene {
   }
 
   private drawMap(s: RunState): void {
-    const here = s.rooms[s.current];
-    const visible = s.rooms.filter(
-      (r) => s.visited.includes(r.id) || (here?.links.includes(r.id) ?? false),
-    );
+    const rooms = s.floor.rooms;
+    const here = rooms.find((r) => r.id === s.roomId);
+    const visible = rooms.filter((r) => r.visited || (here?.neighbors.includes(r.id) ?? false));
     const g = this.add.graphics();
     g.lineStyle(2, COLOR.line, 1);
     for (const r of visible) {
-      for (const id of r.links) {
-        const o = s.rooms[id];
-        if (!o || !visible.includes(o) || o.id < r.id) continue;
+      for (const id of r.neighbors) {
+        const o = visible.find((v) => v.id === id);
+        if (!o || o.id < r.id) continue;
         const a = center(r);
         const b = center(o);
         g.lineBetween(a.x, a.y, b.x, b.y);
@@ -77,20 +78,19 @@ export class MapScene extends Phaser.Scene {
     }
     for (const r of visible) {
       const { x, y } = center(r);
-      const isHere = r.id === s.current;
-      const known = s.visited.includes(r.id);
-      g.fillStyle(isHere ? COLOR.current : known ? COLOR.visited : COLOR.unknown, 1);
+      const isHere = r.id === s.roomId;
+      g.fillStyle(isHere ? COLOR.current : r.visited ? COLOR.visited : COLOR.unknown, 1);
       g.fillRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       // バグ部屋は「警告色の枠＋記号」（色だけに頼らない）
-      if (known && r.bug) {
+      if (r.visited && r.content.kind === "bug") {
         g.lineStyle(2, COLOR.bug, 1);
         g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       }
       this.add
-        .text(x, y + ROOM / 2 + 2, roomName(s, r), {
+        .text(x, y + ROOM / 2 + 2, roomName(r), {
           fontFamily: "monospace",
           fontSize: "8px",
-          color: known ? COLOR.text : COLOR.weak,
+          color: r.visited ? COLOR.text : COLOR.weak,
         })
         .setOrigin(0.5, 0);
       if (isHere) {
@@ -102,10 +102,11 @@ export class MapScene extends Phaser.Scene {
   }
 
   private renderHud(s: RunState): void {
-    const here = s.rooms[s.current];
-    const neighbors = (here?.links ?? [])
-      .map((id) => s.rooms[id])
-      .filter((r): r is Room => r !== undefined);
+    const here = s.floor.rooms.find((r) => r.id === s.roomId);
+    const neighbors = (here?.neighbors ?? [])
+      .map((id) => s.floor.rooms.find((r) => r.id === id))
+      .filter((r): r is RoomState => r !== undefined);
+    const legal = legality(s);
     const panel = el(
       "section",
       { class: "hud-panel", "aria-label": "マップ" },
@@ -118,15 +119,10 @@ export class MapScene extends Phaser.Scene {
         el(
           "div",
           { class: "hud-row" },
-          ...neighbors.map((r) =>
-            button(
-              `部屋${r.id + 1}: ${roomName(s, r)}`,
-              () => this.act({ t: "move", room: r.id }),
-              {
-                label: moveLabel(s, r),
-              },
-            ),
-          ),
+          ...neighbors.map((r) => {
+            const a: Action = { t: "move", room: r.id };
+            return button(moveLabel(r), () => this.act(a), { disabled: !legal.can(a) });
+          }),
         ),
       ),
       el(

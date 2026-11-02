@@ -1,10 +1,10 @@
 import Phaser from "phaser";
 import { button, el, renderHud } from "../ui/hud";
 import { current } from "./run-port";
-import type { RunStatus } from "./run-port";
+import type { RunPhase } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 
-const HEADLINE: Record<RunStatus, string> = {
+const HEADLINE: Record<RunPhase, string> = {
   won: "復旧完了",
   lost: "稼働率 0 — ダウン",
   abandoned: "ランを放棄した",
@@ -22,15 +22,15 @@ export class ResultScene extends Phaser.Scene {
     fadeIn(this);
     const s = current();
     const rows: [string, string][] = [
-      ["閉じたバグ票", String(s.closedBugs)],
-      ["ターン数", String(s.turn)],
-      ["デグレ回数", String(s.degrades)],
+      ["閉じたバグ票", String(s.stats.bugsClosed)],
+      ["ターン数", String(s.stats.turns)],
+      ["デグレ回数", String(s.stats.degrades)],
       ["シード", s.seed],
     ];
     const panel = el(
       "section",
       { class: "hud-panel", "aria-label": "リザルト" },
-      el("h1", { class: s.status === "won" ? "hud-ok" : "hud-danger" }, HEADLINE[s.status]),
+      el("h1", { class: s.phase === "won" ? "hud-ok" : "hud-danger" }, HEADLINE[s.phase]),
       el(
         "dl",
         { class: "hud-dl" },
