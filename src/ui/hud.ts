@@ -91,12 +91,17 @@ export function clearHud(): void {
   delete r.dataset.scene;
 }
 
-/** 演出の再生中は入力を受けない（spec-a v0.2 §11）。 */
+/**
+ * 演出の再生中は入力を受けない（spec-a v0.2 §11）。
+ * inert の間は focus() が効かないので、解除したときに HUD の外にいるフォーカスを
+ * data-autofocus（なければ最初のボタン）へ戻す。キーボードだけでも続けて操作できるように。
+ */
 export function setHudBusy(busy: boolean): void {
   hudBusy = busy;
   const r = root();
   r.toggleAttribute("inert", busy);
   r.setAttribute("aria-busy", busy ? "true" : "false");
+  if (!busy && !r.contains(document.activeElement)) focusFirst(r);
 }
 
 /** 最初のボタン（または指定要素）にフォーカスを移す。画面が変わったときにキーボードで迷子にしない。 */
