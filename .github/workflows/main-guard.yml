@@ -28,7 +28,18 @@ jobs:
           if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
             echo "first push to main; skip"; exit 0
           fi
-          prs=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | length')
+          # マージ直後は commits/{sha}/pulls API への反映が数秒遅れることがあるため、
+          # 0件なら10秒待って最大3回やり直す（誤検知で main が赤くなるのを防ぐ）
+          prs=0
+          for attempt in 1 2 3; do
+            prs=$(gh api "repos/$REPO/commits/$SHA/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")] | length') || prs=0
+            case "$prs" in ''|*[!0-9]*) prs=0 ;; esac
+            if [ "$prs" -ge 1 ]; then break; fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "attempt $attempt: no merged PR found yet; retry in 10s"
+              sleep 10
+            fi
+          done
           if [ "$prs" -ge 1 ]; then
             echo "OK: $SHA is from a merged PR"
           else
