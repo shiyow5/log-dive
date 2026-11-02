@@ -1,0 +1,213 @@
+/* Log Dive HUD — 「夜のサーバー室」パレット（design-detail §1-1）。仮の見た目。 */
+:root {
+  --ld-bg: #0f1a1c;
+  --ld-surface: #1b2b2e;
+  --ld-surface-up: #26393d;
+  --ld-text: #e4f1ec;
+  --ld-text-weak: #8fa9a3;
+  --ld-accent: #7ebeab;
+  --ld-hint: #e8c468;
+  --ld-danger: #ff6b5e;
+  --ld-ok: #8fd694;
+}
+
+/* キャンバスは上寄せ。横長画面ではほぼ全面、縦長画面では上に置いて下を HUD に空ける */
+#game {
+  position: relative;
+  align-items: flex-start !important;
+}
+
+#hud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px;
+  box-sizing: border-box;
+  pointer-events: none;
+  font-family: ui-monospace, "DotGothic16", monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ld-text);
+}
+
+#hud[data-scene="title"],
+#hud[data-scene="result"] {
+  justify-content: center;
+  align-items: center;
+}
+
+.hud-panel {
+  pointer-events: auto;
+  background: var(--ld-surface);
+  border: 2px solid var(--ld-surface-up);
+  box-shadow: inset 0 0 0 1px #33494e;
+  padding: 8px 16px;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.hud-panel h1,
+.hud-panel h2,
+.hud-panel h3 {
+  margin: 0 0 8px;
+  font-weight: normal;
+}
+.hud-panel h1 {
+  font-size: 32px;
+}
+.hud-panel h2 {
+  font-size: 16px;
+  color: var(--ld-accent);
+}
+.hud-panel h3 {
+  font-size: 16px;
+  color: var(--ld-text-weak);
+}
+
+.hud-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.hud-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px 16px;
+}
+
+.hud-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hud-list li::before {
+  content: "› ";
+  color: var(--ld-text-weak);
+}
+.hud-list .is-out {
+  color: var(--ld-text-weak);
+  text-decoration: line-through;
+}
+
+.hud-btn {
+  font: inherit;
+  color: var(--ld-text);
+  background: var(--ld-surface-up);
+  border: 2px solid var(--ld-text-weak);
+  padding: 4px 12px;
+  min-height: 40px;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+.hud-btn:hover:not(:disabled) {
+  border-color: var(--ld-accent);
+}
+.hud-btn:focus-visible {
+  outline: 2px solid var(--ld-hint);
+  outline-offset: 2px;
+}
+.hud-btn:disabled {
+  color: var(--ld-text-weak);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+.hud-btn--primary {
+  border-color: var(--ld-accent);
+  color: var(--ld-bg);
+  background: var(--ld-accent);
+}
+
+.hud-field {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.hud-field input {
+  font: inherit;
+  color: var(--ld-text);
+  background: var(--ld-bg);
+  border: 2px solid var(--ld-text-weak);
+  padding: 4px 8px;
+  min-height: 32px;
+  width: 12ch;
+}
+.hud-field input:focus-visible {
+  outline: 2px solid var(--ld-hint);
+  outline-offset: 2px;
+}
+
+.hud-stat {
+  color: var(--ld-text-weak);
+}
+.hud-stat strong {
+  color: var(--ld-text);
+  font-weight: normal;
+}
+.hud-danger {
+  color: var(--ld-danger);
+}
+.hud-ok {
+  color: var(--ld-ok);
+}
+.hud-hint {
+  color: var(--ld-hint);
+}
+
+.hud-log {
+  min-height: 1.5em;
+  margin: 4px 0 0;
+}
+
+/* 縦長（スマホ縦持ちなど）: HUD はキャンバスの下から。キャンバスと重ねない */
+@media (max-aspect-ratio: 1/1) {
+  #hud {
+    top: calc(100vw * 9 / 16);
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+  #hud[data-scene="title"],
+  #hud[data-scene="result"] {
+    justify-content: flex-start;
+  }
+  .hud-panel {
+    max-height: none;
+  }
+}
+
+@media (max-width: 640px) {
+  #hud {
+    padding: 8px;
+    font-size: 14px;
+  }
+  .hud-panel {
+    padding: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-btn {
+    transition: none;
+  }
+}
+
+.hud-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 8px 0;
+}
+.hud-dl dd {
+  margin: 0;
+}

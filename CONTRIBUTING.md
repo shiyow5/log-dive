@@ -26,6 +26,11 @@
 - 追加するときは同じ PR で `CREDITS.md` に1行足す
 - 有料ツール・API キーが必要なツールは使わない（必要なら rei → haruto に相談）
 
+## Secrets・素材
+
+- Secrets・`.env` は絶対にコミットしない（`.gitignore` 済み。例は `.env.example` のみ）
+- 画像・音などの素材は `CREDITS.md` に1件ずつ記録する
+
 ## コミットメッセージ
 
 `feat:` / `fix:` / `refactor:` / `docs:` / `test:` / `chore:` で始める

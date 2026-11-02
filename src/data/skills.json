@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "skills": [
+    {
+      "id": "reproduce",
+      "name": "再現手順",
+      "cpu": 1,
+      "starter": true,
+      "effect": { "kind": "reproduce" }
+    },
+    {
+      "id": "read-log",
+      "name": "ログ確認",
+      "cpu": 1,
+      "starter": true,
+      "effect": { "kind": "read-log" }
+    },
+    {
+      "id": "hotfix",
+      "name": "ホットフィックス",
+      "cpu": 1,
+      "starter": true,
+      "effect": { "kind": "hotfix", "damage": 3 }
+    },
+    {
+      "id": "patch",
+      "name": "修正パッチ",
+      "cpu": 2,
+      "starter": true,
+      "effect": { "kind": "patch", "damage": 20 }
+    },
+    {
+      "id": "breakpoint",
+      "name": "ブレークポイント",
+      "cpu": 2,
+      "starter": false,
+      "effect": { "kind": "breakpoint" }
+    },
+    {
+      "id": "bisect",
+      "name": "二分探索",
+      "cpu": 2,
+      "starter": false,
+      "effect": { "kind": "bisect" }
+    }
+  ]
+}

@@ -7,8 +7,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Private リポジトリの Actions は無料枠(月2000分)を他の Private リポジトリと共有するので、
-# 古い実行は取り消して分数を節約する。
+# 古い実行は取り消して Actions の分数を節約する。
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
