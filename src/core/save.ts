@@ -14,8 +14,7 @@ interface Envelope<T> {
 }
 
 export type LoadResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; reason: "missing" | "corrupt" | "version" };
+  { ok: true; data: T } | { ok: false; reason: "missing" | "corrupt" | "version" };
 
 /**
  * バージョンとチェックサム付きでセーブする。
@@ -45,6 +44,10 @@ export class SaveStore<T> {
       return { ok: false, reason: "corrupt" };
     }
     if (typeof env !== "object" || env === null || typeof env.v !== "number") {
+      return { ok: false, reason: "corrupt" };
+    }
+    // data / sum が欠けたセーブ（{"v":1} など）は JSON.stringify(undefined) で落ちる前に corrupt にする
+    if (typeof env.sum !== "string" || !("data" in env)) {
       return { ok: false, reason: "corrupt" };
     }
     if (fnv1a(JSON.stringify(env.data)) !== env.sum) return { ok: false, reason: "corrupt" };

@@ -31,6 +31,11 @@ export class ReplayRecorder<A> {
     this.actions.push(action);
   }
   toReplay(): Replay<A> {
-    return { game: this.game, version: this.version, seed: this.seed, actions: this.actions.slice() };
+    return {
+      game: this.game,
+      version: this.version,
+      seed: this.seed,
+      actions: this.actions.slice(),
+    };
   }
 }

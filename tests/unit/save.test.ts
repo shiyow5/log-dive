@@ -9,7 +9,10 @@ describe("SaveStore", () => {
   });
 
   it("無いときは missing", () => {
-    expect(new SaveStore(new MemoryStorage(), "k", 1).load()).toEqual({ ok: false, reason: "missing" });
+    expect(new SaveStore(new MemoryStorage(), "k", 1).load()).toEqual({
+      ok: false,
+      reason: "missing",
+    });
   });
 
   it("壊れた JSON・チェックサム不一致は corrupt", () => {
@@ -27,7 +30,23 @@ describe("SaveStore", () => {
     new SaveStore<{ old: number }>(st, "k", 1).save({ old: 5 });
     const noMig = new SaveStore<{ n: number }>(st, "k", 2);
     expect(noMig.load()).toEqual({ ok: false, reason: "version" });
-    const mig = new SaveStore<{ n: number }>(st, "k", 2, (d) => ({ n: (d as { old: number }).old }));
+    const mig = new SaveStore<{ n: number }>(st, "k", 2, (d) => ({
+      n: (d as { old: number }).old,
+    }));
     expect(mig.load()).toEqual({ ok: true, data: { n: 5 } });
+  });
+
+  it("data / sum が欠けたセーブは例外にせず corrupt", () => {
+    const st = new MemoryStorage();
+    const s = new SaveStore<{ n: number }>(st, "k", 1);
+    for (const raw of [
+      '{"v":1}',
+      '{"v":1,"sum":"deadbeef"}',
+      '{"v":1,"data":{"n":1}}',
+      '{"v":1,"sum":123,"data":{"n":1}}',
+    ]) {
+      st.setItem("k", raw);
+      expect(s.load()).toEqual({ ok: false, reason: "corrupt" });
+    }
   });
 });
