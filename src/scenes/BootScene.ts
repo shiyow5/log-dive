@@ -4,7 +4,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from "../config";
 import { PixelFxLayer } from "../fx/PixelFxLayer";
 import { Rng } from "../core/rng";
 
-export const TITLE = "Log Dive — ログ潜り";
+export const TITLE = "ログ潜り ― Log Dive";
 
 export class BootScene extends Phaser.Scene {
   private fx?: PixelFxLayer;
