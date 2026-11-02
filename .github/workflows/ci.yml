@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
   workflow_dispatch:
@@ -67,6 +68,11 @@ jobs:
 
   e2e:
     name: e2e
+    # 重いe2eは main push・run-e2e ラベル付きPR・手動実行のときだけ回す(スキップ時もチェックはSUCCESS扱い)
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-e2e'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: test

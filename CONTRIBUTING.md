@@ -4,7 +4,7 @@
 
 1. `main` から作業ブランチを切る（例: `feat/floor-1`, `fix/save-corrupt`）
 2. PR を作る。説明に「何を・なぜ・どう確かめたか」を書く
-3. CI（`format`・`lint`・`test`・`e2e`）がすべて SUCCESS になるまで直す
+3. CI（`format`・`lint`・`test`・`e2e`）がすべて SUCCESS になるまで直す。重い `e2e` は Actions 無料枠節約のため、PR では `run-e2e` ラベルを付けたときだけ実行される（付けないとスキップ＝SUCCESS扱い）。main への push 時と、Actions の手動実行（workflow_dispatch）でも実行される。マージ前・Approve前には `run-e2e` を付けて1回通すこと
 4. PL（toru）がレビューして Approve
 5. rei が「repo名＋PR番号＋head SHA」を haruto に送る → 東雲が承認 → マージ（squash）
 
