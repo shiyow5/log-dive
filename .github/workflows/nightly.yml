@@ -1,0 +1,45 @@
+name: Nightly
+
+# PR の CI では回さない。毎晩(JST 03:xx)と手動実行だけ。
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: "BOT の本数(既定 1000)"
+        required: false
+        default: "1000"
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bot-1000:
+    name: bot-1000
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      QA_BOT_SEEDS: ${{ inputs.seeds || '1000' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: BOT ${{ env.QA_BOT_SEEDS }} 本
+        run: |
+          mkdir -p nightly-report
+          npx vitest run tests/qa/ 2>&1 | tee nightly-report/vitest.log
+      - name: 失敗時の seed と Replay JSON を残す
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-1000-failure
+          path: nightly-report/
+          retention-days: 14
