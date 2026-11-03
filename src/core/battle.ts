@@ -1,7 +1,7 @@
 /**
  * 推理バトル（spec-a-mvp v0.1 §4 / v0.2）。純粋関数だけ。
  *
- * バグの行動: off-by-one・null-ref・race（leak・infinite-loop は #27）。
+ * バグの行動: 5種すべて（off-by-one・null-ref・race・leak・infinite-loop）。
  * スキルは reproduce / read-log / hotfix / patch の4枚（breakpoint・bisect は #28）。
  */
 import {
@@ -45,9 +45,22 @@ export function advanceIntent(data: GameData, bug: BugId, prev: BugIntent): BugI
       const left = prev.countdown ?? b.period - 1;
       return nullRefIntent(b, left === 0 ? b.period - 1 : left - 1);
     }
+    case "leak":
+      // メモリリーク: 行動するたびに growth ずつ重くなる
+      return { damage: prev.damage + b.growth };
     default:
       return { damage: b.damage };
   }
+}
+
+/**
+ * 次のターンの CPU。毎ターン上限にリセットしてから（v0.2 決定5）、
+ * infinite-loop はそのターンだけ cpuDrain 減らす（0 未満にはしない）。
+ */
+export function nextTurnCpu(data: GameData, bug: BugId, cpuMax: number): number {
+  const b = bugDef(data, bug).behavior;
+  const drain = b.kind === "infinite-loop" ? b.cpuDrain : 0;
+  return Math.max(0, cpuMax - drain);
 }
 
 /** null-ref の予告。countdown=0 のターンが大ダメージ（period ターンに1回）。 */
@@ -71,7 +84,7 @@ export function actualDamage(data: GameData, battle: BattleState): [number, RngS
       return [battle.intent.damage * m, rng];
     }
     default:
-      // null-ref は予告どおり（大ダメージのターンは予告に出ている）。leak・infinite-loop は #27
+      // null-ref・leak・infinite-loop は予告どおり（増え方・大ダメージは予告に出ている）
       return [battle.intent.damage, battle.rng];
   }
 }
@@ -238,8 +251,12 @@ export function bugTurn(data: GameData, battle: BattleState, player: PlayerState
       intent: advanceIntent(data, battle.bug, battle.intent),
       rng,
     },
-    // CPU は毎ターン上限にリセット（持ち越しなし。v0.2 決定5）
-    player: { ...player, hp: player.hp - amount, cpu: player.cpuMax },
+    // CPU は毎ターン上限にリセット（持ち越しなし）→ infinite-loop の分だけ減らす
+    player: {
+      ...player,
+      hp: player.hp - amount,
+      cpu: nextTurnCpu(data, battle.bug, player.cpuMax),
+    },
     events: [{ t: "playerDamaged", amount }],
   };
 }
