@@ -33,6 +33,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: BOT ${{ env.QA_BOT_SEEDS }} 本
+        # shell: bash を明示すると -eo pipefail になり、tee 越しでも vitest の失敗でステップが落ちる
+        shell: bash
         run: |
           mkdir -p nightly-report
           npx vitest run tests/qa/ 2>&1 | tee nightly-report/vitest.log
