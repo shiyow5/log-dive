@@ -4,7 +4,14 @@ import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
-import { calcMapLayout, mapLabelText, roomSymbol, stairsOpen, symbolColor } from "./map-symbols";
+import {
+  calcMapLayout,
+  isShownOnMap,
+  mapLabelText,
+  roomSymbol,
+  stairsOpen,
+  symbolColor,
+} from "./map-symbols";
 
 const COLOR = {
   line: 0x26393d,
@@ -65,8 +72,7 @@ export class MapScene extends Phaser.Scene {
 
   private drawMap(s: RunState): void {
     const rooms = s.floor.rooms;
-    const here = rooms.find((r) => r.id === s.roomId);
-    const visible = rooms.filter((r) => r.visited || (here?.neighbors.includes(r.id) ?? false));
+    const visible = rooms.filter((r) => isShownOnMap(r, s));
     const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = calcMapLayout(rooms);
 
     function center(r: RoomState): { x: number; y: number } {
@@ -100,22 +106,20 @@ export class MapScene extends Phaser.Scene {
         g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       }
       // 階段部屋は階段色の枠
-      if (r.visited && r.content.kind === "stairs") {
+      if (r.content.kind === "stairs" && (r.visited || stairsOpen(s))) {
         g.lineStyle(2, COLOR.stairs, 1);
         g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       }
-      // 記号（訪問済みのみ）
-      if (r.visited) {
-        const sym = roomSymbol(r, s);
-        if (sym) {
-          this.add
-            .text(x, y - ROOM / 2 - 2, sym, {
-              fontFamily: "monospace",
-              fontSize: "10px",
-              color: symbolColor(r),
-            })
-            .setOrigin(0.5, 0);
-        }
+      // 記号（未踏は出さない。ただし開いた階段の ▼ は出す。判定は roomSymbol）
+      const sym = roomSymbol(r, s);
+      if (sym) {
+        this.add
+          .text(x, y - ROOM / 2 - 2, sym, {
+            fontFamily: "monospace",
+            fontSize: "10px",
+            color: symbolColor(r),
+          })
+          .setOrigin(0.5, 0);
       }
       // 部屋名（短縮。密な階では出さない → mapLabelText）
       const nameText = mapLabelText(r, CELL);
