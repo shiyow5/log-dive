@@ -25,16 +25,15 @@ function room(
   };
 }
 
-function emptyRun(): Omit<RunState, "floor"> {
+function baseRun(): Partial<RunState> {
   return {
     version: 4,
     seed: "test",
     phase: "map",
-    floor: { number: 1, rooms: [] },
     roomId: "r0",
     player: { hp: 10, maxHp: 10, cpu: 5, cpuMax: 5, skills: [] },
     battle: null,
-    floorRng: { seed: "floor:test:1", next: 0 },
+    floorRng: { a: 1, b: 2, c: 3, d: 4 },
     battleCount: 0,
     reinforcements: 0,
     stats: { bugsClosed: 0, turns: 0, degrades: 0 },
@@ -44,7 +43,10 @@ function emptyRun(): Omit<RunState, "floor"> {
 }
 
 function run(rooms: RoomState[]): RunState {
-  return { ...emptyRun(), floor: { number: 1, rooms } };
+  return {
+    ...baseRun(),
+    floor: { number: 1, rooms },
+  } as RunState;
 }
 
 describe("roomSymbol: 部屋の種類に応じた記号を返す", () => {
