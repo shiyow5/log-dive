@@ -97,7 +97,8 @@ export function legality(s: RunState): Legality {
 
 /** RunEvent をログ用の日本語1行にする（読み上げにも流す）。 */
 export function describeEvents(s: RunState, events: readonly RunEvent[]): string | null {
-  const roomLabel = (id: string) => s.floors[s.currentFloor - 1]!.rooms.find((r) => r.id === id)?.label ?? id;
+  const roomLabel = (id: string) =>
+    s.floors[s.currentFloor - 1]!.rooms.find((r) => r.id === id)?.label ?? id;
   const parts = events.map((e): string => {
     switch (e.t) {
       case "moved":

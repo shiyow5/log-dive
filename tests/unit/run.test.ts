@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { initFixedRun } from "./fixed-run";
 import { loadGameData } from "../../src/core/data";
-import { generateFloor } from "../../src/core/floor";
 import { randInt, randPick, randShuffle } from "../../src/core/rand";
 import { runReplay } from "../../src/core/replay";
 import { seedFrom } from "../../src/core/rng";
@@ -98,7 +97,9 @@ describe("run: 1部屋移動 → off-by-one を倒せる（固定の階・固定
     expect(patched.phase).toBe("won");
     expect(patched.battle).toBeNull();
     expect(patched.stats).toEqual({ bugsClosed: 1, turns: 1, degrades: 0 });
-    expect(patched.floors[patched.currentFloor - 1]!.rooms.find((r) => r.id === "r1")!.content).toEqual({ kind: "empty" });
+    expect(
+      patched.floors[patched.currentFloor - 1]!.rooms.find((r) => r.id === "r1")!.content,
+    ).toEqual({ kind: "empty" });
     expect(patched.events.map((e) => e.t)).toEqual(["bugDamaged", "bugClosed", "runEnd"]);
   });
 

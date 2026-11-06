@@ -10,9 +10,7 @@ import {
   skillInfo,
   startRun,
 } from "../../src/scenes/run-port";
-import { generateFloor } from "../../src/core/floor";
 import { parseFlags } from "../../src/ui/flags";
-
 
 describe("parseFlags", () => {
   it("?fx=0 で演出オフ、それ以外はオン", () => {

@@ -9,7 +9,14 @@
  */
 import { bugTurn, isRunError, startBattle, useSkill } from "./battle";
 import { bossDef, loadGameData, type BugId, type GameData, type SkillId } from "./data";
-import { START_ROOM, candidatesForFloor, fixedFloor, floorCount, generateFloor, loadFloors } from "./floor";
+import {
+  START_ROOM,
+  candidatesForFloor,
+  fixedFloor,
+  floorCount,
+  generateFloor,
+  loadFloors,
+} from "./floor";
 import type { Reducer } from "./replay";
 import { seedFrom, type RngState } from "./rng";
 
@@ -196,7 +203,11 @@ export interface InitRunOptions {
 }
 
 /** 新しいランを始める。 */
-export function initRun(seed: string, data: GameData = loadGameData(), opts: InitRunOptions = {}): RunState {
+export function initRun(
+  seed: string,
+  data: GameData = loadGameData(),
+  opts: InitRunOptions = {},
+): RunState {
   const starters = data.skills.skills.filter((s) => s.starter).map((s) => s.id);
   const floorCount = opts.floorCount ?? 1;
   let floors: FloorState[];
@@ -252,7 +263,14 @@ export function currentFloor(state: RunState): FloorState {
 function withFloor(state: RunState, updater: (f: FloorState) => FloorState): RunState {
   const idx = state.currentFloor - 1;
   const floor = state.floors[idx]!;
-  return { ...state, floors: [...state.floors.slice(0, idx), updater(floor), ...state.floors.slice(idx + 1)] as readonly FloorState[] };
+  return {
+    ...state,
+    floors: [
+      ...state.floors.slice(0, idx),
+      updater(floor),
+      ...state.floors.slice(idx + 1),
+    ] as readonly FloorState[],
+  };
 }
 
 function hasBugsLeft(floor: FloorState): boolean {
@@ -296,14 +314,12 @@ function applyMove(state: RunState, data: GameData, room: string): RunState {
 
   const events: RunEvent[] = [{ t: "moved", room }];
   const moved: RunState = {
-    ...withFloor(state, (f) =>
-      updateRoom(f, room, (r) => ({ ...r, visited: true })),
-    ),
+    ...withFloor(state, (f) => updateRoom(f, room, (r) => ({ ...r, visited: true }))),
     roomId: room,
   };
   if (target.content.kind === "stairs" && !hasBugsLeft(currentFloor(state))) {
     return {
-      ...descend(moved, data),
+      ...descend(moved),
       lastError: null,
       events: [...events, { t: "descended", floor: currentFloor(state).number + 1 }],
     };
@@ -313,11 +329,18 @@ function applyMove(state: RunState, data: GameData, room: string): RunState {
 }
 
 /** 次の階へ。増援はこの階のデグレ数で、使ったら 0 に戻す。 */
-function descend(state: RunState, data: GameData): RunState {
+function descend(state: RunState): RunState {
   const n = currentFloor(state).number + 1;
-  const floors = n <= floorCount()
-    ? [...state.floors, generateFloor(state.seed, n, { reinforcements: state.reinforcements, boss: n === floorCount() })]
-    : state.floors;
+  const floors =
+    n <= floorCount()
+      ? [
+          ...state.floors,
+          generateFloor(state.seed, n, {
+            reinforcements: state.reinforcements,
+            boss: n === floorCount(),
+          }),
+        ]
+      : state.floors;
   return {
     ...state,
     currentFloor: n,
@@ -459,7 +482,9 @@ export function apply(state: RunState, action: Action, data: GameData = loadGame
       }
       const events: RunEvent[] = [{ t: "loot", skill }];
       const player = { ...state.player, skills: [...state.player.skills, skill] };
-      const updated = withFloor(state, (f) => updateRoom(f, room.id, (r) => ({ ...r, content: { kind: "empty" } })));
+      const updated = withFloor(state, (f) =>
+        updateRoom(f, room.id, (r) => ({ ...r, content: { kind: "empty" } })),
+      );
       return { ...updated, player, lastError: null, events };
     }
     case "abandon":

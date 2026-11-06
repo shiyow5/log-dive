@@ -6,7 +6,13 @@ import { describe, expect, it } from "vitest";
 import { initFixedRun } from "./fixed-run";
 import { startBattle } from "../../src/core/battle";
 import { BUG_IDS, bugDef, loadGameData, type BugId } from "../../src/core/data";
-import { apply, initRun, legalActions, RULES_VERSION, type FloorState, type RunState } from "../../src/core/run";
+import {
+  apply,
+  legalActions,
+  RULES_VERSION,
+  type FloorState,
+  type RunState,
+} from "../../src/core/run";
 import { seedFrom } from "../../src/core/rng";
 
 const data = loadGameData();
@@ -25,9 +31,33 @@ function battleWith(
     number: 1,
     boss: false,
     rooms: [
-      { id: "r0", label: "main()", x: 0, y: 0, neighbors: ["r1"], visited: true, content: { kind: "empty" } },
-      { id: "r1", label: "parse()", x: 1, y: 0, neighbors: ["r0", "r2"], visited: true, content: { kind: "bug", bugs: [bug] } },
-      { id: "r2", label: "render()", x: 2, y: 0, neighbors: ["r1"], visited: false, content: { kind: "empty" } },
+      {
+        id: "r0",
+        label: "main()",
+        x: 0,
+        y: 0,
+        neighbors: ["r1"],
+        visited: true,
+        content: { kind: "empty" },
+      },
+      {
+        id: "r1",
+        label: "parse()",
+        x: 1,
+        y: 0,
+        neighbors: ["r0", "r2"],
+        visited: true,
+        content: { kind: "bug", bugs: [bug] },
+      },
+      {
+        id: "r2",
+        label: "render()",
+        x: 2,
+        y: 0,
+        neighbors: ["r1"],
+        visited: false,
+        content: { kind: "empty" },
+      },
     ],
   };
   return {

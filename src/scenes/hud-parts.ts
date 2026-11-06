@@ -13,7 +13,12 @@ export function statsRow(s: RunState): HTMLElement {
     s.battle
       ? el("span", { class: "hud-stat" }, "ターン ", el("strong", {}, String(s.battle.turn)))
       : null,
-    el("span", { class: "hud-stat" }, "階 ", el("strong", {}, String((s.floors[s.currentFloor - 1]?.number ?? 1)))),
+    el(
+      "span",
+      { class: "hud-stat" },
+      "階 ",
+      el("strong", {}, String(s.floors[s.currentFloor - 1]?.number ?? 1)),
+    ),
   );
 }
 
