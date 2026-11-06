@@ -4,7 +4,7 @@ import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
-import { roomSymbol, symbolColor, stairsOpen } from "./map-symbols";
+import { roomSymbol, symbolColor, stairsOpen, shortLabel } from "./map-symbols";
 
 const MIN_CELL = 8;
 const BASE_ROOM_RATIO = 20 / 32;
@@ -22,13 +22,7 @@ const COLOR = {
   weak: "#8fa9a3",
 };
 
-/** 部屋の名前。未踏なら「?」（spec-a v0.2 §9: 未訪問は隣接のみ ? 表示）。 */
-export function roomName(r: RoomState): string {
-  return r.visited ? r.label : "?";
-}
-
-/**
- * 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
+/** 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
  * Playwright では getByRole("button", { name: /r1へ移動/ }) で取れる。
  */
 export function moveLabel(r: RoomState, s: RunState): string {
@@ -135,13 +129,23 @@ export class MapScene extends Phaser.Scene {
             .setOrigin(0.5, 0);
         }
       }
+      // 部屋名（短縮）+ 部屋ID（右下に小さく）
+      const nameText = r.visited ? shortLabel(r.label) : "?";
       this.add
-        .text(x, y + ROOM / 2 + 2, roomName(r), {
+        .text(x, y + ROOM / 2 + 2, nameText, {
           fontFamily: "monospace",
           fontSize: "8px",
           color: r.visited ? COLOR.text : COLOR.weak,
         })
         .setOrigin(0.5, 0);
+      // 部屋ID（移動ボタンとの対応用、右上に小さく）
+      this.add
+        .text(x + ROOM / 2 - 2, y - ROOM / 2 + 2, r.id, {
+          fontFamily: "monospace",
+          fontSize: "6px",
+          color: r.visited ? COLOR.weak : "#3a5a60",
+        })
+        .setOrigin(1, 0);
       if (isHere) {
         this.add
           .text(x, y, "@", { fontFamily: "monospace", fontSize: "12px", color: "#0f1a1c" })
