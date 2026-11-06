@@ -162,7 +162,7 @@ export interface RunState {
 // ---- ルール ----
 
 /** ルール＋data のバージョン。ルールか data を変えたら上げる（v0.2 決定10）。 */
-export const RULES_VERSION = 1;
+export const RULES_VERSION = 2;
 
 /** デグレで次の階に増えるバグの上限（v0.2 決定2）。 */
 export const MAX_REINFORCEMENTS = 2;
