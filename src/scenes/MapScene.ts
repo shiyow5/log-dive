@@ -4,7 +4,7 @@ import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
-import { roomSymbol, symbolColor, stairsOpen, shortLabel } from "./map-symbols";
+import { roomSymbol, symbolColor, stairsOpen, shortLabel, CHAR_W } from "./map-symbols";
 
 const MIN_CELL = 8;
 const BASE_ROOM_RATIO = 20 / 32;
@@ -22,7 +22,8 @@ const COLOR = {
   weak: "#8fa9a3",
 };
 
-/** 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
+/**
+ * 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
  * Playwright では getByRole("button", { name: /r1へ移動/ }) で取れる。
  */
 export function moveLabel(r: RoomState, s: RunState): string {
@@ -130,7 +131,8 @@ export class MapScene extends Phaser.Scene {
         }
       }
       // 部屋名（短縮）+ 部屋ID（右下に小さく）
-      const nameText = r.visited ? shortLabel(r.label) : "?";
+      const maxChars = Math.max(4, Math.floor(CELL / CHAR_W));
+      const nameText = r.visited ? shortLabel(r.label, maxChars) : "?";
       this.add
         .text(x, y + ROOM / 2 + 2, nameText, {
           fontFamily: "monospace",
@@ -142,8 +144,8 @@ export class MapScene extends Phaser.Scene {
       this.add
         .text(x + ROOM / 2 - 2, y - ROOM / 2 + 2, r.id, {
           fontFamily: "monospace",
-          fontSize: "6px",
-          color: r.visited ? COLOR.weak : "#3a5a60",
+          fontSize: "8px",
+          color: COLOR.weak,
         })
         .setOrigin(1, 0);
       if (isHere) {
