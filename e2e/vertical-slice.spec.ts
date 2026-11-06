@@ -1,4 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import type { QaHooks } from "../src/ui/qa";
+
+declare global {
+  interface Window {
+    __qa?: QaHooks;
+  }
+}
 
 /**
  * LD-20 縮小版（縦切り）: ?seed= 固定 → 1部屋移動 → バグ1種と戦闘 → 撃破か失敗で終わる。コンソールエラー0。
@@ -23,7 +30,7 @@ function collectErrors(page: Page): string[] {
 
 async function waitForIdle(page: Page): Promise<void> {
   await page.waitForFunction(() => typeof window.__qa?.waitForIdle === "function");
-  await page.evaluate(() => window.__qa!.waitForIdle());
+  await page.evaluate(() => (window.__qa as QaHooks).waitForIdle());
 }
 
 async function sceneIs(page: Page, scene: string): Promise<void> {
