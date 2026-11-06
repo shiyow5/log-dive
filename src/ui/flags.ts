@@ -28,3 +28,15 @@ export function fxEnabled(): boolean {
   }
   return true;
 }
+
+let fadeEndsAt = 0;
+
+/** フェードイン開始を記録する（QA の waitForIdle が完了を待てるようにする）。 */
+export function markFade(durationMs: number): void {
+  fadeEndsAt = Math.max(fadeEndsAt, performance.now() + durationMs);
+}
+
+/** フェード中か。 */
+export function isFading(): boolean {
+  return performance.now() < fadeEndsAt;
+}
