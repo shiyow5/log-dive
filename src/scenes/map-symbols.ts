@@ -17,6 +17,17 @@ function hasBugsLeft(floor: RunState["floor"]): boolean {
 }
 
 /**
+ * マップに描く部屋か。訪問済み・今いる部屋の隣に加えて、開いた階段の部屋は未踏でも描く
+ * （案B: roomSymbol が ▼ を返しても、部屋自体を描かなければ画面に出ないため）。
+ */
+export function isShownOnMap(r: RoomState, s: RunState): boolean {
+  if (r.visited) return true;
+  const here = s.floor.rooms.find((x) => x.id === s.roomId);
+  if (here?.neighbors.includes(r.id)) return true;
+  return r.content.kind === "stairs" && stairsOpen(s);
+}
+
+/**
  * 部屋の内容に応じた記号（色だけに頼らない）。
  *
  * 階段は開いている場合、未踏でも ▼ を出す（案B: spec-a §9 未踏隠しの例外）。

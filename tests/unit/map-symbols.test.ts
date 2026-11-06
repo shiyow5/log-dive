@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { roomSymbol, symbolColor, stairsOpen } from "../../src/scenes/map-symbols";
+import { isShownOnMap, roomSymbol, stairsOpen, symbolColor } from "../../src/scenes/map-symbols";
 import { generateFloor } from "../../src/core/floor";
 import type { RoomState, RunState } from "../../src/core/run";
 
@@ -203,4 +203,47 @@ describe("stairsOpen + roomSymbol: 4シード全階で階段の位置が分か�
       });
     }
   }
+});
+
+describe("isShownOnMap: 開いた階段は隣でなく未踏でも描く（#52 案B）", () => {
+  // r0(今いる) ─ r1(未踏) ─ r2(階段・未踏)。r2 は r0 の隣ではない
+  function line(bugsLeft: boolean): RunState {
+    const r0 = { ...room("r0", "main()", 0, 0, { kind: "empty" }, true), neighbors: ["r1"] };
+    const r1 = {
+      ...room(
+        "r1",
+        "parse()",
+        1,
+        0,
+        bugsLeft ? { kind: "bug", bugs: ["off-by-one"] } : { kind: "empty" },
+      ),
+      neighbors: ["r0", "r2"],
+    };
+    const r2 = { ...room("r2", "exit()", 2, 0, { kind: "stairs" }), neighbors: ["r1"] };
+    return run([r0, r1, r2]);
+  }
+
+  it("バグが残っている間: 隣の r1 は描くが、隣でない未踏の階段 r2 は描かない", () => {
+    const s = line(true);
+    const [r0, r1, r2] = s.floor.rooms as [RoomState, RoomState, RoomState];
+    expect([isShownOnMap(r0, s), isShownOnMap(r1, s), isShownOnMap(r2, s)]).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  });
+
+  it("階段が開いたら: 隣でない未踏の階段 r2 も描き、記号は ▼", () => {
+    const s = line(false);
+    const r2 = s.floor.rooms[2] as RoomState;
+    expect(isShownOnMap(r2, s)).toBe(true);
+    expect(roomSymbol(r2, s)).toBe("▼");
+  });
+
+  it("隣でない未踏の通常部屋は、階段が開いても描かない", () => {
+    const base = line(false);
+    const far = { ...room("r3", "far()", 3, 0, { kind: "empty" }), neighbors: ["r2"] };
+    const s = run([...base.floor.rooms, far]);
+    expect(isShownOnMap(far, s)).toBe(false);
+  });
 });
