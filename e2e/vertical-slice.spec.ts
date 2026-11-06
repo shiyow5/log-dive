@@ -1,4 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
+import type { QaHooks } from "../src/ui/qa";
+
+declare global {
+  interface Window {
+    __qa?: QaHooks;
+  }
+}
 
 /**
  * LD-20 縮小版（縦切り）: ?seed= 固定 → 1部屋移動 → バグ1種と戦闘 → 撃破か失敗で終わる。コンソールエラー0。
@@ -8,15 +15,6 @@ import { expect, test, type Page } from "@playwright/test";
  * フックとシーンが入るまでは test.fixme。名前・形はゲーム側（kirara・shingo）の PR に QA が合わせる。
  * 縦切り判定（11/04 21:00, qa-plan-v3 §3-1）までに fixme を外す。
  */
-
-declare global {
-  interface Window {
-    __qa?: {
-      stateHash(): string;
-      waitForIdle(): Promise<void>;
-    };
-  }
-}
 
 const SEED = "qa-e2e-1";
 
@@ -32,7 +30,7 @@ function collectErrors(page: Page): string[] {
 
 async function waitForIdle(page: Page): Promise<void> {
   await page.waitForFunction(() => typeof window.__qa?.waitForIdle === "function");
-  await page.evaluate(() => window.__qa!.waitForIdle());
+  await page.evaluate(() => (window.__qa as QaHooks).waitForIdle());
 }
 
 async function sceneIs(page: Page, scene: string): Promise<void> {
@@ -93,7 +91,9 @@ test.fixme("同じ ?seed= で2回遊ぶと、同じ手順の後の stateHash が
     await sceneIs(page, "run");
     await page.keyboard.press("ArrowRight");
     await waitForIdle(page);
-    return page.evaluate(() => window.__qa!.stateHash());
+    const h = await page.evaluate(() => window.__qa!.stateHash());
+    if (h === null) throw new Error("stateHash returned null after move");
+    return h;
   };
   expect(await play()).toBe(await play());
 });
