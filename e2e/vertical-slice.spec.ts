@@ -9,8 +9,6 @@ import { expect, test, type Page } from "@playwright/test";
  * 縦切り判定（11/04 21:00, qa-plan-v3 §3-1）までに fixme を外す。
  */
 
-
-
 const SEED = "qa-e2e-1";
 
 /** ページのエラーとコンソールの error を集める（smoke.spec.ts と同じ基準）。 */
