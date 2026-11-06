@@ -14,8 +14,23 @@ let helpOpen = false;
 // 説明の数値・名前はデータから引く（直書きするとデータ変更で嘘になる）
 const data = loadGameData();
 const CPU_PER_TURN = data.player.cpuPerTurn;
-const hotfix = skillInfo("hotfix");
-const patch = skillInfo("patch");
+/** スキル名・CPU・ダメージ（skills.json）。 */
+function skillText(id: "hotfix" | "patch"): { name: string; cpu: number; damage: number } {
+  const def = data.skills.skills.find((k) => k.id === id);
+  const damage = def && "damage" in def.effect ? def.effect.damage : 0;
+  return { ...skillInfo(id), damage };
+}
+const hotfix = skillText("hotfix");
+const patch = skillText("patch");
+const MAP_LEGEND = [
+  "▼ 階段（開いている。入ると次の階へ）",
+  "◆ 階段（バグが残っていて進めない）",
+  "♦ 宝箱",
+  "▲ 根本原因（未解決）",
+  "★ 根本原因（解決済み）",
+  "× バグあり",
+  "✓ 解決済み",
+];
 const starters = data.skills.skills
   .filter((k) => k.starter)
   .map((k) => k.name)
@@ -53,23 +68,24 @@ function createHelpPanel(): HTMLElement {
           "background:#1b2b2e;border:1px solid #7ebeab;border-radius:8px;padding:20px 24px;max-width:480px;width:90%;color:#e4f1ec;font-size:13px;line-height:1.6;",
       },
       el("h2", { style: "margin:0 0 12px;color:#7ebeab;font-size:16px;" }, "遊び方"),
-      el("p", {}, "3階のボスを倒して、稼働率0でダウンしたサーバーを復旧しよう。"),
       el(
         "p",
         {},
-        "各部屋にはバグが潜んでいる。戦闘で症状（例:「配列の端で落ちる」→境界ずれ）を見て、ログから候補を絞り、パッチで撃破する。CPU を使い切りすぎると負けるから、症状から当ててCPUを節約しよう。",
+        "3階の奥にいる根本原因（ボス）に修正パッチを当てて、障害の起きたサーバーを復旧しよう。稼働率（HP）が 0 になるとダウンして負け。",
       ),
       el(
         "p",
         {},
-        `CPU＝サーバーの処理能力（毎ターン ${CPU_PER_TURN}）。${hotfix.name}は即席の応急処置（CPU ${hotfix.cpu}、少しだけ削る）、${patch.name}は完全修正（CPU ${patch.cpu}、種類を当てる必要がある）。`,
+        "各部屋にはバグが潜んでいる。戦闘では症状（例:「配列の端で落ちる」→境界ずれ）とログから正体を絞り、修正パッチで直す。種類を外すとバグが悪化する。",
       ),
       el(
         "p",
         {},
-        "マップ記号: ▼階段（開いている） ◆階段（閉じている） ♦宝箱 ▲ボス(バグあり) ★ボス(クリア) ×バグ(あり) ✓バグ(クリア)",
+        `CPU は1ターンに使える行動力（毎ターン ${CPU_PER_TURN}）。${hotfix.name}は応急処置（CPU ${hotfix.cpu}・ダメージ ${hotfix.damage}）、${patch.name}は完全修正（CPU ${patch.cpu}・ダメージ ${patch.damage}。種類を当てる必要がある）。`,
       ),
       el("p", {}, `最初から${starters}を使える。宝箱を開けると${chestSkills}が増える。`),
+      el("p", {}, "マップ記号:"),
+      el("ul", { "aria-label": "マップ記号" }, ...MAP_LEGEND.map((line) => el("li", {}, line))),
       button("閉じる", () => closeHelp()),
     ),
   );

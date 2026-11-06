@@ -12,12 +12,15 @@ test("タイトル画面で「遊び方」ボタンを押すとパネルが開�
   await expect(page.locator("body")).toHaveAttribute("data-scene", "title");
 
   await expect(overlay.locator("h2")).toContainText("遊び方");
-  await expect(overlay).toContainText("3階のボスを倒して");
-  // CPU は skills.json の値（ダメージ値ではない）
-  await expect(overlay).toContainText("ホットフィックスは即席の応急処置（CPU 1");
-  await expect(overlay).toContainText("修正パッチは完全修正（CPU 2");
+  await expect(overlay).toContainText("根本原因");
+  // CPU とダメージは skills.json の値（3/20 はダメージで、CPU ではない）
+  await expect(overlay).toContainText("ホットフィックスは応急処置（CPU 1・ダメージ 3）");
+  await expect(overlay).toContainText("修正パッチは完全修正（CPU 2・ダメージ 20");
   await expect(overlay).toContainText("毎ターン 3");
-  await expect(overlay).toContainText("▼");
+  await expect(overlay).toContainText("ブレークポイント・二分探索が増える");
+  await expect(overlay.getByRole("list", { name: "マップ記号" }).getByRole("listitem")).toHaveCount(
+    7,
+  );
 
   await overlay.getByRole("button", { name: "閉じる" }).click();
   await expect(overlay).toBeHidden();
