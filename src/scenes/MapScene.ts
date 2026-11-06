@@ -4,10 +4,14 @@ import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
-import { isShownOnMap, roomSymbol, stairsOpen, symbolColor } from "./map-symbols";
-
-const MIN_CELL = 8;
-const BASE_ROOM_RATIO = 20 / 32;
+import {
+  calcMapLayout,
+  isShownOnMap,
+  mapLabelText,
+  roomSymbol,
+  stairsOpen,
+  symbolColor,
+} from "./map-symbols";
 
 const COLOR = {
   line: 0x26393d,
@@ -21,11 +25,6 @@ const COLOR = {
   text: "#e4f1ec",
   weak: "#8fa9a3",
 };
-
-/** 部屋の名前。未踏なら「?」（spec-a v0.2 §9: 未訪問は隣接のみ ? 表示）。 */
-export function roomName(r: RoomState): string {
-  return r.visited ? r.label : "?";
-}
 
 /**
  * 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
@@ -74,17 +73,7 @@ export class MapScene extends Phaser.Scene {
   private drawMap(s: RunState): void {
     const rooms = s.floor.rooms;
     const visible = rooms.filter((r) => isShownOnMap(r, s));
-    // ビューポート(320x180)に収まるようCELL/ROOM/ORIGINを計算
-    const maxX = Math.max(...rooms.map((r) => r.x));
-    const maxY = Math.max(...rooms.map((r) => r.y));
-    const mapW = maxX + 1;
-    const mapH = maxY + 1;
-    const availW = 320 - 40; // 左右マージン20px
-    const availH = 180 - 20 - 100; // 上部マージン20 + HUD下部100px
-    const CELL = Math.max(MIN_CELL, Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH)));
-    const ROOM = Math.max(4, Math.floor(CELL * BASE_ROOM_RATIO));
-    const ORIGIN_X = Math.floor((320 - mapW * CELL) / 2); // 横センター
-    const ORIGIN_Y = 20;
+    const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = calcMapLayout(rooms);
 
     function center(r: RoomState): { x: number; y: number } {
       return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
@@ -132,13 +121,25 @@ export class MapScene extends Phaser.Scene {
           })
           .setOrigin(0.5, 0);
       }
+      // 部屋名（短縮。密な階では出さない → mapLabelText）
+      const nameText = mapLabelText(r, CELL);
+      if (nameText !== null) {
+        this.add
+          .text(x, y + ROOM / 2 + 2, nameText, {
+            fontFamily: "monospace",
+            fontSize: "8px",
+            color: r.visited ? COLOR.text : COLOR.weak,
+          })
+          .setOrigin(0.5, 0);
+      }
+      // 部屋ID（移動ボタンとの対応用、右上に小さく）
       this.add
-        .text(x, y + ROOM / 2 + 2, roomName(r), {
+        .text(x + ROOM / 2 - 2, y - ROOM / 2 + 2, r.id, {
           fontFamily: "monospace",
           fontSize: "8px",
-          color: r.visited ? COLOR.text : COLOR.weak,
+          color: COLOR.weak,
         })
-        .setOrigin(0.5, 0);
+        .setOrigin(1, 0);
       if (isHere) {
         this.add
           .text(x, y, "@", { fontFamily: "monospace", fontSize: "12px", color: "#0f1a1c" })
