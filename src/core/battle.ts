@@ -128,6 +128,7 @@ export function startBattle(a: StartBattleArgs): BattleState {
       intent: firstIntent(a.data, a.bug),
       turn: 1,
       rng,
+      halted: false,
     };
   }
   // 通常戦闘
@@ -147,6 +148,7 @@ export function startBattle(a: StartBattleArgs): BattleState {
     intent: firstIntent(a.data, a.bug),
     turn: 1,
     rng,
+    halted: false,
   };
 }
 

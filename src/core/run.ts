@@ -8,7 +8,7 @@
  */
 import { bugTurn, isRunError, startBattle, useSkill } from "./battle";
 import { loadGameData, type BugId, type GameData, type SkillId } from "./data";
-import { generateFloor, FIXED_START_ROOM, candidatesForFloor, fixedFloor } from "./floor";
+import { FIXED_START_ROOM, candidatesForFloor, fixedFloor } from "./floor";
 import type { Reducer } from "./replay";
 import { seedFrom, type RngState } from "./rng";
 
@@ -95,6 +95,8 @@ export interface BattleState {
   readonly turn: number;
   /** 戦闘用の乱数（`battle:${seed}:${n}` から作る）。 */
   readonly rng: RngState;
+  /** ボス戦の残りターン数（ halted 時は無限大になる）。 */
+  readonly halted: boolean;
 }
 
 export interface RunStats {
