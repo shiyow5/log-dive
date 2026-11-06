@@ -161,7 +161,16 @@ function resolveSkill(
     case "reproduce": {
       const [text, ...rest] = battle.hiddenSymptoms;
       if (text === undefined) {
-        return err("nothing_to_reveal", "これ以上わかる症状はありません");
+        if (battle.reproduced) {
+          return err("nothing_to_reveal", "これ以上わかる症状はありません");
+        }
+        // breakpoint で症状を出し切っていても、未再現なら再現だけは通す（PR #41 QA 指摘1）
+        return {
+          battle: { ...battle, reproduced: true },
+          player: paid,
+          events: [],
+          degraded: false,
+        };
       }
       return {
         battle: {

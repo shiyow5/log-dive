@@ -125,6 +125,32 @@ describe("breakpoint: 次のバグ行動を1回止める＋症状を1つ公開",
     expect(bp.events.map((e) => e.t)).toEqual(["halted"]);
   });
 
+  it("breakpoint で症状を出し切っても、未再現なら reproduce→patch で倒せる（PR #41 QA 指摘1）", () => {
+    let s = battleWith("off-by-one", "jin41", BUG_IDS, 3);
+    for (let i = 0; i < 3; i++) {
+      s = apply(s, { t: "skill", id: "breakpoint" });
+      expect(s.lastError).toBeNull();
+      s = apply(s, { t: "endTurn" });
+      expect(s.lastError).toBeNull();
+    }
+    expect(s.battle!.hiddenSymptoms).toHaveLength(0);
+    expect(s.battle!.reproduced).toBe(false);
+    expect(legalActions(s)).toContainEqual({ t: "skill", id: "reproduce" });
+
+    const rep = apply(s, { t: "skill", id: "reproduce" });
+    expect(rep.lastError).toBeNull();
+    expect(rep.battle!.reproduced).toBe(true);
+    expect(rep.battle!.symptoms).toEqual(s.battle!.symptoms);
+    expect(rep.player.cpu).toBe(s.player.cpu - 1);
+
+    expect(rep.battle!.hp).toBe(15);
+    const fixed = apply(rep, { t: "skill", id: "patch", arg: "off-by-one" });
+    expect(fixed.lastError).toBeNull();
+    // patch は 20 ダメージ。残り HP 15 で頭打ちになり、バグが閉じる
+    expect(fixed.events).toContainEqual({ t: "bugDamaged", amount: 15 });
+    expect(fixed.events).toContainEqual({ t: "bugClosed", bug: "off-by-one" });
+  });
+
   it("2回続けては使えない（lastError・CPU を使わない・legalActions から外れる）", () => {
     const bp = apply(battleWith("race", "twice"), { t: "skill", id: "breakpoint" });
     const again = apply(bp, { t: "skill", id: "breakpoint" });
