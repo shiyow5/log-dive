@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "floors": [
+    {
+      "number": 1,
+      "rooms": 6,
+      "bugs": 2,
+      "pool": ["off-by-one", "null-ref"],
+      "chest": "breakpoint",
+      "boss": false
+    },
+    {
+      "number": 2,
+      "rooms": 7,
+      "bugs": 3,
+      "pool": ["off-by-one", "null-ref", "race", "leak", "infinite-loop"],
+      "chest": "bisect",
+      "boss": false
+    },
+    {
+      "number": 3,
+      "rooms": 8,
+      "bugs": 2,
+      "pool": ["off-by-one", "null-ref", "race", "leak", "infinite-loop"],
+      "chest": null,
+      "boss": true
+    }
+  ],
+  "startLabel": "main()",
+  "labels": [
+    "auth.login()",
+    "parse()",
+    "render()",
+    "db.query()",
+    "cache.get()",
+    "router.match()",
+    "session.load()",
+    "config.read()",
+    "queue.push()",
+    "worker.run()",
+    "http.fetch()",
+    "json.decode()",
+    "logger.flush()",
+    "scheduler.tick()"
+  ]
+}
