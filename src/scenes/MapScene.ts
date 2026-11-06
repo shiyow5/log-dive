@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { button, el, renderHud } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
-import { current, dispatch, legality, sceneFor } from "./run-port";
+import { current, dispatch, legality, sceneFor, stairsOpen, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 
@@ -16,6 +16,9 @@ const COLOR = {
   visited: 0x1b2b2e,
   current: 0x7ebeab,
   bug: 0xff6b5e,
+  chest: 0xf0c040,
+  stairs: 0x88c0d0,
+  boss: 0xb48ead,
   text: "#e4f1ec",
   weak: "#8fa9a3",
 };
@@ -35,6 +38,34 @@ export function roomName(r: RoomState): string {
  */
 export function moveLabel(r: RoomState): string {
   return r.visited ? `${r.id}へ移動: ${r.label}` : `${r.id}へ移動（未踏）`;
+}
+
+/** 部屋の内容に応じた記号（色だけに頼らない）。 */
+function roomSymbol(r: RoomState, s: RunState): string | null {
+  const c = r.content;
+  if (c.kind === "stairs") {
+    return s.roomId === r.id && stairsOpen(s) ? "▼" : "◆";
+  }
+  if (c.kind === "chest") {
+    return "♦";
+  }
+  if (c.kind === "bug") {
+    // ボス部屋は▲、バグ部屋は×（閉じた部屋には出ない）
+    if (c.boss) {
+      return c.bugs.length > 0 ? "▲" : "★";
+    }
+    return c.bugs.length > 0 ? "×" : "✓";
+  }
+  return null;
+}
+
+/** 記号の色。 */
+function symbolColor(r: RoomState): string {
+  const c = r.content;
+  if (c.kind === "chest") return "#f0c040";
+  if (c.kind === "stairs") return "#88c0d0";
+  if (c.kind === "bug") return c.boss ? "#b48ead" : "#ff6b5e";
+  return COLOR.text;
 }
 
 export class MapScene extends Phaser.Scene {
@@ -86,6 +117,27 @@ export class MapScene extends Phaser.Scene {
         g.lineStyle(2, COLOR.bug, 1);
         g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       }
+      // 宝箱部屋は金色の枠
+      if (r.visited && r.content.kind === "chest") {
+        g.lineStyle(2, COLOR.chest, 1);
+        g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
+      }
+      // 階段部屋は階段色の枠
+      if (r.visited && r.content.kind === "stairs") {
+        g.lineStyle(2, COLOR.stairs, 1);
+        g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
+      }
+      // 記号
+      const sym = roomSymbol(r, s);
+      if (sym) {
+        this.add
+          .text(x, y - ROOM / 2 - 2, sym, {
+            fontFamily: "monospace",
+            fontSize: "10px",
+            color: symbolColor(r),
+          })
+          .setOrigin(0.5, 0);
+      }
       this.add
         .text(x, y + ROOM / 2 + 2, roomName(r), {
           fontFamily: "monospace",
@@ -107,6 +159,33 @@ export class MapScene extends Phaser.Scene {
       .map((id) => s.floor.rooms.find((r) => r.id === id))
       .filter((r): r is RoomState => r !== undefined);
     const legal = legality(s);
+
+    // 宝箱ボタンの生成
+    const chestBtn = (() => {
+      if (here?.content.kind !== "chest") return null;
+      const skill = here.content.skill;
+      const name = skillInfo(skill).name;
+      const a: Action = { t: "loot", pick: skill };
+      return button(`宝箱を開ける: ${name}`, () => this.act(a), {
+        disabled: !legal.can(a),
+      });
+    })();
+
+    // 階段ボタンの生成（訪問済みで階段が開いている場合）
+    const stairsBtn = (() => {
+      if (!here || here.content.kind !== "stairs") return null;
+      if (!stairsOpen(s)) return null;
+      const nextFloor = s.floor.number + 1;
+      return button(
+        `次の階へ降りる（${nextFloor}階）`,
+        () => {
+          // core 側で applyMove を階段部屋に対して呼び出すと descended イベントが出る
+          this.act({ t: "move", room: here.id });
+        },
+        { primary: true },
+      );
+    })();
+
     const panel = el(
       "section",
       { class: "hud-panel", "aria-label": "マップ" },
@@ -124,6 +203,12 @@ export class MapScene extends Phaser.Scene {
             return button(moveLabel(r), () => this.act(a), { disabled: !legal.can(a) });
           }),
         ),
+      ),
+      el(
+        "div",
+        { class: "hud-row" },
+        ...(chestBtn ? [chestBtn] : []),
+        ...(stairsBtn ? [stairsBtn] : []),
       ),
       el(
         "div",
