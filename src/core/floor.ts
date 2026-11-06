@@ -2,7 +2,7 @@
  * 階の構成。
  *
  * - generateFloor: シード付きで階を作る（spec-a v0.2 §9・spec-a §5）。数値は src/data/floors.json。
- * - fixedFloor: 縦切り用の「固定の小さな階」。run.ts を generateFloor につなぐ PR までの間だけ使う。
+ * - fixedFloor: テスト用の「固定の小さな階」（r1 に off-by-one）。ゲーム本体は使わない。
  *
  * 乱数は `floor:${seed}:${n}` から作る（v0.2 決定4）。同じシード・階・増援なら必ず同じ階になる。
  */
@@ -284,7 +284,7 @@ export function generateFloor(
   };
 }
 
-// ---- 縦切り用（run.ts を generateFloor につなぐまで） ----
+// ---- テスト用 ----
 
 /**
  * 固定の1階（3部屋の一本道）。r1 に off-by-one が1体。
