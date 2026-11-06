@@ -58,18 +58,32 @@ export function symbolColor(r: RoomState): string {
   return "#e4f1ec";
 }
 
-/** ラベルを短縮して返す。8文字以内ならそのまま、超える場合は先頭7文字+"…"。 */
-export function shortLabel(label: string): string {
-  if (label.length <= 8) return label;
-  return label.slice(0, 7) + "\u2026"; // …
+/**
+ * ラベルを短縮して返す。
+ *
+ * label が maxChars を超える場合は先頭 maxChars-1 文字 + "…" に短縮する。
+ * @param label  - 元ラベル
+ * @param maxChars - 最大文字数（省略時は 8）
+ */
+export function shortLabel(label: string, maxChars = 8): string {
+  if (label.length <= maxChars) return label;
+  return label.slice(0, maxChars - 1) + "\u2026"; // …
+}
+
+/** モノスペースフォントの1文字幅（px、概算）。 */
+export const CHAR_W = 5;
+
+/** ラベルの表示幅（px）を計算する。 */
+function labelWidth(label: string): number {
+  return label.length * CHAR_W;
 }
 
 /**
  * 部屋がマップ上で表示される矩形（px座標）を計算する。
  *
- * @param r - 部屋状態
- * @param CELL - マスサイズ
- * @param ROOM - 部屋描画サイズ
+ * @param r       - 部屋状態
+ * @param CELL    - マスサイズ
+ * @param ROOM    - 部屋描画サイズ
  * @param ORIGIN_X - グリッド原点X
  * @param ORIGIN_Y - グリッド原点Y
  * @param nameHeight - 名前テキストの高さ(px、デフォルト 10)
@@ -84,20 +98,43 @@ export function roomRect(
 ): { x: number; y: number; w: number; h: number } {
   const cx = ORIGIN_X + r.x * CELL;
   const cy = ORIGIN_Y + r.y * CELL;
-  // 部屋四角 + 記号 + 名前テキスト
   const symH = 12; // 記号の高さ
+  // 短縮後のラベル幅（CELL以下に収める）
+  const maxChars = Math.max(4, Math.floor(CELL / CHAR_W));
+  const sl = shortLabel(r.label, maxChars);
+  const w = Math.max(CELL, labelWidth(sl));
   return {
-    x: cx - CELL / 2,
+    x: cx - w / 2,
     y: cy - ROOM / 2 - symH, // 記号まで含む
-    w: CELL,
+    w,
     h: ROOM + symH + nameHeight, // 部屋+記号+名前
   };
+}
+
+/** ラベルテキストの矩形（px座標）を計算する。 */
+export function labelRect(
+  r: RoomState,
+  CELL: number,
+  ROOM: number,
+  ORIGIN_X: number,
+  ORIGIN_Y: number,
+  nameHeight = 10,
+): { x: number; y: number; w: number; h: number } {
+  const cx = ORIGIN_X + r.x * CELL;
+  const cy = ORIGIN_Y + r.y * CELL;
+  // MapScene.ts と同じ maxChars 計算
+  const maxChars = Math.max(4, Math.floor(CELL / CHAR_W));
+  const sl = shortLabel(r.label, maxChars);
+  const w = Math.max(CELL, labelWidth(sl));
+  const textX = cx; // setOrigin(0.5, 0) なので左上 x = cx - w/2
+  const textY = cy + ROOM / 2 + 2; // MapScene.ts の描画位置
+  return { x: textX - w / 2, y: textY, w, h: nameHeight };
 }
 
 /**
  * 4シード全階で部屋ラベルが重ならないことを検査する純関数。
  *
- * `rooms` に `roomRect` を適用して全矩形のペアが交差しなければ true。
+ * `rooms` に `labelRect` を適用してラベル矩形のペアが交差しなければ true。
  */
 export function checkLabelCollision(
   rooms: readonly RoomState[],
@@ -107,7 +144,7 @@ export function checkLabelCollision(
   ORIGIN_Y: number,
 ): boolean {
   const rects: { x: number; y: number; w: number; h: number }[] = rooms.map((r) =>
-    roomRect(r, CELL, ROOM, ORIGIN_X, ORIGIN_Y),
+    labelRect(r, CELL, ROOM, ORIGIN_X, ORIGIN_Y),
   );
   for (let i = 0; i < rects.length; i++) {
     const ri = rects[i]!;

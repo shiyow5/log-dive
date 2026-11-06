@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkLabelCollision, shortLabel } from "../../src/scenes/map-symbols";
+import { generateFloor, loadFloors } from "../../src/core/floor";
 import type { RoomState } from "../../src/core/run";
 
 function room(id: string, label: string, x: number, y: number, visited = false): RoomState {
@@ -58,17 +59,25 @@ describe("checkLabelCollision: ラベル矩形の重なりを検査する", () =
     expect(checkLabelCollision(rooms, 32, 20, 96, 20)).toBe(true);
   });
 
-  it("4シード×全階の実データで重ならないことを確認", () => {
-    // 実フロアの配置（x,yが離れている）で確認
-    const rooms: RoomState[] = [
-      room("r0", "auth.login()", 0, 0),
-      room("r1", "cache.get()", 2, 0),
-      room("r2", "db.query()", 0, 2),
-      room("r3", "scheduler.tick()", 2, 2),
-      room("r4", "router.handle()", 4, 1),
-      room("r5", "middleware.parse()", 2, 4),
-    ];
-    // 十分に離れていれば重ならない
-    expect(checkLabelCollision(rooms, 32, 20, 96, 20)).toBe(false);
+  it("4シード×全階の実データで重ならないことを確認（CELL=32）", () => {
+    const seeds = ["seed-0", "seed-1", "seed-2", "seed-3"];
+    const floors = loadFloors();
+    const nFloors = floors.floors.length;
+    for (const seed of seeds) {
+      for (let n = 1; n <= nFloors; n++) {
+        const floor = generateFloor(seed, n);
+        const rooms = floor.rooms;
+        const CELL = 32;
+        const ROOM = 20;
+        // 実際のグリッド原点: mapW/mapH を使って計算
+        const maxX = Math.max(...rooms.map((r) => r.x));
+        const _maxY = Math.max(...rooms.map((r) => r.y));
+        const mapW = maxX + 1;
+        const ORIGIN_X = Math.floor((320 - mapW * CELL) / 2);
+        const ORIGIN_Y = 20;
+        const ctx = `seed=${seed} floor=${n}`;
+        expect(checkLabelCollision(rooms, CELL, ROOM, ORIGIN_X, ORIGIN_Y), ctx).toBe(false);
+      }
+    }
   });
 });
