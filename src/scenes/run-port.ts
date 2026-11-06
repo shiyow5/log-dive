@@ -5,8 +5,16 @@
  * すべて core の apply() / legalActions() に任せ、画面側では数値や条件を持たない。
  */
 import { bugDef, loadGameData, skillDef, type BugId, type SkillId } from "../core/data";
-import { apply, initRun, legalActions } from "../core/run";
-import type { Action, RunEvent, RunState } from "../core/run";
+import {
+  apply,
+  initRun,
+  legalActions,
+  stairsOpen,
+  type Action,
+  type RunEvent,
+  type RunState,
+} from "../core/run";
+export { stairsOpen, apply };
 
 export type { BugId, SkillId } from "../core/data";
 export type { Action, BattleState, RoomState, RunEvent, RunPhase, RunState } from "../core/run";
