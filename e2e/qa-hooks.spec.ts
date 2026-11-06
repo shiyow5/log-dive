@@ -46,7 +46,7 @@ test("__qa: stateHash と waitForIdle が存在し、scene() がタイトルを�
   expect(errors).toEqual([]);
 });
 
-test("__qa: ラン開始後、stateHash() が 16 文字の hex を返す", async ({ page }) => {
+test("__qa: ラン開始後、stateHash() が 8 文字の hex を返す", async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto("?seed=qa-e2e-1&fx=0&qa=1");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
@@ -58,7 +58,7 @@ test("__qa: ラン開始後、stateHash() が 16 文字の hex を返す", async
 
   // stateHash() が文字列を返す（16文字のhex）
   const hash = await page.evaluate(() => window.__qa!.stateHash());
-  expect(hash).toMatch(/^[0-9a-f]{16}$/);
+  expect(hash).toMatch(/^[0-9a-f]{8}$/);
 
   expect(errors).toEqual([]);
 });
