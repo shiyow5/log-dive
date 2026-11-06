@@ -71,7 +71,7 @@ describe("checkLabelCollision: ラベル矩形の重なりを検査する", () =
         const ROOM = 20;
         // 実際のグリッド原点: mapW/mapH を使って計算
         const maxX = Math.max(...rooms.map((r) => r.x));
-        const maxY = Math.max(...rooms.map((r) => r.y));
+        const _maxY = Math.max(...rooms.map((r) => r.y));
         const mapW = maxX + 1;
         const ORIGIN_X = Math.floor((320 - mapW * CELL) / 2);
         const ORIGIN_Y = 20;
