@@ -97,8 +97,6 @@ export interface BattleState {
   readonly turn: number;
   /** 戦闘用の乱数（`battle:${seed}:${n}` から作る）。 */
   readonly rng: RngState;
-  /** ボス戦の残りターン数（ halted 時は無限大になる）。 */
-  readonly halted: boolean;
 }
 
 export interface RunStats {
