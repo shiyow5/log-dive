@@ -1,8 +1,8 @@
 /**
  * 推理バトル（spec-a-mvp v0.1 §4 / v0.2）。純粋関数だけ。
  *
- * 縦切り（dev-plan-v3 §3 S2）の範囲: バグは off-by-one の行動のみ、
- * スキルは reproduce / read-log / hotfix / patch の4枚。残りは 11/05 の PR で足す。
+ * バグの行動: off-by-one・null-ref・race（leak・infinite-loop は #27）。
+ * スキルは reproduce / read-log / hotfix / patch の4枚（breakpoint・bisect は #28）。
  */
 import {
   bugDef,
@@ -13,7 +13,7 @@ import {
   type SkillId,
 } from "./data";
 import { randPick, randShuffle } from "./rand";
-import { seedFrom } from "./rng";
+import { seedFrom, type RngState } from "./rng";
 import type { BattleState, BugIntent, PlayerState, RunError, RunEvent } from "./run";
 
 /** 縦切りで使えるスキル。 */
@@ -23,22 +23,56 @@ export function battleSeed(runSeed: string, n: number): string {
   return `battle:${runSeed}:${n}`;
 }
 
-/** 次の行動の予告（画面に出す値）。 */
-export function nextIntent(data: GameData, battle: Pick<BattleState, "bug" | "turn">): BugIntent {
-  const b = bugDef(data, battle.bug).behavior;
-  return { damage: b.damage };
+/** 戦闘開始時の予告（画面に出す値）。 */
+export function firstIntent(data: GameData, bug: BugId): BugIntent {
+  const b = bugDef(data, bug).behavior;
+  switch (b.kind) {
+    case "null-ref":
+      return nullRefIntent(b, b.period - 1);
+    default:
+      return { damage: b.damage };
+  }
 }
 
-/** 予告に対して実際に入るダメージ。 */
-export function actualDamage(data: GameData, battle: BattleState): number {
+/**
+ * バグが行動したあとの次の予告。
+ * null-ref のカウンタはバグが実際に行動したときだけ進める（breakpoint で止めた回は呼ばない。v0.2 決定6）。
+ */
+export function advanceIntent(data: GameData, bug: BugId, prev: BugIntent): BugIntent {
+  const b = bugDef(data, bug).behavior;
+  switch (b.kind) {
+    case "null-ref": {
+      const left = prev.countdown ?? b.period - 1;
+      return nullRefIntent(b, left === 0 ? b.period - 1 : left - 1);
+    }
+    default:
+      return { damage: b.damage };
+  }
+}
+
+/** null-ref の予告。countdown=0 のターンが大ダメージ（period ターンに1回）。 */
+function nullRefIntent(
+  b: { readonly damage: number; readonly bigDamage: number },
+  countdown: number,
+): BugIntent {
+  return { damage: countdown === 0 ? b.bigDamage : b.damage, countdown };
+}
+
+/** 予告に対して実際に入るダメージと、使った後の戦闘用乱数。 */
+export function actualDamage(data: GameData, battle: BattleState): [number, RngState] {
   const b = bugDef(data, battle.bug).behavior;
   switch (b.kind) {
     case "off-by-one":
       // 境界ずれ: 予告より extra だけ多い
-      return battle.intent.damage + b.extra;
+      return [battle.intent.damage + b.extra, battle.rng];
+    case "race": {
+      // 競合状態: 予告の 0 倍か 2 倍（戦闘用乱数で決まる）
+      const [m, rng] = randPick(battle.rng, b.multipliers);
+      return [battle.intent.damage * m, rng];
+    }
     default:
-      // 他の4種の行動パターンは 11/05 の PR で入れる。それまでは予告どおり。
-      return battle.intent.damage;
+      // null-ref は予告どおり（大ダメージのターンは予告に出ている）。leak・infinite-loop は #27
+      return [battle.intent.damage, battle.rng];
   }
 }
 
@@ -57,7 +91,6 @@ export function startBattle(a: StartBattleArgs): BattleState {
   // 公開順はシードで決まる（v0.2 決定7）
   const [order, rng] = randShuffle(seedFrom(battleSeed(a.runSeed, a.n)), def.symptoms);
   const candidates = a.candidates.includes(a.bug) ? a.candidates : [...a.candidates, a.bug];
-  const base = { bug: a.bug, turn: 1 };
   return {
     roomId: a.roomId,
     bug: a.bug,
@@ -69,7 +102,7 @@ export function startBattle(a: StartBattleArgs): BattleState {
     symptoms: [],
     hiddenSymptoms: order,
     reproduced: false,
-    intent: nextIntent(a.data, base),
+    intent: firstIntent(a.data, a.bug),
     turn: 1,
     rng,
   };
@@ -196,10 +229,15 @@ export interface BugTurnResult {
 
 /** ターン終了: バグが行動し、次のターンの準備（CPU リセット・次の予告）をする。 */
 export function bugTurn(data: GameData, battle: BattleState, player: PlayerState): BugTurnResult {
-  const amount = Math.min(actualDamage(data, battle), player.hp);
-  const turn = battle.turn + 1;
+  const [damage, rng] = actualDamage(data, battle);
+  const amount = Math.min(damage, player.hp);
   return {
-    battle: { ...battle, turn, intent: nextIntent(data, { bug: battle.bug, turn }) },
+    battle: {
+      ...battle,
+      turn: battle.turn + 1,
+      intent: advanceIntent(data, battle.bug, battle.intent),
+      rng,
+    },
     // CPU は毎ターン上限にリセット（持ち越しなし。v0.2 決定5）
     player: { ...player, hp: player.hp - amount, cpu: player.cpuMax },
     events: [{ t: "playerDamaged", amount }],
