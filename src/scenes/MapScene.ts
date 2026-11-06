@@ -1,14 +1,13 @@
 import Phaser from "phaser";
 import { button, el, renderHud } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
-import { current, dispatch, legality, sceneFor, stairsOpen, skillInfo } from "./run-port";
+import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
+import { roomSymbol, symbolColor, stairsOpen } from "./map-symbols";
 
-const CELL = 32;
-const ORIGIN_X = 96;
-const ORIGIN_Y = 20;
-const ROOM = 20;
+const MIN_CELL = 8;
+const BASE_ROOM_RATIO = 20 / 32;
 
 const COLOR = {
   line: 0x26393d,
@@ -23,10 +22,6 @@ const COLOR = {
   weak: "#8fa9a3",
 };
 
-function center(r: RoomState): { x: number; y: number } {
-  return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
-}
-
 /** 部屋の名前。未踏なら「?」（spec-a v0.2 §9: 未訪問は隣接のみ ? 表示）。 */
 export function roomName(r: RoomState): string {
   return r.visited ? r.label : "?";
@@ -36,36 +31,20 @@ export function roomName(r: RoomState): string {
  * 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
  * Playwright では getByRole("button", { name: /r1へ移動/ }) で取れる。
  */
-export function moveLabel(r: RoomState): string {
-  return r.visited ? `${r.id}へ移動: ${r.label}` : `${r.id}へ移動（未踏）`;
-}
-
-/** 部屋の内容に応じた記号（色だけに頼らない）。 */
-function roomSymbol(r: RoomState, s: RunState): string | null {
-  const c = r.content;
-  if (c.kind === "stairs") {
-    return s.roomId === r.id && stairsOpen(s) ? "▼" : "◆";
+export function moveLabel(r: RoomState, s: RunState): string {
+  if (!r.visited) return `${r.id}へ移動（未踏）`;
+  const suffixes: string[] = [];
+  if (r.content.kind === "stairs" && stairsOpen(s)) {
+    suffixes.push("階段・開いている");
   }
-  if (c.kind === "chest") {
-    return "♦";
+  if (r.content.kind === "chest") {
+    suffixes.push("宝箱あり");
   }
-  if (c.kind === "bug") {
-    // ボス部屋は▲、バグ部屋は×（閉じた部屋には出ない）
-    if (c.boss) {
-      return c.bugs.length > 0 ? "▲" : "★";
-    }
-    return c.bugs.length > 0 ? "×" : "✓";
+  if (r.content.kind === "bug" && r.content.bugs.length > 0) {
+    suffixes.push("バグあり");
   }
-  return null;
-}
-
-/** 記号の色。 */
-function symbolColor(r: RoomState): string {
-  const c = r.content;
-  if (c.kind === "chest") return "#f0c040";
-  if (c.kind === "stairs") return "#88c0d0";
-  if (c.kind === "bug") return c.boss ? "#b48ead" : "#ff6b5e";
-  return COLOR.text;
+  const suffix = suffixes.length > 0 ? `（${suffixes.join("・")}）` : "";
+  return `${r.id}へ移動: ${r.label}${suffix}`;
 }
 
 export class MapScene extends Phaser.Scene {
@@ -96,6 +75,22 @@ export class MapScene extends Phaser.Scene {
     const rooms = s.floor.rooms;
     const here = rooms.find((r) => r.id === s.roomId);
     const visible = rooms.filter((r) => r.visited || (here?.neighbors.includes(r.id) ?? false));
+    // ビューポート(320x180)に収まるようCELL/ROOM/ORIGINを計算
+    const maxX = Math.max(...rooms.map((r) => r.x));
+    const maxY = Math.max(...rooms.map((r) => r.y));
+    const mapW = maxX + 1;
+    const mapH = maxY + 1;
+    const availW = 320 - 40; // 左右マージン20px
+    const availH = 180 - 20 - 100; // 上部マージン20 + HUD下部100px
+    const CELL = Math.max(MIN_CELL, Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH)));
+    const ROOM = Math.max(4, Math.floor(CELL * BASE_ROOM_RATIO));
+    const ORIGIN_X = Math.floor((320 - mapW * CELL) / 2); // 横センター
+    const ORIGIN_Y = 20;
+
+    function center(r: RoomState): { x: number; y: number } {
+      return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
+    }
+
     const g = this.add.graphics();
     g.lineStyle(2, COLOR.line, 1);
     for (const r of visible) {
@@ -127,16 +122,18 @@ export class MapScene extends Phaser.Scene {
         g.lineStyle(2, COLOR.stairs, 1);
         g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       }
-      // 記号
-      const sym = roomSymbol(r, s);
-      if (sym) {
-        this.add
-          .text(x, y - ROOM / 2 - 2, sym, {
-            fontFamily: "monospace",
-            fontSize: "10px",
-            color: symbolColor(r),
-          })
-          .setOrigin(0.5, 0);
+      // 記号（訪問済みのみ）
+      if (r.visited) {
+        const sym = roomSymbol(r, s);
+        if (sym) {
+          this.add
+            .text(x, y - ROOM / 2 - 2, sym, {
+              fontFamily: "monospace",
+              fontSize: "10px",
+              color: symbolColor(r),
+            })
+            .setOrigin(0.5, 0);
+        }
       }
       this.add
         .text(x, y + ROOM / 2 + 2, roomName(r), {
@@ -171,19 +168,12 @@ export class MapScene extends Phaser.Scene {
       });
     })();
 
-    // 階段ボタンの生成（訪問済みで階段が開いている場合）
-    const stairsBtn = (() => {
-      if (!here || here.content.kind !== "stairs") return null;
-      if (!stairsOpen(s)) return null;
-      const nextFloor = s.floor.number + 1;
-      return button(
-        `次の階へ降りる（${nextFloor}階）`,
-        () => {
-          // core 側で applyMove を階段部屋に対して呼び出すと descended イベントが出る
-          this.act({ t: "move", room: here.id });
-        },
-        { primary: true },
-      );
+    // 宝箱が disabled の場合のエラーメッセージ
+    const chestMsg = (() => {
+      if (here?.content.kind !== "chest") return null;
+      if (legal.can({ t: "loot", pick: here.content.skill })) return null;
+      const next = apply(s, { t: "loot", pick: here.content.skill });
+      return next.lastError?.message ?? null;
     })();
 
     const panel = el(
@@ -200,7 +190,7 @@ export class MapScene extends Phaser.Scene {
           { class: "hud-row" },
           ...neighbors.map((r) => {
             const a: Action = { t: "move", room: r.id };
-            return button(moveLabel(r), () => this.act(a), { disabled: !legal.can(a) });
+            return button(moveLabel(r, s), () => this.act(a), { disabled: !legal.can(a) });
           }),
         ),
       ),
@@ -208,8 +198,8 @@ export class MapScene extends Phaser.Scene {
         "div",
         { class: "hud-row" },
         ...(chestBtn ? [chestBtn] : []),
-        ...(stairsBtn ? [stairsBtn] : []),
       ),
+      ...(chestMsg ? [el("div", { class: "hud-row" }, el("span", { style: "color: #ff6b5e; font-size: 12px;", "aria-live": "polite" }, chestMsg))] : []),
       el(
         "div",
         { class: "hud-row" },

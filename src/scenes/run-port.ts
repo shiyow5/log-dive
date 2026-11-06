@@ -14,7 +14,7 @@ import {
   type RunEvent,
   type RunState,
 } from "../core/run";
-export { stairsOpen };
+export { stairsOpen, apply };
 
 export type { BugId, SkillId } from "../core/data";
 export type { Action, BattleState, RoomState, RunEvent, RunPhase, RunState } from "../core/run";
