@@ -2,7 +2,7 @@
  * 推理バトル（spec-a-mvp v0.1 §4 / v0.2）。純粋関数だけ。
  *
  * バグの行動: 5種すべて（off-by-one・null-ref・race・leak・infinite-loop）。
- * スキルは reproduce / read-log / hotfix / patch の4枚（breakpoint・bisect は #28）。
+ * スキルは6枚（reproduce / read-log / hotfix / patch / breakpoint / bisect）。
  */
 import {
   bugDef,
@@ -15,9 +15,6 @@ import {
 import { randPick, randShuffle } from "./rand";
 import { seedFrom, type RngState } from "./rng";
 import type { BattleState, BugIntent, PlayerState, RunError, RunEvent } from "./run";
-
-/** 縦切りで使えるスキル。 */
-const BATTLE_SKILLS: readonly SkillId[] = ["reproduce", "read-log", "hotfix", "patch"];
 
 export function battleSeed(runSeed: string, n: number): string {
   return `battle:${runSeed}:${n}`;
@@ -115,6 +112,7 @@ export function startBattle(a: StartBattleArgs): BattleState {
     symptoms: [],
     hiddenSymptoms: order,
     reproduced: false,
+    halted: false,
     intent: firstIntent(a.data, a.bug),
     turn: 1,
     rng,
@@ -145,7 +143,6 @@ export function useSkill(
   arg: BugId | undefined,
 ): SkillResult | RunError {
   if (!player.skills.includes(id)) return err("skill_not_owned", "そのスキルは持っていません");
-  if (!BATTLE_SKILLS.includes(id)) return err("skill_not_owned", "そのスキルはまだ使えません");
   const def = skillDef(data, id);
   // 意味の無い操作の理由を先に返し、最後に CPU を見る（どちらでも CPU は減らさない）
   const r = resolveSkill(battle, { ...player, cpu: player.cpu - def.cpu }, def.effect, arg);
@@ -164,7 +161,16 @@ function resolveSkill(
     case "reproduce": {
       const [text, ...rest] = battle.hiddenSymptoms;
       if (text === undefined) {
-        return err("nothing_to_reveal", "これ以上わかる症状はありません");
+        if (battle.reproduced) {
+          return err("nothing_to_reveal", "これ以上わかる症状はありません");
+        }
+        // breakpoint で症状を出し切っていても、未再現なら再現だけは通す（PR #41 QA 指摘1）
+        return {
+          battle: { ...battle, reproduced: true },
+          player: paid,
+          events: [],
+          degraded: false,
+        };
       }
       return {
         battle: {
@@ -229,8 +235,42 @@ function resolveSkill(
         degraded: true,
       };
     }
-    default:
-      return err("skill_not_owned", "そのスキルはまだ使えません");
+    case "breakpoint": {
+      if (battle.halted) return err("already_halted", "次の行動はもう止めています");
+      const [text, ...rest] = battle.hiddenSymptoms;
+      const events: RunEvent[] = [{ t: "halted" }];
+      if (text !== undefined) events.push({ t: "symptom", text });
+      return {
+        battle: {
+          ...battle,
+          halted: true,
+          symptoms: text === undefined ? battle.symptoms : [...battle.symptoms, text],
+          hiddenSymptoms: rest,
+        },
+        player: paid,
+        events,
+        degraded: false,
+      };
+    }
+    case "bisect": {
+      const n = battle.candidates.length;
+      const wrong = battle.candidates.filter((c) => c !== battle.bug);
+      if (n <= 1 || wrong.length === 0) return err("too_few_candidates", "候補はもう1つだけです");
+      // 半分（切り捨て）消す。2以下なら1つ。正解は消さない（v0.2 決定7）
+      const count = n <= 2 ? 1 : Math.floor(n / 2);
+      const [order, rng] = randShuffle(battle.rng, wrong);
+      const removed = order.slice(0, count);
+      return {
+        battle: {
+          ...battle,
+          candidates: battle.candidates.filter((c) => !removed.includes(c)),
+          rng,
+        },
+        player: paid,
+        events: removed.map((bug): RunEvent => ({ t: "candidateRemoved", bug })),
+        degraded: false,
+      };
+    }
   }
 }
 
@@ -242,6 +282,14 @@ export interface BugTurnResult {
 
 /** ターン終了: バグが行動し、次のターンの準備（CPU リセット・次の予告）をする。 */
 export function bugTurn(data: GameData, battle: BattleState, player: PlayerState): BugTurnResult {
+  if (battle.halted) {
+    // breakpoint で止めた回: ダメージなし・予告とカウンタは進めない・CPU 減少もなし（v0.2 決定6）
+    return {
+      battle: { ...battle, halted: false, turn: battle.turn + 1 },
+      player: { ...player, cpu: player.cpuMax },
+      events: [{ t: "bugHaltedTurn" }],
+    };
+  }
   const [damage, rng] = actualDamage(data, battle);
   const amount = Math.min(damage, player.hp);
   return {

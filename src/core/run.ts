@@ -90,6 +90,8 @@ export interface BattleState {
   readonly hiddenSymptoms: readonly string[];
   /** reproduce 済みか（未再現のバグに patch は効かない）。 */
   readonly reproduced: boolean;
+  /** breakpoint 済みで、次のバグ行動を1回止めるか。 */
+  readonly halted: boolean;
   readonly intent: BugIntent;
   /** 戦闘内のターン数（1 始まり）。 */
   readonly turn: number;
@@ -117,7 +119,8 @@ export type RunErrorCode =
   | "nothing_to_reveal"
   | "too_few_candidates"
   | "no_loot"
-  | "already_owned";
+  | "already_owned"
+  | "already_halted";
 
 export interface RunError {
   readonly code: RunErrorCode;
@@ -133,6 +136,10 @@ export type RunEvent =
   | { readonly t: "candidateRemoved"; readonly bug: BugId }
   | { readonly t: "bugDamaged"; readonly amount: number }
   | { readonly t: "degrade" }
+  /** breakpoint を張った（次のバグ行動を止める）。 */
+  | { readonly t: "halted" }
+  /** breakpoint でバグの行動が止まったターン終了。 */
+  | { readonly t: "bugHaltedTurn" }
   | { readonly t: "bugClosed"; readonly bug: BugId }
   | { readonly t: "playerDamaged"; readonly amount: number }
   | { readonly t: "runEnd"; readonly phase: "won" | "lost" | "abandoned" };
@@ -162,7 +169,7 @@ export interface RunState {
 // ---- ルール ----
 
 /** ルール＋data のバージョン。ルールか data を変えたら上げる（v0.2 決定10）。 */
-export const RULES_VERSION = 2;
+export const RULES_VERSION = 3;
 
 /** デグレで次の階に増えるバグの上限（v0.2 決定2）。 */
 export const MAX_REINFORCEMENTS = 2;
