@@ -1,37 +1,48 @@
 import { expect, test } from "@playwright/test";
 
-test("タイトル画面で「遊び方」ボタンを押すとパネルが開き、Escで閉じる", async ({ page }) => {
-  await page.goto("/");
+test("タイトル画面で「遊び方」ボタンを押すとパネルが開き、閉じる/Escで閉じる", async ({ page }) => {
+  await page.goto("/?fx=0");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
 
-  // 遊び方ボタンが表示されている
-  await expect(page.getByRole("button", { name: "遊び方" })).toBeVisible();
+  // force なしで押せること（#hud は pointer-events:none。overlay 側で auto にしている）
+  await page.getByRole("button", { name: "遊び方" }).click();
+  const overlay = page.locator("#help-overlay");
+  await expect(overlay).toBeVisible();
+  // 遊び方ボタンは submit しない（ランが始まらない）
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title");
 
-  // クリックでパネルが開く
-  await page.getByRole("button", { name: "遊び方" }).click({ force: true });
+  await expect(overlay.locator("h2")).toContainText("遊び方");
+  await expect(overlay).toContainText("3階のボスを倒して");
+  // CPU は skills.json の値（ダメージ値ではない）
+  await expect(overlay).toContainText("ホットフィックスは即席の応急処置（CPU 1");
+  await expect(overlay).toContainText("修正パッチは完全修正（CPU 2");
+  await expect(overlay).toContainText("毎ターン 3");
+  await expect(overlay).toContainText("▼");
 
-  // help-overlayが存在してvisibleになるまで待つ
-  await page.waitForSelector("#help-overlay", { state: "visible", timeout: 5000 });
-  await expect(page.locator("#help-overlay")).toBeVisible();
+  await overlay.getByRole("button", { name: "閉じる" }).click();
+  await expect(overlay).toBeHidden();
 
-  // パネル内に目的の説明がある
-  await expect(page.locator("#help-overlay h2")).toContainText("遊び方");
-  await expect(page.locator("#help-overlay")).toContainText("3階のボスを倒して");
-  await expect(page.locator("#help-overlay")).toContainText("ホットフィックス");
-  await expect(page.locator("#help-overlay")).toContainText("パッチ");
-  await expect(page.locator("#help-overlay")).toContainText("▼");
-  await expect(page.locator("#help-overlay")).toContainText("◆");
-
-  // 閉じるボタンで閉じる（force: canvasがpointer-eventsを占有しているため）
-  await page.getByRole("button", { name: "閉じる" }).click({ force: true });
-
-  // overlayが消えるまで待つ
-  await page.waitForSelector("#help-overlay", { state: "hidden", timeout: 5000 });
-  await expect(page.locator("#help-overlay")).toBeHidden();
-
-  // Escでも閉じる（再度開いてテスト）
-  await page.getByRole("button", { name: "遊び方" }).click({ force: true });
-  await expect(page.locator("#help-overlay")).toBeVisible();
+  // Esc でも閉じる
+  await page.getByRole("button", { name: "遊び方" }).click();
+  await expect(overlay).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(overlay).toBeHidden();
+});
+
+test("遊び方を開いて閉じたあと「新しいラン」でマップへ進む（ボタンが入れ子になっていない）", async ({
+  page,
+}) => {
+  await page.goto("/?fx=0&seed=e2e-7");
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  const help = page.getByRole("button", { name: "遊び方" });
+  const start = page.getByRole("button", { name: "新しいラン" });
+  // 入れ子なら start が help の子孫になる
+  await expect(help.getByRole("button")).toHaveCount(0);
+  await expect(start.getByRole("button")).toHaveCount(0);
+
+  await help.click();
+  await page.getByRole("button", { name: "閉じる" }).click();
   await expect(page.locator("#help-overlay")).toBeHidden();
+  await start.click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
 });

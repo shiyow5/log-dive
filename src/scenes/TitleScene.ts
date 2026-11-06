@@ -1,14 +1,40 @@
 import Phaser from "phaser";
 import { GAME_HEIGHT, GAME_WIDTH } from "../config";
+import { loadGameData } from "../core/data";
 import { flags } from "../ui/flags";
 import { button, el, renderHud } from "../ui/hud";
-import { sceneFor, startRun } from "./run-port";
+import { sceneFor, skillInfo, startRun } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 import { TITLE } from "./BootScene";
 
 // ---- 遊び方モーダル ----
 
 let helpOpen = false;
+
+// 説明の数値・名前はデータから引く（直書きするとデータ変更で嘘になる）
+const data = loadGameData();
+const CPU_PER_TURN = data.player.cpuPerTurn;
+const hotfix = skillInfo("hotfix");
+const patch = skillInfo("patch");
+const starters = data.skills.skills
+  .filter((k) => k.starter)
+  .map((k) => k.name)
+  .join("・");
+const chestSkills = data.skills.skills
+  .filter((k) => !k.starter)
+  .map((k) => k.name)
+  .join("・");
+
+function onHelpKey(e: KeyboardEvent): void {
+  if (e.key === "Escape") closeHelp();
+}
+
+/** 遊び方パネルを閉じる（閉じるボタン・Esc 共通）。 */
+function closeHelp(): void {
+  document.getElementById("help-overlay")?.remove();
+  document.removeEventListener("keydown", onHelpKey);
+  helpOpen = false;
+}
 
 /** 遊び方パネルのDOM要素を作成して返す。 */
 function createHelpPanel(): HTMLElement {
@@ -31,28 +57,20 @@ function createHelpPanel(): HTMLElement {
       el(
         "p",
         {},
-        "各部屋にはバグが潜んでいる。戦闘で症状（例:「配列の端で落ちる」→境界ずれ）を見て、ログから候補を絞り、パッチで撃破する。CPU（1ターン3）を使い切りすぎると負けるから、症状から当ててCPUを節約しよう。",
+        "各部屋にはバグが潜んでいる。戦闘で症状（例:「配列の端で落ちる」→境界ずれ）を見て、ログから候補を絞り、パッチで撃破する。CPU を使い切りすぎると負けるから、症状から当ててCPUを節約しよう。",
       ),
       el(
         "p",
         {},
-        "CPU＝サーバーの処理能力。ホットフィックスは即席の応急処置（CPU3、不完全）、パッチは完全修正（CPU20、正解が必要）。",
+        `CPU＝サーバーの処理能力（毎ターン ${CPU_PER_TURN}）。${hotfix.name}は即席の応急処置（CPU ${hotfix.cpu}、少しだけ削る）、${patch.name}は完全修正（CPU ${patch.cpu}、種類を当てる必要がある）。`,
       ),
       el(
         "p",
         {},
         "マップ記号: ▼階段（開いている） ◆階段（閉じている） ♦宝箱 ▲ボス(バグあり) ★ボス(クリア) ×バグ(あり) ✓バグ(クリア)",
       ),
-      el(
-        "p",
-        {},
-        "宝箱に入っているスキル（再現・ログ確認・ホットフィックス・パッチ）を使って戦う。",
-      ),
-      button("閉じる", () => {
-        const overlay = document.getElementById("help-overlay");
-        if (overlay) overlay.remove();
-        helpOpen = false;
-      }),
+      el("p", {}, `最初から${starters}を使える。宝箱を開けると${chestSkills}が増える。`),
+      button("閉じる", () => closeHelp()),
     ),
   );
 }
@@ -63,17 +81,7 @@ export function openHelp(): void {
   helpOpen = true;
   const overlay = createHelpPanel();
   document.getElementById("hud")?.append(overlay);
-
-  // Escで閉じる
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape" && helpOpen) {
-      const o = document.getElementById("help-overlay");
-      if (o) o.remove();
-      helpOpen = false;
-      document.removeEventListener("keydown", onKey);
-    }
-  };
-  document.addEventListener("keydown", onKey);
+  document.addEventListener("keydown", onHelpKey);
 }
 
 /** 画面用のシード生成（ルール側ではないので crypto を使ってよい）。8桁の英数字。 */
@@ -129,14 +137,20 @@ export class TitleScene extends Phaser.Scene {
         input,
         button("ランダム", () => (input.value = newSeed()), { label: "シードをランダムにする" }),
       ),
-      el("div", { class: "hud-row" }),
-      button("遊び方", () => openHelp()),
     );
     // Enter キーでも始められるよう form の submit で受ける（クリックも submit になる）
     const startBtn = button("新しいラン", () => {}, { primary: true });
     startBtn.type = "submit";
     startBtn.dataset.autofocus = "";
-    form.append(startBtn);
+    // 「新しいラン」と「遊び方」は同じ行に並べる（遊び方は type=button なので submit しない）
+    form.append(
+      el(
+        "div",
+        { class: "hud-row" },
+        startBtn,
+        button("遊び方", () => openHelp()),
+      ),
+    );
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       start();
