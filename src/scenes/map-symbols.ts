@@ -4,11 +4,12 @@
  * MapScene.ts と同じロジックを Phaser に依存しない形で分離した。
  * unit テストで検証できるように export している。
  */
+import { floorCount } from "../core/floor";
 import type { RoomState, RunState } from "../core/run";
 
 /** その階のバグが全部閉じていて、階段で次の階へ進めるか。 */
 export function stairsOpen(state: RunState): boolean {
-  return state.floor.number < state.floor.rooms.length && !hasBugsLeft(state.floor);
+  return state.floor.number < floorCount() && !hasBugsLeft(state.floor);
 }
 
 function hasBugsLeft(floor: RunState["floor"]): boolean {
