@@ -8,7 +8,7 @@
  */
 import { bugTurn, isRunError, startBattle, useSkill } from "./battle";
 import { loadGameData, type BugId, type GameData, type SkillId } from "./data";
-import { FIXED_START_ROOM, candidatesForFloor, fixedFloor } from "./floor";
+import { generateFloor, FIXED_START_ROOM, candidatesForFloor, fixedFloor } from "./floor";
 import type { Reducer } from "./replay";
 import { seedFrom, type RngState } from "./rng";
 

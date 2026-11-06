@@ -5,6 +5,7 @@
  * スキルは reproduce / read-log / hotfix / patch の4枚（breakpoint・bisect は #28）。
  */
 import {
+  bossDef,
   bugDef,
   skillDef,
   type BugId,
@@ -97,11 +98,39 @@ export interface StartBattleArgs {
   readonly roomId: string;
   readonly bug: BugId;
   readonly candidates: readonly BugId[];
+  /** ボス戦闘か（デフォルト false）。ボスなら HP・patchesLeft が上書きされる。 */
+  readonly boss?: boolean;
+  /** ボスの現在 HP 補正（デグレ分）。boss=true のときのみ使用。 */
+  readonly bossHpBonus?: number;
 }
 
 export function startBattle(a: StartBattleArgs): BattleState {
   const def = bugDef(a.data, a.bug);
-  // 公開順はシードで決まる（v0.2 決定7）
+  // ボス戦闘の場合
+  if (a.boss) {
+    const boss = bossDef(a.data);
+    const hp = Math.min(boss.hp + (a.bossHpBonus ?? 0) * boss.degradeHpBonus, boss.hpCap);
+    // 公開順はシードで決まる（v0.2 決定7）
+    const allSymptoms = [boss.noiseSymptom, ...def.symptoms];
+    const [order, rng] = randShuffle(seedFrom(battleSeed(a.runSeed, a.n)), allSymptoms);
+    const candidates = a.candidates.includes(a.bug) ? a.candidates : [...a.candidates, a.bug];
+    return {
+      roomId: a.roomId,
+      bug: a.bug,
+      boss: true,
+      hp: hp,
+      maxHp: hp,
+      patchesLeft: boss.patchesRequired,
+      candidates: [...candidates],
+      symptoms: [],
+      hiddenSymptoms: order,
+      reproduced: false,
+      intent: firstIntent(a.data, a.bug),
+      turn: 1,
+      rng,
+    };
+  }
+  // 通常戦闘
   const [order, rng] = randShuffle(seedFrom(battleSeed(a.runSeed, a.n)), def.symptoms);
   const candidates = a.candidates.includes(a.bug) ? a.candidates : [...a.candidates, a.bug];
   return {
