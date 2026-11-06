@@ -83,3 +83,42 @@ test("演出あり: 戦闘のグリッチが終わるとフォーカスが HUD �
   await expect(page.getByRole("region", { name: "症状" }).getByRole("listitem")).toHaveCount(1);
   expect(errors).toEqual([]);
 });
+
+/**
+ * Issue #30: スキルボタンが描画され、legalActions に無いボタンが無効になる。
+ *
+ * starter スキル（再現手順・ログ確認・ホットフィックス）は常に押せるが、
+ * 修正パッチは未再現なら disabled になることを確認。
+ * breakpoint/bisect は starter=false なので初期スキルに含まれず、ボタンに出ない。
+ */
+test("スキル6枚の内 starter が描画され、使えないスキルは disabled になる (#30)", async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await page.goto("/?fx=0&seed=e2e");
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
+  await page.getByRole("button", { name: /r1へ移動/ }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "battle");
+
+  // starterスキル3つが描画される
+  await expect(page.getByRole("button", { name: /再現手順/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /ログ確認/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /ホットフィックス/ })).toBeVisible();
+
+  // 修正パッチは描画されるが未再現なのでdisabled
+  const patchBtn = page.getByRole("button", { name: /修正パッチ/ });
+  await expect(patchBtn).toBeVisible();
+  await expect(patchBtn).toBeDisabled();
+
+  // breakpoint/bisect は starter=false なので存在しない
+  await expect(page.getByRole("button", { name: /ブレークポイント/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /二分探索/ })).toHaveCount(0);
+
+  // 使えない理由がリストに出ている
+  await expect(page.getByRole("list", { name: "使えない理由" })).toContainText(
+    "再現できていないバグは直せません",
+  );
+
+  expect(errors).toEqual([]);
+});

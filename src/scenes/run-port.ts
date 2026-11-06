@@ -112,6 +112,10 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
         return `バグに ${e.amount} ダメージ`;
       case "degrade":
         return "デグレ！ 種類が違った。バグが回復した";
+      case "halted":
+        return "ブレークポイントを張った。次の行動を止める";
+      case "bugHaltedTurn":
+        return "ブレークポイントでバグの行動を止めた";
       case "bugClosed":
         return `バグ票を閉じた（${bugName(e.bug)}）`;
       case "playerDamaged":
