@@ -4,11 +4,12 @@
  * apply(state, action) → state の Reducer で進める（src/core/replay.ts に乗せる）。
  * 不正な操作は例外にせず、状態を変えずに lastError を立てる（UI がメッセージを出す）。
  *
- * 縦切り（dev-plan-v3 §3 S2）: 固定の小さな階（src/core/floor.ts）＋ off-by-one 1種＋スキル4枚。
+ * 階は generateFloor(seed, n) で作る（Issue #35）。バグを全部閉じると階段が開き、階段の部屋に入ると次の階へ。
+ * 最後の階はボス（HP30・正解パッチ2回）。ボスを閉じたら won。
  */
 import { bugTurn, isRunError, startBattle, useSkill } from "./battle";
-import { loadGameData, type BugId, type GameData, type SkillId } from "./data";
-import { FIXED_START_ROOM, candidatesForFloor, fixedFloor } from "./floor";
+import { bossDef, loadGameData, type BugId, type GameData, type SkillId } from "./data";
+import { START_ROOM, candidatesForFloor, floorCount, generateFloor } from "./floor";
 import type { Reducer } from "./replay";
 import { seedFrom, type RngState } from "./rng";
 
@@ -21,7 +22,7 @@ export type Action =
   | { readonly t: "skill"; readonly id: SkillId; readonly arg?: BugId }
   /** ターン終了 → バグが行動する（戦闘中のみ）。 */
   | { readonly t: "endTurn" }
-  /** 宝箱のスキルを受け取る（後の PR で使う）。 */
+  /** 今いる部屋の宝箱のスキルを受け取る（マップ画面のみ）。 */
   | { readonly t: "loot"; readonly pick: SkillId }
   /** ランをやめてリザルトへ。 */
   | { readonly t: "abandon" };
@@ -141,6 +142,12 @@ export type RunEvent =
   /** breakpoint でバグの行動が止まったターン終了。 */
   | { readonly t: "bugHaltedTurn" }
   | { readonly t: "bugClosed"; readonly bug: BugId }
+  /** その階のバグを全部閉じて階段が開いた。 */
+  | { readonly t: "stairsOpened" }
+  /** 階段で次の階へ降りた（floor は新しい階の番号）。 */
+  | { readonly t: "descended"; readonly floor: number }
+  /** 宝箱からスキルを受け取った。 */
+  | { readonly t: "looted"; readonly skill: SkillId }
   | { readonly t: "playerDamaged"; readonly amount: number }
   | { readonly t: "runEnd"; readonly phase: "won" | "lost" | "abandoned" };
 
@@ -158,7 +165,10 @@ export interface RunState {
   readonly floorRng: RngState;
   /** これまでに始めた戦闘の数（battle 乱数の n に使う）。 */
   readonly battleCount: number;
-  /** デグレで次の階に増えるバグ（最大2）。 */
+  /**
+   * この階で起きたデグレの数（最大2）。次の階の増援になり、降りたら 0 に戻る。
+   * 最後の階ではボスの HP 補正にも使う（v0.2 §8: 3階でデグレしたら +5、上限35）。
+   */
   readonly reinforcements: number;
   readonly stats: RunStats;
   /** 直前の操作が不正だったときだけ入る。成功した操作で null に戻る。 */
@@ -169,7 +179,7 @@ export interface RunState {
 // ---- ルール ----
 
 /** ルール＋data のバージョン。ルールか data を変えたら上げる（v0.2 決定10）。 */
-export const RULES_VERSION = 3;
+export const RULES_VERSION = 4;
 
 /** デグレで次の階に増えるバグの上限（v0.2 決定2）。 */
 export const MAX_REINFORCEMENTS = 2;
@@ -181,8 +191,8 @@ export function initRun(seed: string, data: GameData = loadGameData()): RunState
     version: RULES_VERSION,
     seed,
     phase: "map",
-    floor: fixedFloor(),
-    roomId: FIXED_START_ROOM,
+    floor: generateFloor(seed, 1),
+    roomId: START_ROOM,
     player: {
       hp: data.player.hp,
       maxHp: data.player.hp,
@@ -209,6 +219,11 @@ function updateRoom(floor: FloorState, id: string, f: (r: RoomState) => RoomStat
   return { ...floor, rooms: floor.rooms.map((r) => (r.id === id ? f(r) : r)) };
 }
 
+/** その階のバグが全部閉じていて、階段で次の階へ進めるか（画面の表示用）。 */
+export function stairsOpen(state: RunState): boolean {
+  return state.floor.number < floorCount() && !hasBugsLeft(state.floor);
+}
+
 function hasBugsLeft(floor: FloorState): boolean {
   return floor.rooms.some((r) => r.content.kind === "bug" && r.content.bugs.length > 0);
 }
@@ -226,6 +241,8 @@ function enterRoom(state: RunState, data: GameData, events: RunEvent[]): RunStat
     roomId: room.id,
     bug,
     candidates: candidatesForFloor(state.floor.number),
+    boss: room.content.boss === true,
+    bossHpBonus: state.reinforcements,
   });
   events.push({ t: "battleStart", room: room.id });
   return {
@@ -250,8 +267,45 @@ function applyMove(state: RunState, data: GameData, room: string): RunState {
     roomId: room,
     floor: updateRoom(state.floor, room, (r) => ({ ...r, visited: true })),
   };
+  if (target.content.kind === "stairs" && !hasBugsLeft(state.floor)) {
+    return {
+      ...descend(moved),
+      lastError: null,
+      events: [...events, { t: "descended", floor: state.floor.number + 1 }],
+    };
+  }
   const next = enterRoom(moved, data, events);
   return { ...next, lastError: null, events };
+}
+
+/** 次の階へ。増援はこの階のデグレ数で、使ったら 0 に戻す。 */
+function descend(state: RunState): RunState {
+  const n = state.floor.number + 1;
+  return {
+    ...state,
+    floor: generateFloor(state.seed, n, { reinforcements: state.reinforcements }),
+    roomId: START_ROOM,
+    floorRng: seedFrom(`floor:${state.seed}:${n}`),
+    reinforcements: 0,
+  };
+}
+
+function applyLoot(state: RunState, pick: SkillId): RunState {
+  if (state.phase === "battle") return fail(state, "in_battle", "戦闘中は宝箱を開けられません");
+  const here = state.floor.rooms.find((r) => r.id === state.roomId);
+  if (here?.content.kind !== "chest" || here.content.skill !== pick) {
+    return fail(state, "no_loot", "ここに宝箱はありません");
+  }
+  if (state.player.skills.includes(pick)) {
+    return fail(state, "already_owned", "そのスキルはもう持っています");
+  }
+  return {
+    ...state,
+    player: { ...state.player, skills: [...state.player.skills, pick] },
+    floor: updateRoom(state.floor, here.id, (r) => ({ ...r, content: { kind: "empty" } })),
+    lastError: null,
+    events: [{ t: "looted", skill: pick }],
+  };
 }
 
 /** バグを倒したあとの後片付け（部屋から消す・クリア判定・同じ部屋の次のバグ）。 */
@@ -274,10 +328,13 @@ function closeBug(
     floor,
     stats: { ...state.stats, bugsClosed: state.stats.bugsClosed + 1 },
   };
-  if (!hasBugsLeft(floor)) {
-    // 縦切りでは固定の1階がラン全体。階段・次の階は 11/06 の PR で入れる
+  if (battle.boss) {
     events.push({ t: "runEnd", phase: "won" });
     return { ...closed, phase: "won" };
+  }
+  if (!hasBugsLeft(floor) && state.floor.number < floorCount()) {
+    events.push({ t: "stairsOpened" });
+    return closed;
   }
   return enterRoom(closed, data, events);
 }
@@ -298,14 +355,24 @@ function applySkill(
   const events: RunEvent[] = [...r.events];
   let next: RunState = { ...state, battle: r.battle, player: r.player };
   if (r.degraded) {
+    if (r.battle.boss) next = { ...next, battle: bossDegrade(data, r.battle) };
     next = {
       ...next,
       reinforcements: Math.min(MAX_REINFORCEMENTS, next.reinforcements + 1),
       stats: { ...next.stats, degrades: next.stats.degrades + 1 },
     };
   }
-  if (r.battle.hp <= 0) next = closeBug(next, data, r.battle, events);
+  // ボスは HP が 0 でも、正解パッチを必要な回数当てるまでは倒れない
+  const b = next.battle as BattleState;
+  if (b.hp <= 0 && (!b.boss || b.patchesLeft <= 0)) next = closeBug(next, data, b, events);
   return { ...next, lastError: null, events };
+}
+
+/** ボス戦でのデグレ: 最大 HP を補正分だけ上げて（上限あり）全回復する。 */
+function bossDegrade(data: GameData, battle: BattleState): BattleState {
+  const boss = bossDef(data);
+  const maxHp = Math.min(battle.maxHp + boss.degradeHpBonus, boss.hpCap);
+  return { ...battle, maxHp, hp: maxHp };
 }
 
 function applyEndTurn(state: RunState, data: GameData): RunState {
@@ -346,8 +413,7 @@ export function apply(state: RunState, action: Action, data: GameData = loadGame
     case "endTurn":
       return applyEndTurn(state, data);
     case "loot":
-      // 宝箱は 11/06 の PR で入れる。それまでは常に「宝箱が無い」
-      return fail(state, "no_loot", "ここに宝箱はありません");
+      return applyLoot(state, action.pick);
     case "abandon":
       return {
         ...state,
@@ -365,6 +431,7 @@ export function legalActions(state: RunState, data: GameData = loadGameData()): 
   if (state.phase === "map") {
     const here = state.floor.rooms.find((r) => r.id === state.roomId);
     for (const room of here?.neighbors ?? []) all.push({ t: "move", room });
+    if (here?.content.kind === "chest") all.push({ t: "loot", pick: here.content.skill });
   }
   if (state.phase === "battle" && state.battle) {
     all.push({ t: "endTurn" });

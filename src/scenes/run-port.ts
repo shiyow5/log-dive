@@ -5,8 +5,16 @@
  * すべて core の apply() / legalActions() に任せ、画面側では数値や条件を持たない。
  */
 import { bugDef, loadGameData, skillDef, type BugId, type SkillId } from "../core/data";
-import { apply, initRun, legalActions } from "../core/run";
-import type { Action, RunEvent, RunState } from "../core/run";
+import {
+  apply,
+  initRun,
+  legalActions,
+  stairsOpen,
+  type Action,
+  type RunEvent,
+  type RunState,
+} from "../core/run";
+export { stairsOpen, apply };
 
 export type { BugId, SkillId } from "../core/data";
 export type { Action, BattleState, RoomState, RunEvent, RunPhase, RunState } from "../core/run";
@@ -118,6 +126,12 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
         return "ブレークポイントでバグの行動を止めた";
       case "bugClosed":
         return `バグ票を閉じた（${bugName(e.bug)}）`;
+      case "stairsOpened":
+        return "この階のバグを全部閉じた。階段が開いた";
+      case "descended":
+        return `階段を降りた（${e.floor}階）`;
+      case "looted":
+        return `宝箱から「${skillInfo(e.skill).name}」を手に入れた`;
       case "playerDamaged":
         return `バグの攻撃で稼働率 -${e.amount}`;
       case "runEnd":

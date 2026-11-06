@@ -104,7 +104,7 @@ export class BattleScene extends Phaser.Scene {
       "section",
       { "aria-label": "候補" },
       el("h3", {}, `候補（${b.candidates.length}）`),
-      el("ul", { class: "hud-list" }, ...b.candidates.map((c) => el("li", {}, bugName(c)))),
+      el("ul", { class: "hud-list" }, ...b.candidates.map((c) => el("li", {}, `? ${bugName(c)}`))),
     );
     const symptoms = el(
       "section",

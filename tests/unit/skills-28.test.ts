@@ -3,9 +3,10 @@
  * 縦切りの固定階は候補2つなので、戦闘だけ差し替えて候補5つでも確かめる。
  */
 import { describe, expect, it } from "vitest";
+import { initFixedRun } from "./fixed-run";
 import { startBattle } from "../../src/core/battle";
 import { BUG_IDS, bugDef, loadGameData, type BugId } from "../../src/core/data";
-import { apply, initRun, legalActions, type RunState } from "../../src/core/run";
+import { apply, legalActions, type RunState } from "../../src/core/run";
 
 const data = loadGameData();
 const SEEDS = Array.from({ length: 300 }, (_, i) => `sk28-${i}`);
@@ -17,7 +18,7 @@ function battleWith(
   candidates: readonly BugId[] = BUG_IDS,
   cpu = 99,
 ): RunState {
-  const s = apply(initRun(seed), { t: "move", room: "r1" });
+  const s = apply(initFixedRun(seed), { t: "move", room: "r1" });
   const battle = startBattle({ data, runSeed: seed, n: 0, roomId: "r1", bug, candidates });
   const skills = data.skills.skills.map((x) => x.id);
   return { ...s, battle, player: { ...s.player, skills, cpu, cpuMax: Math.min(cpu, 3) } };
@@ -160,7 +161,7 @@ describe("breakpoint: 次のバグ行動を1回止める＋症状を1つ公開",
   });
 
   it("持っていなければ使えない（初期スキルには無い）", () => {
-    const s = apply(initRun("e"), { t: "move", room: "r1" });
+    const s = apply(initFixedRun("e"), { t: "move", room: "r1" });
     expect(apply(s, { t: "skill", id: "breakpoint" }).lastError?.code).toBe("skill_not_owned");
     expect(legalActions(s)).not.toContainEqual({ t: "skill", id: "breakpoint" });
   });
