@@ -9,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
  * 縦切り判定（11/04 21:00, qa-plan-v3 §3-1）までに fixme を外す。
  */
 
-import type { QaHooks } from "../src/ui/qa";
+
 
 const SEED = "qa-e2e-1";
 
