@@ -92,8 +92,71 @@ describe("race: ダメージは予告の multipliers 倍（戦闘用乱数）", 
   });
 });
 
+describe("leak: ダメージが行動ごとに growth ずつ増える", () => {
+  const b = bugDef(data, "leak").behavior;
+  if (b.kind !== "leak") throw new Error("bugs.json の leak の kind が違う");
+
+  it("予告どおりに入り、予告は damage, damage+growth, damage+2*growth, …", () => {
+    let s = battleWith("leak");
+    s = { ...s, player: { ...s.player, hp: 999 } };
+    for (let i = 0; i < 6; i++) {
+      const expected = b.damage + b.growth * i;
+      expect(s.battle!.intent).toEqual({ damage: expected });
+      const next = apply(s, { t: "endTurn" });
+      expect(s.player.hp - next.player.hp).toBe(expected);
+      s = next;
+    }
+  });
+
+  it("新しい戦闘では最初の damage に戻る", () => {
+    expect(firstIntent(data, "leak")).toEqual({ damage: b.damage });
+  });
+});
+
+describe("infinite-loop: 次ターンの CPU を cpuDrain 減らす", () => {
+  const b = bugDef(data, "infinite-loop").behavior;
+  if (b.kind !== "infinite-loop") throw new Error("bugs.json の infinite-loop の kind が違う");
+
+  it("戦闘の1ターン目は cpuMax。以後は毎ターン cpuMax-cpuDrain（減り続けない）", () => {
+    let s = battleWith("infinite-loop");
+    expect(s.player.cpu).toBe(s.player.cpuMax);
+    for (let i = 0; i < 4; i++) {
+      s = apply(s, { t: "endTurn" });
+      expect(s.player.cpu).toBe(s.player.cpuMax - b.cpuDrain);
+      expect(s.player.cpuMax).toBe(3);
+    }
+  });
+
+  it("順序: 上限にリセット → drain（使い切っても使い残しても同じ値）", () => {
+    let used = battleWith("infinite-loop");
+    used = apply(used, { t: "skill", id: "reproduce" });
+    used = apply(used, { t: "skill", id: "reproduce" });
+    used = apply(used, { t: "skill", id: "hotfix" });
+    expect(used.player.cpu).toBe(0);
+    const fromZero = apply(used, { t: "endTurn" });
+    const fromFull = apply(battleWith("infinite-loop"), { t: "endTurn" });
+    expect(fromZero.player.cpu).toBe(used.player.cpuMax - b.cpuDrain);
+    expect(fromFull.player.cpu).toBe(fromZero.player.cpu);
+  });
+
+  it("CPU が足りないターンの patch は not_enough_cpu で、legalActions に出ない", () => {
+    let s = battleWith("infinite-loop");
+    s = apply(s, { t: "skill", id: "reproduce" });
+    s = apply(s, { t: "endTurn" }); // CPU 2
+    s = apply(s, { t: "skill", id: "hotfix" }); // CPU 1
+    const r = apply(s, { t: "skill", id: "patch", arg: "infinite-loop" });
+    expect(r.lastError?.code).toBe("not_enough_cpu");
+    expect(r.player.cpu).toBe(1);
+    expect(legalActions(s).some((a) => a.t === "skill" && a.id === "patch")).toBe(false);
+  });
+
+  it("ダメージは予告どおり（増えない）", () => {
+    expect(damages(battleWith("infinite-loop"), 5).amounts).toEqual(Array(5).fill(b.damage));
+  });
+});
+
 describe("CPU は毎ターン上限にリセット（持ち越しなし。v0.2 決定5）", () => {
-  it.each(["null-ref", "race"] as const)("%s: 使い残しても次のターンは cpuMax", (bug) => {
+  it.each(["null-ref", "race", "leak"] as const)("%s: 使い残しても次のターンは cpuMax", (bug) => {
     let s = battleWith(bug);
     s = apply(s, { t: "skill", id: "reproduce" });
     expect(s.player.cpu).toBe(s.player.cpuMax - 1);
@@ -104,7 +167,7 @@ describe("CPU は毎ターン上限にリセット（持ち越しなし。v0.2 �
   });
 });
 
-describe("推理が必ず成立する（null-ref・race）", () => {
+describe("推理が必ず成立する（null-ref・race・leak・infinite-loop）", () => {
   /** 公開済みの症状をすべて持つ候補。 */
   function consistent(s: RunState): BugId[] {
     const shown = s.battle!.symptoms;
@@ -113,7 +176,7 @@ describe("推理が必ず成立する（null-ref・race）", () => {
     );
   }
 
-  it.each(["null-ref", "race"] as const)(
+  it.each(["null-ref", "race", "leak", "infinite-loop"] as const)(
     "%s: 症状を全部出すと、候補（全5種・1階の2種）のうち当てはまるのは正体だけ（シード200個）",
     (bug) => {
       for (const seed of SEEDS) {
@@ -132,25 +195,28 @@ describe("推理が必ず成立する（null-ref・race）", () => {
     },
   );
 
-  it.each(["null-ref", "race"] as const)("%s: read-log は正解を消さない（シード200個）", (bug) => {
-    for (const seed of SEEDS) {
-      let s = battleWith(bug, seed);
-      while (s.battle!.candidates.length > 1) {
-        if (s.player.cpu === 0) s = apply(s, { t: "endTurn" });
-        s = apply(s, { t: "skill", id: "read-log" });
-        expect(s.lastError).toBeNull();
+  it.each(["null-ref", "race", "leak", "infinite-loop"] as const)(
+    "%s: read-log は正解を消さない（シード200個）",
+    (bug) => {
+      for (const seed of SEEDS) {
+        let s = battleWith(bug, seed);
+        while (s.battle!.candidates.length > 1) {
+          if (s.player.cpu === 0) s = apply(s, { t: "endTurn" });
+          s = apply(s, { t: "skill", id: "read-log" });
+          expect(s.lastError).toBeNull();
+        }
+        expect(s.battle!.candidates).toEqual([bug]);
       }
-      expect(s.battle!.candidates).toEqual([bug]);
-    }
-  });
+    },
+  );
 });
 
-describe("legalActions（null-ref・race）", () => {
+describe("legalActions（null-ref・race・leak・infinite-loop）", () => {
   function key(a: Action): string {
     return JSON.stringify(a);
   }
 
-  it.each(["null-ref", "race"] as const)(
+  it.each(["null-ref", "race", "leak", "infinite-loop"] as const)(
     "%s: 返した手はすべて lastError にならず、外した手はすべて lastError になる",
     (bug) => {
       for (const seed of SEEDS.slice(0, 50)) {
