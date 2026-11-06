@@ -46,8 +46,8 @@ describe("run: 初期状態", () => {
     expect(s.roomId).toBe("r0");
     expect(s.player).toMatchObject({ hp: 30, maxHp: 30, cpu: 3, cpuMax: 3 });
     expect([...s.player.skills].sort()).toEqual(["hotfix", "patch", "read-log", "reproduce"]);
-    expect(s.floor.rooms.length).toBeGreaterThanOrEqual(2);
-    expect(s.floor.rooms.length).toBeLessThanOrEqual(3);
+    expect(s.floors[s.currentFloor - 1]!.rooms.length).toBeGreaterThanOrEqual(2);
+    expect(s.floors[s.currentFloor - 1]!.rooms.length).toBeLessThanOrEqual(3);
   });
 });
 
@@ -96,7 +96,7 @@ describe("run: 1部屋移動 → off-by-one を倒せる（固定シード＋固
     expect(patched.phase).toBe("won");
     expect(patched.battle).toBeNull();
     expect(patched.stats).toEqual({ bugsClosed: 1, turns: 1, degrades: 0 });
-    expect(patched.floor.rooms.find((r) => r.id === "r1")!.content).toEqual({ kind: "empty" });
+    expect(patched.floors[patched.currentFloor - 1]!.rooms.find((r) => r.id === "r1")!.content).toEqual({ kind: "empty" });
     expect(patched.events.map((e) => e.t)).toEqual(["bugDamaged", "bugClosed", "runEnd"]);
   });
 

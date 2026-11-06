@@ -12,6 +12,7 @@ import {
 } from "../../src/scenes/run-port";
 import { parseFlags } from "../../src/ui/flags";
 
+
 describe("parseFlags", () => {
   it("?fx=0 で演出オフ、それ以外はオン", () => {
     expect(parseFlags("?fx=0").fx).toBe(false);

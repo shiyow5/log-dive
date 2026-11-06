@@ -147,6 +147,7 @@ describe("generateFloor: 最遠部屋", () => {
     // r1 ─ r0 ─ r2 : r1 と r2 はどちらも手数1
     const floor: FloorState = {
       number: 1,
+      boss: false,
       rooms: [
         {
           id: "r0",
@@ -190,7 +191,7 @@ describe("generateFloor: 最遠部屋", () => {
       visited: i === 0,
       content: { kind: "empty" as const },
     }));
-    expect(farthestRoom({ number: 1, rooms })).toBe("r1");
+    expect(farthestRoom({ number: 1, boss: false, rooms })).toBe("r1");
   });
 });
 
