@@ -4,10 +4,7 @@ import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
-import { roomSymbol, symbolColor, stairsOpen, shortLabel, CHAR_W } from "./map-symbols";
-
-const MIN_CELL = 8;
-const BASE_ROOM_RATIO = 20 / 32;
+import { calcMapLayout, mapLabelText, roomSymbol, stairsOpen, symbolColor } from "./map-symbols";
 
 const COLOR = {
   line: 0x26393d,
@@ -70,17 +67,7 @@ export class MapScene extends Phaser.Scene {
     const rooms = s.floor.rooms;
     const here = rooms.find((r) => r.id === s.roomId);
     const visible = rooms.filter((r) => r.visited || (here?.neighbors.includes(r.id) ?? false));
-    // ビューポート(320x180)に収まるようCELL/ROOM/ORIGINを計算
-    const maxX = Math.max(...rooms.map((r) => r.x));
-    const maxY = Math.max(...rooms.map((r) => r.y));
-    const mapW = maxX + 1;
-    const mapH = maxY + 1;
-    const availW = 320 - 40; // 左右マージン20px
-    const availH = 180 - 20 - 100; // 上部マージン20 + HUD下部100px
-    const CELL = Math.max(MIN_CELL, Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH)));
-    const ROOM = Math.max(4, Math.floor(CELL * BASE_ROOM_RATIO));
-    const ORIGIN_X = Math.floor((320 - mapW * CELL) / 2); // 横センター
-    const ORIGIN_Y = 20;
+    const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = calcMapLayout(rooms);
 
     function center(r: RoomState): { x: number; y: number } {
       return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
@@ -130,16 +117,17 @@ export class MapScene extends Phaser.Scene {
             .setOrigin(0.5, 0);
         }
       }
-      // 部屋名（短縮）+ 部屋ID（右下に小さく）
-      const maxChars = Math.max(4, Math.floor(CELL / CHAR_W));
-      const nameText = r.visited ? shortLabel(r.label, maxChars) : "?";
-      this.add
-        .text(x, y + ROOM / 2 + 2, nameText, {
-          fontFamily: "monospace",
-          fontSize: "8px",
-          color: r.visited ? COLOR.text : COLOR.weak,
-        })
-        .setOrigin(0.5, 0);
+      // 部屋名（短縮。密な階では出さない → mapLabelText）
+      const nameText = mapLabelText(r, CELL);
+      if (nameText !== null) {
+        this.add
+          .text(x, y + ROOM / 2 + 2, nameText, {
+            fontFamily: "monospace",
+            fontSize: "8px",
+            color: r.visited ? COLOR.text : COLOR.weak,
+          })
+          .setOrigin(0.5, 0);
+      }
       // 部屋ID（移動ボタンとの対応用、右上に小さく）
       this.add
         .text(x + ROOM / 2 - 2, y - ROOM / 2 + 2, r.id, {

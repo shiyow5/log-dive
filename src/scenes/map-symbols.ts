@@ -70,94 +70,82 @@ export function shortLabel(label: string, maxChars = 8): string {
   return label.slice(0, maxChars - 1) + "\u2026"; // …
 }
 
-/** モノスペースフォントの1文字幅（px、概算）。 */
+/** モノスペース 8px の1文字幅（px、少し大きめの概算）。 */
 export const CHAR_W = 5;
+/** 名前ラベルの高さ（8px フォント＋余白）。 */
+export const NAME_H = 10;
+/** これより短くしか出せないなら名前は出さない（"ab…" では読めないため）。 */
+export const MIN_NAME_CHARS = 4;
 
-/** ラベルの表示幅（px）を計算する。 */
-function labelWidth(label: string): number {
-  return label.length * CHAR_W;
+const MIN_CELL = 8;
+const BASE_ROOM_RATIO = 20 / 32;
+
+export interface MapLayout {
+  /** 1マスの間隔（px）。 */
+  readonly CELL: number;
+  /** 部屋の四角の一辺（px）。 */
+  readonly ROOM: number;
+  readonly ORIGIN_X: number;
+  readonly ORIGIN_Y: number;
 }
 
 /**
- * 部屋がマップ上で表示される矩形（px座標）を計算する。
- *
- * @param r       - 部屋状態
- * @param CELL    - マスサイズ
- * @param ROOM    - 部屋描画サイズ
- * @param ORIGIN_X - グリッド原点X
- * @param ORIGIN_Y - グリッド原点Y
- * @param nameHeight - 名前テキストの高さ(px、デフォルト 10)
+ * マップの CELL/ROOM/原点を決める（ビューポート 320x180、下 100px は HUD）。
+ * MapScene.drawMap とテストの両方がこれを使う（テスト側で式を写さない）。
  */
-export function roomRect(
-  r: RoomState,
-  CELL: number,
-  ROOM: number,
-  ORIGIN_X: number,
-  ORIGIN_Y: number,
-  nameHeight = 10,
-): { x: number; y: number; w: number; h: number } {
-  const cx = ORIGIN_X + r.x * CELL;
-  const cy = ORIGIN_Y + r.y * CELL;
-  const symH = 12; // 記号の高さ
-  // 短縮後のラベル幅（CELL以下に収める）
-  const maxChars = Math.max(4, Math.floor(CELL / CHAR_W));
-  const sl = shortLabel(r.label, maxChars);
-  const w = Math.max(CELL, labelWidth(sl));
-  return {
-    x: cx - w / 2,
-    y: cy - ROOM / 2 - symH, // 記号まで含む
-    w,
-    h: ROOM + symH + nameHeight, // 部屋+記号+名前
-  };
-}
-
-/** ラベルテキストの矩形（px座標）を計算する。 */
-export function labelRect(
-  r: RoomState,
-  CELL: number,
-  ROOM: number,
-  ORIGIN_X: number,
-  ORIGIN_Y: number,
-  nameHeight = 10,
-): { x: number; y: number; w: number; h: number } {
-  const cx = ORIGIN_X + r.x * CELL;
-  const cy = ORIGIN_Y + r.y * CELL;
-  // MapScene.ts と同じ maxChars 計算
-  const maxChars = Math.max(4, Math.floor(CELL / CHAR_W));
-  const sl = shortLabel(r.label, maxChars);
-  const w = Math.max(CELL, labelWidth(sl));
-  const textX = cx; // setOrigin(0.5, 0) なので左上 x = cx - w/2
-  const textY = cy + ROOM / 2 + 2; // MapScene.ts の描画位置
-  return { x: textX - w / 2, y: textY, w, h: nameHeight };
+export function calcMapLayout(rooms: readonly RoomState[]): MapLayout {
+  const width = 320;
+  const mapW = Math.max(...rooms.map((r) => r.x)) + 1;
+  const mapH = Math.max(...rooms.map((r) => r.y)) + 1;
+  const availW = width - 40; // 左右マージン20px
+  const availH = 180 - 20 - 100; // 上部マージン20 + HUD下部100px
+  const CELL = Math.max(MIN_CELL, Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH)));
+  const ROOM = Math.max(4, Math.floor(CELL * BASE_ROOM_RATIO));
+  return { CELL, ROOM, ORIGIN_X: Math.floor((width - mapW * CELL) / 2), ORIGIN_Y: 20 };
 }
 
 /**
- * 4シード全階で部屋ラベルが重ならないことを検査する純関数。
- *
- * `rooms` に `labelRect` を適用してラベル矩形のペアが交差しなければ true。
+ * 部屋の下に出す名前。未踏は「?」。訪問済みは1マスの幅に収まるよう短縮し、
+ * 収まる文字数が MIN_NAME_CHARS 未満の密な階では出さない（null。部屋 ID は別に出る）。
+ * MapScene はこの戻り値をそのまま描く。
  */
-export function checkLabelCollision(
+export function mapLabelText(r: RoomState, CELL: number): string | null {
+  if (!r.visited) return "?";
+  const maxChars = Math.floor(CELL / CHAR_W);
+  if (maxChars < MIN_NAME_CHARS) return null;
+  return shortLabel(r.label, maxChars);
+}
+
+type Rect = { x: number; y: number; w: number; h: number };
+
+/** 名前ラベルが実際に描かれる矩形（px）。描かないなら null。幅は描く文字列の長さから出す。 */
+export function labelRect(r: RoomState, layout: MapLayout): Rect | null {
+  const text = mapLabelText(r, layout.CELL);
+  if (text === null) return null;
+  const cx = layout.ORIGIN_X + r.x * layout.CELL;
+  const cy = layout.ORIGIN_Y + r.y * layout.CELL;
+  const w = text.length * CHAR_W;
+  // MapScene: text(x, y + ROOM / 2 + 2).setOrigin(0.5, 0)
+  return { x: cx - w / 2, y: cy + layout.ROOM / 2 + 2, w, h: NAME_H };
+}
+
+/** 名前ラベル同士が重なる部屋の組（なければ空）。 */
+export function labelCollisions(
   rooms: readonly RoomState[],
-  CELL: number,
-  ROOM: number,
-  ORIGIN_X: number,
-  ORIGIN_Y: number,
-): boolean {
-  const rects: { x: number; y: number; w: number; h: number }[] = rooms.map((r) =>
-    labelRect(r, CELL, ROOM, ORIGIN_X, ORIGIN_Y),
-  );
+  layout: MapLayout,
+): Array<[string, string]> {
+  const rects = rooms
+    .map((r) => ({ id: r.id, rect: labelRect(r, layout) }))
+    .filter((x): x is { id: string; rect: Rect } => x.rect !== null);
+  const hits: Array<[string, string]> = [];
   for (let i = 0; i < rects.length; i++) {
-    const ri = rects[i]!;
     for (let j = i + 1; j < rects.length; j++) {
-      if (rectsOverlap(ri, rects[j]!)) return true;
+      if (rectsOverlap(rects[i]!.rect, rects[j]!.rect)) hits.push([rects[i]!.id, rects[j]!.id]);
     }
   }
-  return false;
+  return hits;
 }
 
-function rectsOverlap(
-  a: { x: number; y: number; w: number; h: number },
-  b: { x: number; y: number; w: number; h: number },
-): boolean {
+function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
