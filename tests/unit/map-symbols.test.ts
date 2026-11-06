@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { roomSymbol, symbolColor, stairsOpen } from "../../src/scenes/map-symbols";
+import { generateFloor } from "../../src/core/floor";
 import type { RoomState, RunState } from "../../src/core/run";
 
 function room(
@@ -140,4 +141,66 @@ describe("stairsOpen: 階段が開いているか", () => {
     const s = run([room("r0", "empty", 0, 0, { kind: "empty" }, true)]);
     expect(stairsOpen(s)).toBe(true);
   });
+});
+
+describe("roomSymbol: 階段の案B（未踏でも開いたら▼）", () => {
+  it("階段（閉じている・未踏）→ null", () => {
+    const r = room("r1", "stairs", 1, 0, { kind: "stairs" }, false);
+    const s = run([room("r0", "bug", 0, 0, { kind: "bug", bugs: ["off-by-one"] }, true), r]);
+    expect(roomSymbol(r, s)).toBeNull();
+  });
+
+  it("階段（閉じている・既踏）→ ◆", () => {
+    const r = room("r1", "stairs", 1, 0, { kind: "stairs" }, true);
+    const s = run([room("r0", "bug", 0, 0, { kind: "bug", bugs: ["off-by-one"] }, true), r]);
+    expect(roomSymbol(r, s)).toBe("◆");
+  });
+
+  it("階段（開いている・未踏）→ ▼（案B）", () => {
+    const stairs = room("r1", "stairs", 1, 0, { kind: "stairs" }, false);
+    const s = run([room("r0", "empty", 0, 0, { kind: "empty" }, true), stairs]);
+    expect(roomSymbol(stairs, s)).toBe("▼");
+  });
+
+  it("階段（開いている・既踏）→ ▼", () => {
+    const stairs = room("r1", "stairs", 1, 0, { kind: "stairs" }, true);
+    const s = run([room("r0", "empty", 0, 0, { kind: "empty" }, true), stairs]);
+    expect(roomSymbol(stairs, s)).toBe("▼");
+  });
+});
+
+describe("stairsOpen + roomSymbol: 4シード全階で階段の位置が分かる", () => {
+  const seeds = ["alpha", "beta", "gamma", "delta"] as const;
+
+  for (const seed of seeds) {
+    for (let floorNum = 1; floorNum <= 3; floorNum++) {
+      it(`${seed} 階${floorNum}: 全バグ撃破後、階段の部屋が▼（未踏でも）`, () => {
+        const floor = generateFloor(seed, floorNum);
+        const stairRoom = floor.rooms.find((r) => r.content.kind === "stairs");
+        if (!stairRoom) return; // 3階はボス階段なし
+
+        // 階段の部屋を未踏のまま、他の部屋を全部既踏（バグもクリア）
+        const rooms = floor.rooms.map((r) => {
+          if (r.content.kind === "bug") {
+            const bugContent = r.content as Extract<
+              RunState["floor"]["rooms"][number]["content"],
+              { kind: "bug" }
+            >;
+            return { ...r, visited: true, content: { ...bugContent, bugs: [] } };
+          }
+          if (r.id !== stairRoom.id) {
+            return { ...r, visited: true };
+          }
+          return r; // 階段は未踏
+        });
+
+        const s = run(rooms as RoomState[]);
+        expect(stairsOpen(s)).toBe(true);
+
+        // 階段の部屋が未踏でも ▼ が出る
+        const sym = roomSymbol(stairRoom, s);
+        expect(sym).toBe("▼");
+      });
+    }
+  }
 });

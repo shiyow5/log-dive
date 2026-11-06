@@ -126,8 +126,11 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
         return "ブレークポイントでバグの行動を止めた";
       case "bugClosed":
         return `バグ票を閉じた（${bugName(e.bug)}）`;
-      case "stairsOpened":
-        return "この階のバグを全部閉じた。階段が開いた";
+      case "stairsOpened": {
+        const stairRoom = s.floor.rooms.find((r) => r.content.kind === "stairs");
+        const name = stairRoom ? stairRoom.label : "？";
+        return `階段が開いた: ${name}`;
+      }
       case "descended":
         return `階段を降りた（${e.floor}階）`;
       case "looted":

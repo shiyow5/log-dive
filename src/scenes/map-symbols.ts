@@ -17,26 +17,30 @@ function hasBugsLeft(floor: RunState["floor"]): boolean {
 }
 
 /**
- * 部屋の内容に応じた記号（色だけに頼らない）。未踏部屋は記号なし。
+ * 部屋の内容に応じた記号（色だけに頼らない）。
+ *
+ * 階段は開いている場合、未踏でも ▼ を出す（案B: spec-a §9 未踏隠しの例外）。
  *
  * | 内容 | 記号 |
  * |------|------|
- * | 階段（閉じている） | ◆ |
+ * | 階段（閉じている、未踏） | null |
+ * | 階段（閉じている、既踏） | ◆ |
  * | 階段（開いている） | ▼ |
  * | 宝箱 | ♦ |
  * | ボス（バグあり） | ▲ |
  * | ボス（バグなし） | ★ |
  * | 通常バグ（あり） | × |
  * | 通常バグ（なし） | ✓ |
- * | 未踏の部屋 | null |
+ * | 未踏の部屋（階段以外） | null |
  * | それ以外 | null |
  */
 export function roomSymbol(r: RoomState, s: RunState): string | null {
-  if (!r.visited) return null;
   const c = r.content;
+  // 階段: 開いていれば未踏でも ▼ を出す（案B）
   if (c.kind === "stairs") {
-    return stairsOpen(s) ? "▼" : "◆";
+    return stairsOpen(s) ? "▼" : r.visited ? "◆" : null;
   }
+  if (!r.visited) return null;
   if (c.kind === "chest") {
     return "♦";
   }
