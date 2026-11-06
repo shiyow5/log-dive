@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { fxEnabled } from "../ui/flags";
+import { fxEnabled, markFade } from "../ui/flags";
 import { clearHud, setHudBusy } from "../ui/hud";
 
 /** 画面遷移。演出ありなら 200ms の暗転（ease-out 相当）、?fx=0 なら即時。遷移中は HUD の入力を止める。 */
@@ -24,5 +24,7 @@ export function goTo(scene: Phaser.Scene, key: string, data?: object): void {
 
 /** 画面に入ったときのフェードイン。 */
 export function fadeIn(scene: Phaser.Scene): void {
-  if (fxEnabled()) scene.cameras.main.fadeIn(200, 15, 26, 28);
+  if (!fxEnabled()) return;
+  markFade(200);
+  scene.cameras.main.fadeIn(200, 15, 26, 28);
 }

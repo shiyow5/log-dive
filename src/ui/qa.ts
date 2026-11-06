@@ -9,6 +9,7 @@
  */
 import { stateHash as hashFn } from "../core/hash";
 import { current, hasRun } from "../scenes/run-port";
+import { isFading } from "./flags";
 
 export interface QaHooks {
   stateHash(): string | null;
@@ -22,56 +23,32 @@ declare global {
   }
 }
 
-let idleResolvers: Array<() => void> = [];
+const IDLE_POLL_MS = 25;
+const IDLE_TIMEOUT_MS = 5000;
+
+function isIdle(): boolean {
+  const hud = document.getElementById("hud");
+  return !hud?.hasAttribute("inert") && !isFading();
+}
 
 /**
- * アニメーション再生中（hudBusy=inert）またはフェード中なら、
- * 完了するまで待機する Promise を返す。
- * 既に idle なら即 resolve。
+ * アニメーション再生中（hudBusy=inert）またはフェードイン中なら、
+ * 完了するまで待機する Promise を返す。既に idle なら即 resolve。
+ * 待ちごとに独立したポーリングとタイマーを持ち、完了・タイムアウトのどちらでも必ず片付ける
+ * （他の待ちを巻き込まない）。タイムアウトは5秒。
  */
 export function waitForIdle(): Promise<void> {
-  const hud = document.getElementById("hud");
-  if (!hud?.hasAttribute("inert")) {
-    return Promise.resolve();
-  }
-
-  // 既に待っている場合はその Promise を返す
-  if (idleResolvers.length > 0) {
-    return new Promise<void>((resolve) => idleResolvers.push(resolve));
-  }
-
+  if (isIdle()) return Promise.resolve();
   return new Promise<void>((resolve) => {
-    const observer = new MutationObserver(() => {
-      const hud = document.getElementById("hud");
-      if (!hud?.hasAttribute("inert")) {
-        observer.disconnect();
-        const ws = idleResolvers;
-        idleResolvers = [];
-        for (const w of ws) w();
-        resolve();
-      }
-    });
-    if (hud) {
-      observer.observe(hud, { attributes: true, attributeFilter: ["inert"] });
-    }
-
-    // 即解決の場合
-    if (!hud?.hasAttribute("inert")) {
-      observer.disconnect();
+    const timeout = setTimeout(done, IDLE_TIMEOUT_MS);
+    const poll = setInterval(() => {
+      if (isIdle()) done();
+    }, IDLE_POLL_MS);
+    function done(): void {
+      clearTimeout(timeout);
+      clearInterval(poll);
       resolve();
-      return;
     }
-
-    // タイムアウト防止（5秒）
-    setTimeout(() => {
-      observer.disconnect();
-      const ws = idleResolvers;
-      idleResolvers = [];
-      for (const w of ws) w();
-      resolve();
-    }, 5000);
-
-    idleResolvers.push(resolve);
   });
 }
 

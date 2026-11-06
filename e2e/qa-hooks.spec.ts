@@ -56,7 +56,7 @@ test("__qa: ラン開始後、stateHash() が 8 文字の hex を返す", async 
   await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
   await waitForQaIdle(page);
 
-  // stateHash() が文字列を返す（16文字のhex）
+  // stateHash() が文字列を返す（8文字のhex）
   const hash = await page.evaluate(() => window.__qa!.stateHash());
   expect(hash).toMatch(/^[0-9a-f]{8}$/);
 
