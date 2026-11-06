@@ -338,3 +338,7 @@ export function skillDef(data: GameData, id: SkillId): SkillDef {
   if (!def) throw new DataError("skills.json", "skills", `に ${id} がありません`);
   return def;
 }
+
+export function bossDef(data: GameData): BossDef {
+  return data.bugs.boss;
+}
