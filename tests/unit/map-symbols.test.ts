@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  roomSymbol,
-  symbolColor,
-  stairsOpen,
-} from "../../src/scenes/map-symbols";
+import { roomSymbol, symbolColor, stairsOpen } from "../../src/scenes/map-symbols";
 import type { RoomState, RunState } from "../../src/core/run";
 
 function room(
@@ -59,10 +55,7 @@ describe("roomSymbol: 部屋の種類に応じた記号を返す", () => {
   it("階段（閉じている）→ ◆", () => {
     const r = room("r0", "stairs", 0, 0, { kind: "stairs" }, true);
     // バグが残っているので階段は閉じている
-    const s = run([
-      r,
-      room("r1", "bug", 1, 0, { kind: "bug", bugs: ["off-by-one"] }, false),
-    ]);
+    const s = run([r, room("r1", "bug", 1, 0, { kind: "bug", bugs: ["off-by-one"] }, false)]);
     expect(roomSymbol(r, s)).toBe("◆");
   });
 
@@ -139,16 +132,12 @@ describe("symbolColor: 部屋の内容に応じた色を返す", () => {
 
 describe("stairsOpen: 階段が開いているか", () => {
   it("バグが残っていれば false", () => {
-    const s = run([
-      room("r0", "bug", 0, 0, { kind: "bug", bugs: ["off-by-one"] }, true),
-    ]);
+    const s = run([room("r0", "bug", 0, 0, { kind: "bug", bugs: ["off-by-one"] }, true)]);
     expect(stairsOpen(s)).toBe(false);
   });
 
   it("バグが全部閉じていれば true", () => {
-    const s = run([
-      room("r0", "empty", 0, 0, { kind: "empty" }, true),
-    ]);
+    const s = run([room("r0", "empty", 0, 0, { kind: "empty" }, true)]);
     expect(stairsOpen(s)).toBe(true);
   });
 });

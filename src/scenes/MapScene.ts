@@ -194,12 +194,20 @@ export class MapScene extends Phaser.Scene {
           }),
         ),
       ),
-      el(
-        "div",
-        { class: "hud-row" },
-        ...(chestBtn ? [chestBtn] : []),
-      ),
-      ...(chestMsg ? [el("div", { class: "hud-row" }, el("span", { style: "color: #ff6b5e; font-size: 12px;", "aria-live": "polite" }, chestMsg))] : []),
+      el("div", { class: "hud-row" }, ...(chestBtn ? [chestBtn] : [])),
+      ...(chestMsg
+        ? [
+            el(
+              "div",
+              { class: "hud-row" },
+              el(
+                "span",
+                { style: "color: #ff6b5e; font-size: 12px;", "aria-live": "polite" },
+                chestMsg,
+              ),
+            ),
+          ]
+        : []),
       el(
         "div",
         { class: "hud-row" },
