@@ -79,7 +79,8 @@ test("__qa: 同じシードで2回プレイすると stateHash が一致する",
 
 test("__qa: 操作中の waitForIdle は完了し、stateHash が更新される", async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto("?seed=qa-e2e-1&fx=0&qa=1");
+  // qa-e2e-5: 1階の r1 にバグがいるシード（generateFloor で決まる）
+  await page.goto("?seed=qa-e2e-5&fx=0&qa=1");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
 
   await page.getByRole("button", { name: "新しいラン" }).click();

@@ -118,6 +118,12 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
         return "ブレークポイントでバグの行動を止めた";
       case "bugClosed":
         return `バグ票を閉じた（${bugName(e.bug)}）`;
+      case "stairsOpened":
+        return "この階のバグを全部閉じた。階段が開いた";
+      case "descended":
+        return `階段を降りた（${e.floor}階）`;
+      case "looted":
+        return `宝箱から「${skillInfo(e.skill).name}」を手に入れた`;
       case "playerDamaged":
         return `バグの攻撃で稼働率 -${e.amount}`;
       case "runEnd":

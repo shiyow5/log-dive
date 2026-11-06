@@ -18,11 +18,14 @@ test("起動してキャンバスが表示され、タイトルに進む（演�
   expect(errors).toEqual([]);
 });
 
-// 画面の導線確認（core/run.ts につないだ状態）。正式な smoke は T4（toru）。
-test("?fx=0: タイトル→r1 移動→再現→パッチ→リザルト→タイトル", async ({ page }) => {
+// 画面の導線確認（core/run.ts につないだ状態）。
+// シード e2e-7: 1階は r0 の隣が r1 だけで、r1 に境界ずれ（off-by-one）が1体（generateFloor で決まる）。
+test("?fx=0: タイトル→r1 移動→再現→パッチ→マップに戻る→放棄→リザルト→タイトル", async ({
+  page,
+}) => {
   const errors = collectErrors(page);
-  await page.goto("/?fx=0&seed=e2e");
-  await expect(page.getByRole("textbox", { name: "シード" })).toHaveValue("e2e");
+  await page.goto("/?fx=0&seed=e2e-7");
+  await expect(page.getByRole("textbox", { name: "シード" })).toHaveValue("e2e-7");
   await page.getByRole("button", { name: "新しいラン" }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
   await page.getByRole("button", { name: /r1へ移動/ }).click();
@@ -36,8 +39,11 @@ test("?fx=0: タイトル→r1 移動→再現→パッチ→リザルト→タ�
   await expect(page.getByRole("region", { name: "症状" }).getByRole("listitem")).toHaveCount(1);
   await page.getByRole("button", { name: /修正パッチ/ }).click();
   await page.getByRole("button", { name: "パッチを当てる: 境界ずれ" }).click();
+  // 1階にはまだバグが残っているので、倒したらマップに戻る（階段はまだ開かない）
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
+  await expect(page.getByRole("status")).toContainText("バグ票を閉じた");
+  await page.getByRole("button", { name: /ランを放棄/ }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "result");
-  await expect(page.getByRole("heading", { name: "復旧完了" })).toBeVisible();
   await expect(page.getByTestId("result-閉じたバグ票")).toHaveText("1");
   await page.getByRole("button", { name: "タイトルへ" }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "title");
@@ -52,7 +58,7 @@ test("?fx=0: ランを放棄でリザルト", async ({ page }) => {
 });
 
 test("?fx=0: 隣の部屋だけ移動ボタンが出て、スキルの結果がログに出る", async ({ page }) => {
-  await page.goto("/?fx=0&seed=e2e");
+  await page.goto("/?fx=0&seed=e2e-7");
   await page.getByRole("button", { name: "新しいラン" }).click();
   // r0 main() の隣は r1 だけ
   await expect(page.getByRole("navigation", { name: "隣の部屋" }).getByRole("button")).toHaveCount(
@@ -68,7 +74,7 @@ test("演出あり: 戦闘のグリッチが終わるとフォーカスが HUD �
 }) => {
   const errors = collectErrors(page);
   await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.goto("/?seed=e2e");
+  await page.goto("/?seed=e2e-7");
   await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
   await page.getByRole("button", { name: "新しいラン" }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
@@ -95,7 +101,7 @@ test("スキル6枚の内 starter が描画され、使えないスキルは dis
   page,
 }) => {
   const errors = collectErrors(page);
-  await page.goto("/?fx=0&seed=e2e");
+  await page.goto("/?fx=0&seed=e2e-7");
   await page.getByRole("button", { name: "新しいラン" }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
   await page.getByRole("button", { name: /r1へ移動/ }).click();

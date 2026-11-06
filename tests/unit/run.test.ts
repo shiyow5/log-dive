@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { initFixedRun } from "./fixed-run";
 import { loadGameData } from "../../src/core/data";
+import { generateFloor } from "../../src/core/floor";
 import { randInt, randPick, randShuffle } from "../../src/core/rand";
 import { runReplay } from "../../src/core/replay";
 import { seedFrom } from "../../src/core/rng";
@@ -7,6 +9,7 @@ import {
   RULES_VERSION,
   apply,
   initRun,
+  stairsOpen,
   legalActions,
   runReducer,
   type Action,
@@ -16,7 +19,7 @@ import {
 const data = loadGameData();
 
 function play(seed: string, actions: readonly Action[]): RunState {
-  return actions.reduce((s, a) => apply(s, a), initRun(seed));
+  return actions.reduce((s, a) => apply(s, a), initFixedRun(seed));
 }
 
 function bugHere(seed: string): RunState {
@@ -39,19 +42,19 @@ describe("rand: 値と次の状態を返す純粋関数", () => {
 });
 
 describe("run: 初期状態", () => {
-  it("HP30・CPU3・開始スキル4枚・開始部屋 r0", () => {
+  it("HP30・CPU3・開始スキル4枚・開始部屋 r0・1階は generateFloor(seed, 1)", () => {
     const s = initRun("s");
     expect(s.version).toBe(RULES_VERSION);
     expect(s.phase).toBe("map");
     expect(s.roomId).toBe("r0");
     expect(s.player).toMatchObject({ hp: 30, maxHp: 30, cpu: 3, cpuMax: 3 });
     expect([...s.player.skills].sort()).toEqual(["hotfix", "patch", "read-log", "reproduce"]);
-    expect(s.floor.rooms.length).toBeGreaterThanOrEqual(2);
-    expect(s.floor.rooms.length).toBeLessThanOrEqual(3);
+    expect(s.floor).toEqual(generateFloor("s", 1));
+    expect(s.floor.number).toBe(1);
   });
 });
 
-describe("run: 1部屋移動 → off-by-one を倒せる（固定シード＋固定入力）", () => {
+describe("run: 1部屋移動 → off-by-one を倒せる（固定の階・固定シード＋固定入力）", () => {
   const SEED = "s2-golden";
   const INPUT: Action[] = [
     { t: "move", room: "r1" },
@@ -61,14 +64,14 @@ describe("run: 1部屋移動 → off-by-one を倒せる（固定シード＋固
     { t: "skill", id: "patch", arg: "off-by-one" },
   ];
 
-  it("撃破してクリアになる", () => {
+  it("撃破すると階のバグが0になり、階段が開く（まだ won ではない）", () => {
     const states: RunState[] = [];
     INPUT.reduce((s, a) => {
       const n = apply(s, a);
       expect(n.lastError, JSON.stringify(a)).toBeNull();
       states.push(n);
       return n;
-    }, initRun(SEED));
+    }, initFixedRun(SEED));
 
     const [moved, reproduced, readLog, ended, patched] = states as [
       RunState,
@@ -93,27 +96,31 @@ describe("run: 1部屋移動 → off-by-one を倒せる（固定シード＋固
     expect(ended.player.hp).toBe(26);
     expect(ended.player.cpu).toBe(3);
 
-    expect(patched.phase).toBe("won");
+    expect(patched.phase).toBe("map");
+    expect(stairsOpen(patched)).toBe(true);
     expect(patched.battle).toBeNull();
     expect(patched.stats).toEqual({ bugsClosed: 1, turns: 1, degrades: 0 });
     expect(patched.floor.rooms.find((r) => r.id === "r1")!.content).toEqual({ kind: "empty" });
-    expect(patched.events.map((e) => e.t)).toEqual(["bugDamaged", "bugClosed", "runEnd"]);
+    expect(patched.events.map((e) => e.t)).toEqual(["bugDamaged", "bugClosed", "stairsOpened"]);
   });
 
   it("同じシード＋同じ入力なら最後の状態が一致する（runReplay と同じ）", () => {
-    const a = play(SEED, INPUT);
+    const real = initRun(SEED);
+    const r1 = real.floor.rooms.find((r) => r.id === "r1")!;
+    const input: Action[] = [{ t: "move", room: r1.id }, { t: "endTurn" }, { t: "endTurn" }];
+    const a = input.reduce((s, x) => apply(s, x), real);
     const b = runReplay(runReducer, {
       game: "log-dive",
       version: RULES_VERSION,
       seed: SEED,
-      actions: INPUT,
+      actions: input,
     });
     expect(b).toEqual(a);
     expect(JSON.stringify(b)).toBe(JSON.stringify(a));
   });
 
   it("apply は入力の state を変えない", () => {
-    let s = initRun(SEED);
+    let s = initFixedRun(SEED);
     for (const a of INPUT) {
       const before = JSON.stringify(s);
       const n = apply(s, a);
@@ -133,15 +140,15 @@ describe("run: 不正な操作は lastError（例外にしない・状態は変�
   }
 
   it("隣でない部屋・無い部屋への移動", () => {
-    const s = initRun("e");
+    const s = initFixedRun("e");
     expectRejected(s, { t: "move", room: "r2" }, "not_adjacent");
     expectRejected(s, { t: "move", room: "nope" }, "unknown_room");
   });
 
   it("戦闘中の移動、戦闘外のスキル・ターン終了", () => {
     expectRejected(bugHere("e"), { t: "move", room: "r0" }, "in_battle");
-    expectRejected(initRun("e"), { t: "skill", id: "hotfix" }, "not_in_battle");
-    expectRejected(initRun("e"), { t: "endTurn" }, "not_in_battle");
+    expectRejected(initFixedRun("e"), { t: "skill", id: "hotfix" }, "not_in_battle");
+    expectRejected(initFixedRun("e"), { t: "endTurn" }, "not_in_battle");
   });
 
   it("未再現のバグへの patch", () => {
@@ -190,11 +197,11 @@ describe("run: 不正な操作は lastError（例外にしない・状態は変�
   });
 
   it("宝箱が無いところでの loot", () => {
-    expectRejected(initRun("e"), { t: "loot", pick: "bisect" }, "no_loot");
+    expectRejected(initFixedRun("e"), { t: "loot", pick: "bisect" }, "no_loot");
   });
 
   it("成功した操作で lastError は null に戻る", () => {
-    const bad = apply(initRun("e"), { t: "move", room: "r2" });
+    const bad = apply(initFixedRun("e"), { t: "move", room: "r2" });
     expect(apply(bad, { t: "move", room: "r1" }).lastError).toBeNull();
   });
 });
@@ -289,15 +296,15 @@ describe("legalActions", () => {
     const acts = legalActions(s);
     expect(acts.some((a) => a.t === "skill" && a.id === "patch")).toBe(false);
     for (const a of acts) expect(apply(s, a).lastError).toBeNull();
-    expect(legalActions(initRun("la"))).toEqual([{ t: "abandon" }, { t: "move", room: "r1" }]);
+    expect(legalActions(initFixedRun("la"))).toEqual([{ t: "abandon" }, { t: "move", room: "r1" }]);
   });
 
-  it("合法手をランダムに打つ BOT が例外を出さず必ず終わる（シード200個・上限200手）", () => {
+  it("合法手をランダムに打つ BOT が例外を出さず必ず終わる（シード200個・上限3000手）", () => {
     for (let i = 0; i < 200; i++) {
       let s = initRun(`bot-${i}`);
       let rng = seedFrom(`bot-pick-${i}`);
       let steps = 0;
-      while (legalActions(s).length > 0 && steps < 200) {
+      while (legalActions(s).length > 0 && steps < 3000) {
         // abandon を除いて選ぶ（すぐ終わらないように）
         const acts = legalActions(s).filter((a) => a.t !== "abandon");
         const [a, next] = randPick(rng, acts);

@@ -3,9 +3,10 @@
  * 縦切りの固定階には off-by-one しかいないので、戦闘だけ差し替えて確かめる。
  */
 import { describe, expect, it } from "vitest";
+import { initFixedRun } from "./fixed-run";
 import { actualDamage, bugTurn, firstIntent, startBattle } from "../../src/core/battle";
 import { BUG_IDS, bugDef, loadGameData, type BugId } from "../../src/core/data";
-import { apply, initRun, legalActions, type Action, type RunState } from "../../src/core/run";
+import { apply, legalActions, type Action, type RunState } from "../../src/core/run";
 
 const data = loadGameData();
 const FLOOR1: readonly BugId[] = ["off-by-one", "null-ref"];
@@ -13,7 +14,7 @@ const SEEDS = Array.from({ length: 200 }, (_, i) => `bugs-${i}`);
 
 /** r1 に入って、戦闘だけ指定の種類（候補は全5種）にした状態。 */
 function battleWith(bug: BugId, seed = "s", candidates: readonly BugId[] = BUG_IDS): RunState {
-  const s = apply(initRun(seed), { t: "move", room: "r1" });
+  const s = apply(initFixedRun(seed), { t: "move", room: "r1" });
   const battle = startBattle({ data, runSeed: seed, n: 0, roomId: "r1", bug, candidates });
   return { ...s, battle };
 }
