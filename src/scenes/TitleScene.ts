@@ -17,7 +17,7 @@ function createHelpPanel(): HTMLElement {
     {
       id: "help-overlay",
       style:
-        "position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:100;",
+        "position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:100;pointer-events:auto;",
       "data-scene": "help",
     },
     el(
@@ -136,7 +136,7 @@ export class TitleScene extends Phaser.Scene {
     const startBtn = button("新しいラン", () => {}, { primary: true });
     startBtn.type = "submit";
     startBtn.dataset.autofocus = "";
-    form.lastElementChild?.append(startBtn);
+    form.append(startBtn);
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       start();

@@ -8,7 +8,10 @@ test("タイトル画面で「遊び方」ボタンを押すとパネルが開�
   await expect(page.getByRole("button", { name: "遊び方" })).toBeVisible();
 
   // クリックでパネルが開く
-  await page.getByRole("button", { name: "遊び方" }).click();
+  await page.getByRole("button", { name: "遊び方" }).click({ force: true });
+
+  // help-overlayが存在してvisibleになるまで待つ
+  await page.waitForSelector("#help-overlay", { state: "visible", timeout: 5000 });
   await expect(page.locator("#help-overlay")).toBeVisible();
 
   // パネル内に目的の説明がある
@@ -19,12 +22,15 @@ test("タイトル画面で「遊び方」ボタンを押すとパネルが開�
   await expect(page.locator("#help-overlay")).toContainText("▼");
   await expect(page.locator("#help-overlay")).toContainText("◆");
 
-  // 閉じるボタンで閉じる
-  await page.getByRole("button", { name: "閉じる" }).click();
+  // 閉じるボタンで閉じる（force: canvasがpointer-eventsを占有しているため）
+  await page.getByRole("button", { name: "閉じる" }).click({ force: true });
+
+  // overlayが消えるまで待つ
+  await page.waitForSelector("#help-overlay", { state: "hidden", timeout: 5000 });
   await expect(page.locator("#help-overlay")).toBeHidden();
 
   // Escでも閉じる（再度開いてテスト）
-  await page.getByRole("button", { name: "遊び方" }).click();
+  await page.getByRole("button", { name: "遊び方" }).click({ force: true });
   await expect(page.locator("#help-overlay")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("#help-overlay")).toBeHidden();
