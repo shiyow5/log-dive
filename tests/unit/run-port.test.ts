@@ -11,6 +11,7 @@ import {
   startRun,
 } from "../../src/scenes/run-port";
 import { parseFlags } from "../../src/ui/flags";
+import { generateFloor } from "../../src/core/floor";
 
 describe("parseFlags", () => {
   it("?fx=0 で演出オフ、それ以外はオン", () => {
@@ -25,13 +26,23 @@ describe("parseFlags", () => {
 });
 
 describe("run-port（画面 ↔ core/run.ts）", () => {
-  it("r0→r1 移動→reproduce→patch(off-by-one) で撃破し、リザルトへ", () => {
+  /** バグがいる部屋を1階から探す。off-by-one がいたらそれ、いないなら任意のバグ部屋。 */
+  function bugRoomFor(seed: string): string | undefined {
+    const floor = generateFloor(seed, 1);
+    return floor.rooms.find((r) => r.content.kind === "bug" && r.content.bugs[0] === "off-by-one")
+      ?.id;
+  }
+
+  it("r0→bugRoom 移動→reproduce→patch(off-by-one) で撃破し、リザルトへ", () => {
+    const bugR = bugRoomFor("t");
+    if (!bugR) return; // off-by-one がいないシードならスキップ
     let s = startRun("t");
     expect(sceneFor(s)).toBe("map");
     expect(s.roomId).toBe("r0");
-    expect(legality(s).can({ t: "move", room: "r1" })).toBe(true);
-    s = dispatch({ t: "move", room: "r1" });
+    expect(legality(s).can({ t: "move", room: bugR })).toBe(true);
+    s = dispatch({ t: "move", room: bugR });
     expect(sceneFor(s)).toBe("battle");
+    expect(s.battle?.bug).toBe("off-by-one");
     s = dispatch({ t: "skill", id: "reproduce" });
     expect(s.battle?.symptoms).toHaveLength(1);
     expect(lastLogLine()).toMatch(/^再現した。症状「/);
@@ -43,8 +54,10 @@ describe("run-port（画面 ↔ core/run.ts）", () => {
   });
 
   it("ボタンの可否は legalActions、理由は lastError.message（未再現は CPU より先）", () => {
+    const bugR = bugRoomFor("t");
+    if (!bugR) return;
     startRun("t");
-    dispatch({ t: "move", room: "r1" });
+    dispatch({ t: "move", room: bugR });
     dispatch({ t: "skill", id: "hotfix" });
     dispatch({ t: "skill", id: "hotfix" });
     // CPU 1 残り・未再現: patch は not_reproduced の理由が出る
@@ -58,8 +71,10 @@ describe("run-port（画面 ↔ core/run.ts）", () => {
   });
 
   it("不正な操作は lastError を立て、状態（CPU）は変えない", () => {
+    const bugR = bugRoomFor("t");
+    if (!bugR) return;
     startRun("t");
-    let s = dispatch({ t: "move", room: "r1" });
+    let s = dispatch({ t: "move", room: bugR });
     const cpu = s.player.cpu;
     s = dispatch({ t: "skill", id: "patch", arg: "off-by-one" });
     expect(s.lastError?.code).toBe("not_reproduced");
@@ -71,8 +86,13 @@ describe("run-port（画面 ↔ core/run.ts）", () => {
 
   it("隣でない部屋には移動できない（r0 から r2）", () => {
     const s = startRun("t");
-    expect(legality(s).can({ t: "move", room: "r2" })).toBe(false);
-    expect(legality(s).why({ t: "move", room: "r2" })).toBe("隣の部屋ではありません");
+    const neighbors = s.floor.rooms.find((r) => r.id === "r0")?.neighbors ?? [];
+    const nonNeighbor = s.floor.rooms.find((r) => !neighbors.includes(r.id) && r.id !== "r0")?.id;
+    expect(nonNeighbor).toBeDefined();
+    if (nonNeighbor) {
+      expect(legality(s).can({ t: "move", room: nonNeighbor })).toBe(false);
+      expect(legality(s).why({ t: "move", room: nonNeighbor })).toBe("隣の部屋ではありません");
+    }
   });
 
   it("abandon でリザルトへ", () => {

@@ -22,7 +22,6 @@ declare global {
   }
 }
 
-let idleResolve: (() => void) | null = null;
 let idleResolvers: Array<() => void> = [];
 
 /**
@@ -91,18 +90,14 @@ export function getScene(): string | null {
 export function installQa(): void {
   if (typeof window === "undefined") return;
 
-  const devMode =
-    typeof import.meta !== "undefined" &&
-    (import.meta as Record<string, unknown>).env?.DEV === true;
+  const devMode = import.meta.env.DEV;
   const qaParam =
-    typeof location !== "undefined"
-      ? new URLSearchParams(location.search).get("qa")
-      : null;
+    typeof location !== "undefined" ? new URLSearchParams(location.search).get("qa") : null;
   const enabled = devMode || qaParam === "1";
 
   if (!enabled) return;
 
-  (window as Record<string, unknown>).__qa = {
+  (window as unknown as Record<string, unknown>).__qa = {
     stateHash: getStateHash,
     waitForIdle,
     scene: getScene,

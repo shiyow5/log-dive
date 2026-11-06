@@ -9,14 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
  * 縦切り判定（11/04 21:00, qa-plan-v3 §3-1）までに fixme を外す。
  */
 
-declare global {
-  interface Window {
-    __qa?: {
-      stateHash(): string;
-      waitForIdle(): Promise<void>;
-    };
-  }
-}
+import type { QaHooks } from "../src/ui/qa";
 
 const SEED = "qa-e2e-1";
 
@@ -93,7 +86,9 @@ test.fixme("同じ ?seed= で2回遊ぶと、同じ手順の後の stateHash が
     await sceneIs(page, "run");
     await page.keyboard.press("ArrowRight");
     await waitForIdle(page);
-    return page.evaluate(() => window.__qa!.stateHash());
+    const h = await page.evaluate(() => window.__qa!.stateHash());
+    if (h === null) throw new Error("stateHash returned null after move");
+    return h;
   };
   expect(await play()).toBe(await play());
 });
