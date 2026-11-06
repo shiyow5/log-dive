@@ -9,7 +9,7 @@
  */
 import { bugTurn, isRunError, startBattle, useSkill } from "./battle";
 import { bossDef, loadGameData, type BugId, type GameData, type SkillId } from "./data";
-import { START_ROOM, candidatesForFloor, floorCount, generateFloor } from "./floor";
+import { START_ROOM, candidatesForFloor, fixedFloor, floorCount, generateFloor, loadFloors } from "./floor";
 import type { Reducer } from "./replay";
 import { seedFrom, type RngState } from "./rng";
 
@@ -64,6 +64,8 @@ export interface FloorState {
   /** 1 始まり。 */
   readonly number: number;
   readonly rooms: readonly RoomState[];
+  /** boss 階か（最終階）。 */
+  readonly boss: boolean;
 }
 
 /** バグの次の行動の予告（画面に出す）。 */
@@ -147,16 +149,20 @@ export type RunEvent =
   /** 階段で次の階へ降りた（floor は新しい階の番号）。 */
   | { readonly t: "descended"; readonly floor: number }
   /** 宝箱からスキルを受け取った。 */
-  | { readonly t: "looted"; readonly skill: SkillId }
-  | { readonly t: "playerDamaged"; readonly amount: number }
-  | { readonly t: "runEnd"; readonly phase: "won" | "lost" | "abandoned" };
+  | { readonly t: "loot"; readonly skill: SkillId }
+  | { readonly t: "runEnd"; readonly phase: "won" | "lost" | "abandoned" }
+  /** 階段を降りて次の階へ。 */
+  | { readonly t: "nextFloor"; readonly floor: number }
+  /** プレイヤーがバグの行動でダメージを受けた。 */
+  | { readonly t: "playerDamaged"; readonly amount: number };
 
 export interface RunState {
   /** ルール＋data のバージョン（Replay.version と同じ値）。 */
   readonly version: number;
   readonly seed: string;
   readonly phase: RunPhase;
-  readonly floor: FloorState;
+  readonly floors: readonly FloorState[];
+  readonly currentFloor: number;
   readonly roomId: string;
   readonly player: PlayerState;
   /** 戦闘中だけ入る。 */
@@ -184,15 +190,33 @@ export const RULES_VERSION = 4;
 /** デグレで次の階に増えるバグの上限（v0.2 決定2）。 */
 export const MAX_REINFORCEMENTS = 2;
 
+export interface InitRunOptions {
+  /** floorCount=1 で固定階（縦切り用）。>1 の時は multi-floor。 */
+  readonly floorCount?: number;
+}
+
 /** 新しいランを始める。 */
-export function initRun(seed: string, data: GameData = loadGameData()): RunState {
+export function initRun(seed: string, data: GameData = loadGameData(), opts: InitRunOptions = {}): RunState {
   const starters = data.skills.skills.filter((s) => s.starter).map((s) => s.id);
+  const floorCount = opts.floorCount ?? 1;
+  let floors: FloorState[];
+  if (floorCount === 1) {
+    // 縦切り用：固定の3部屋一本道
+    floors = [fixedFloor()];
+  } else {
+    const floorsData = loadFloors();
+    floors = [];
+    for (let i = 1; i <= Math.min(floorCount, floorsData.floors.length); i++) {
+      floors.push(generateFloor(seed, i, { floors: floorsData, reinforcements: 0 }));
+    }
+  }
   return {
     version: RULES_VERSION,
     seed,
     phase: "map",
-    floor: generateFloor(seed, 1),
-    roomId: START_ROOM,
+    floors,
+    currentFloor: 1,
+    roomId: floorCount === 1 ? "r0" : START_ROOM,
     player: {
       hp: data.player.hp,
       maxHp: data.player.hp,
@@ -219,9 +243,16 @@ function updateRoom(floor: FloorState, id: string, f: (r: RoomState) => RoomStat
   return { ...floor, rooms: floor.rooms.map((r) => (r.id === id ? f(r) : r)) };
 }
 
-/** その階のバグが全部閉じていて、階段で次の階へ進めるか（画面の表示用）。 */
-export function stairsOpen(state: RunState): boolean {
-  return state.floor.number < floorCount() && !hasBugsLeft(state.floor);
+/** 現在の階を取得。 */
+export function currentFloor(state: RunState): FloorState {
+  return state.floors[state.currentFloor - 1]!;
+}
+
+/** 現在の階を更新して floors 配列を差し替える。 */
+function withFloor(state: RunState, updater: (f: FloorState) => FloorState): RunState {
+  const idx = state.currentFloor - 1;
+  const floor = state.floors[idx]!;
+  return { ...state, floors: [...state.floors.slice(0, idx), updater(floor), ...state.floors.slice(idx + 1)] as readonly FloorState[] };
 }
 
 function hasBugsLeft(floor: FloorState): boolean {
@@ -230,7 +261,8 @@ function hasBugsLeft(floor: FloorState): boolean {
 
 /** 部屋に残っている先頭のバグと戦闘を始める（いなければ map のまま）。 */
 function enterRoom(state: RunState, data: GameData, events: RunEvent[]): RunState {
-  const room = state.floor.rooms.find((r) => r.id === state.roomId);
+  const floor = currentFloor(state);
+  const room = floor.rooms.find((r) => r.id === state.roomId);
   if (!room || room.content.kind !== "bug") return state;
   const bug = room.content.bugs[0];
   if (bug === undefined) return state;
@@ -240,7 +272,7 @@ function enterRoom(state: RunState, data: GameData, events: RunEvent[]): RunStat
     n: state.battleCount,
     roomId: room.id,
     bug,
-    candidates: candidatesForFloor(state.floor.number),
+    candidates: candidatesForFloor(floor.number),
     boss: room.content.boss === true,
     bossHpBonus: state.reinforcements,
   });
@@ -256,22 +288,24 @@ function enterRoom(state: RunState, data: GameData, events: RunEvent[]): RunStat
 
 function applyMove(state: RunState, data: GameData, room: string): RunState {
   if (state.phase === "battle") return fail(state, "in_battle", "戦闘中は移動できません");
-  const target = state.floor.rooms.find((r) => r.id === room);
+  const floor = currentFloor(state);
+  const target = floor.rooms.find((r) => r.id === room);
   if (!target) return fail(state, "unknown_room", "その部屋はありません");
-  const here = state.floor.rooms.find((r) => r.id === state.roomId);
+  const here = floor.rooms.find((r) => r.id === state.roomId);
   if (!here?.neighbors.includes(room)) return fail(state, "not_adjacent", "隣の部屋ではありません");
 
   const events: RunEvent[] = [{ t: "moved", room }];
   const moved: RunState = {
-    ...state,
+    ...withFloor(state, (f) =>
+      updateRoom(f, room, (r) => ({ ...r, visited: true })),
+    ),
     roomId: room,
-    floor: updateRoom(state.floor, room, (r) => ({ ...r, visited: true })),
   };
-  if (target.content.kind === "stairs" && !hasBugsLeft(state.floor)) {
+  if (target.content.kind === "stairs" && !hasBugsLeft(currentFloor(state))) {
     return {
-      ...descend(moved),
+      ...descend(moved, data),
       lastError: null,
-      events: [...events, { t: "descended", floor: state.floor.number + 1 }],
+      events: [...events, { t: "descended", floor: currentFloor(state).number + 1 }],
     };
   }
   const next = enterRoom(moved, data, events);
@@ -279,32 +313,19 @@ function applyMove(state: RunState, data: GameData, room: string): RunState {
 }
 
 /** 次の階へ。増援はこの階のデグレ数で、使ったら 0 に戻す。 */
-function descend(state: RunState): RunState {
-  const n = state.floor.number + 1;
+function descend(state: RunState, data: GameData): RunState {
+  const n = currentFloor(state).number + 1;
+  const floors = n <= floorCount()
+    ? [...state.floors, generateFloor(state.seed, n, { reinforcements: state.reinforcements, boss: n === floorCount() })]
+    : state.floors;
   return {
     ...state,
-    floor: generateFloor(state.seed, n, { reinforcements: state.reinforcements }),
+    currentFloor: n,
+    floors,
     roomId: START_ROOM,
     floorRng: seedFrom(`floor:${state.seed}:${n}`),
     reinforcements: 0,
-  };
-}
-
-function applyLoot(state: RunState, pick: SkillId): RunState {
-  if (state.phase === "battle") return fail(state, "in_battle", "戦闘中は宝箱を開けられません");
-  const here = state.floor.rooms.find((r) => r.id === state.roomId);
-  if (here?.content.kind !== "chest" || here.content.skill !== pick) {
-    return fail(state, "no_loot", "ここに宝箱はありません");
-  }
-  if (state.player.skills.includes(pick)) {
-    return fail(state, "already_owned", "そのスキルはもう持っています");
-  }
-  return {
-    ...state,
-    player: { ...state.player, skills: [...state.player.skills, pick] },
-    floor: updateRoom(state.floor, here.id, (r) => ({ ...r, content: { kind: "empty" } })),
-    lastError: null,
-    events: [{ t: "looted", skill: pick }],
+    battle: null,
   };
 }
 
@@ -316,25 +337,40 @@ function closeBug(
   events: RunEvent[],
 ): RunState {
   events.push({ t: "bugClosed", bug: battle.bug });
-  const floor = updateRoom(state.floor, battle.roomId, (r) => {
-    if (r.content.kind !== "bug") return r;
-    const bugs = r.content.bugs.slice(1);
-    return { ...r, content: bugs.length > 0 ? { ...r.content, bugs } : { kind: "empty" } };
-  });
-  const closed: RunState = {
-    ...state,
-    phase: "map",
-    battle: null,
-    floor,
-    stats: { ...state.stats, bugsClosed: state.stats.bugsClosed + 1 },
-  };
-  if (battle.boss) {
+  const closed: RunState = withFloor(state, (floor) =>
+    updateRoom(floor, battle.roomId, (r) => {
+      if (r.content.kind !== "bug") return r;
+      const bugs = r.content.bugs.slice(1);
+      return { ...r, content: bugs.length > 0 ? { ...r.content, bugs } : { kind: "empty" } };
+    }),
+  );
+  const stats = { ...closed.stats, bugsClosed: closed.stats.bugsClosed + 1 };
+  const curFloor = currentFloor(closed);
+  if (!hasBugsLeft(curFloor)) {
+    // この階のバグが全滅。最終階（boss）ならクリア、否则次の階へ
+    if (curFloor.boss) {
+      events.push({ t: "runEnd", phase: "won" });
+      return { ...closed, phase: "won", stats, battle: null };
+    }
+    // 階段部屋が空なら次の階へ（stage 3 遷移）
+    const farRoom = curFloor.rooms[curFloor.rooms.length - 1];
+    if (farRoom?.content.kind === "empty" || farRoom?.content.kind === "stairs") {
+      const nextNum = closed.currentFloor + 1;
+      if (nextNum <= closed.floors.length) {
+        return {
+          ...closed,
+          currentFloor: nextNum,
+          phase: "map",
+          battle: null,
+          roomId: START_ROOM,
+          player: { ...closed.player, cpu: closed.player.cpuMax },
+          events: [...events, { t: "nextFloor", floor: nextNum }],
+        };
+      }
+    }
+    // 最終階のボスを倒した
     events.push({ t: "runEnd", phase: "won" });
-    return { ...closed, phase: "won" };
-  }
-  if (!hasBugsLeft(floor) && state.floor.number < floorCount()) {
-    events.push({ t: "stairsOpened" });
-    return closed;
+    return { ...closed, phase: "won", stats, battle: null };
   }
   return enterRoom(closed, data, events);
 }
@@ -412,8 +448,20 @@ export function apply(state: RunState, action: Action, data: GameData = loadGame
       return applySkill(state, data, action.id, action.arg);
     case "endTurn":
       return applyEndTurn(state, data);
-    case "loot":
-      return applyLoot(state, action.pick);
+    case "loot": {
+      const room = currentFloor(state).rooms.find((r) => r.id === state.roomId);
+      if (!room || room.content.kind !== "chest") {
+        return fail(state, "no_loot", "ここに宝箱はありません");
+      }
+      const skill = (room.content as Extract<RoomContent, { kind: "chest" }>).skill;
+      if (state.player.skills.includes(skill)) {
+        return fail(state, "already_owned", "すでに持っています");
+      }
+      const events: RunEvent[] = [{ t: "loot", skill }];
+      const player = { ...state.player, skills: [...state.player.skills, skill] };
+      const updated = withFloor(state, (f) => updateRoom(f, room.id, (r) => ({ ...r, content: { kind: "empty" } })));
+      return { ...updated, player, lastError: null, events };
+    }
     case "abandon":
       return {
         ...state,
@@ -429,7 +477,7 @@ export function legalActions(state: RunState, data: GameData = loadGameData()): 
   if (isOver(state.phase)) return [];
   const all: Action[] = [{ t: "abandon" }];
   if (state.phase === "map") {
-    const here = state.floor.rooms.find((r) => r.id === state.roomId);
+    const here = currentFloor(state).rooms.find((r) => r.id === state.roomId);
     for (const room of here?.neighbors ?? []) all.push({ t: "move", room });
     if (here?.content.kind === "chest") all.push({ t: "loot", pick: here.content.skill });
   }
@@ -441,6 +489,15 @@ export function legalActions(state: RunState, data: GameData = loadGameData()): 
       } else {
         all.push({ t: "skill", id });
       }
+    }
+  }
+  if (state.phase === "map") {
+    const chestRoom = currentFloor(state).rooms.find(
+      (r) => r.id === state.roomId && r.content.kind === "chest",
+    );
+    const chest = chestRoom?.content.kind === "chest" ? chestRoom.content : null;
+    if (chest) {
+      all.push({ t: "loot", pick: chest.skill });
     }
   }
   return all.filter((a) => apply(state, a, data).lastError === null);

@@ -62,7 +62,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   private drawMap(s: RunState): void {
-    const rooms = s.floor.rooms;
+    const rooms = s.floors[s.currentFloor - 1]!.rooms;
     const here = rooms.find((r) => r.id === s.roomId);
     const visible = rooms.filter((r) => r.visited || (here?.neighbors.includes(r.id) ?? false));
     const g = this.add.graphics();
@@ -102,9 +102,9 @@ export class MapScene extends Phaser.Scene {
   }
 
   private renderHud(s: RunState): void {
-    const here = s.floor.rooms.find((r) => r.id === s.roomId);
+    const here = s.floors[s.currentFloor - 1]!.rooms.find((r) => r.id === s.roomId);
     const neighbors = (here?.neighbors ?? [])
-      .map((id) => s.floor.rooms.find((r) => r.id === id))
+      .map((id) => s.floors[s.currentFloor - 1]!.rooms.find((r) => r.id === id))
       .filter((r): r is RoomState => r !== undefined);
     const legal = legality(s);
     const panel = el(

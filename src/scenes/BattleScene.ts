@@ -88,7 +88,7 @@ export class BattleScene extends Phaser.Scene {
   private renderHud(s: RunState): void {
     const b = s.battle;
     if (!b) return;
-    const here = s.floor.rooms.find((r) => r.id === s.roomId);
+    const here = s.floors[s.currentFloor - 1]!.rooms.find((r) => r.id === s.roomId);
     const legal = legality(s);
     /** 押せないボタンの理由（core の lastError.message）。ボタンから aria-describedby で指す。 */
     const reasons: HTMLElement[] = [];

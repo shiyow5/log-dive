@@ -9,7 +9,6 @@ import {
   RULES_VERSION,
   apply,
   initRun,
-  stairsOpen,
   legalActions,
   runReducer,
   type Action,
@@ -49,8 +48,8 @@ describe("run: 初期状態", () => {
     expect(s.roomId).toBe("r0");
     expect(s.player).toMatchObject({ hp: 30, maxHp: 30, cpu: 3, cpuMax: 3 });
     expect([...s.player.skills].sort()).toEqual(["hotfix", "patch", "read-log", "reproduce"]);
-    expect(s.floor).toEqual(generateFloor("s", 1));
-    expect(s.floor.number).toBe(1);
+    expect(s.floors[s.currentFloor - 1]!.rooms.length).toBeGreaterThanOrEqual(2);
+    expect(s.floors[s.currentFloor - 1]!.rooms.length).toBeLessThanOrEqual(3);
   });
 });
 
@@ -96,17 +95,16 @@ describe("run: 1部屋移動 → off-by-one を倒せる（固定の階・固定
     expect(ended.player.hp).toBe(26);
     expect(ended.player.cpu).toBe(3);
 
-    expect(patched.phase).toBe("map");
-    expect(stairsOpen(patched)).toBe(true);
+    expect(patched.phase).toBe("won");
     expect(patched.battle).toBeNull();
     expect(patched.stats).toEqual({ bugsClosed: 1, turns: 1, degrades: 0 });
-    expect(patched.floor.rooms.find((r) => r.id === "r1")!.content).toEqual({ kind: "empty" });
-    expect(patched.events.map((e) => e.t)).toEqual(["bugDamaged", "bugClosed", "stairsOpened"]);
+    expect(patched.floors[patched.currentFloor - 1]!.rooms.find((r) => r.id === "r1")!.content).toEqual({ kind: "empty" });
+    expect(patched.events.map((e) => e.t)).toEqual(["bugDamaged", "bugClosed", "runEnd"]);
   });
 
   it("同じシード＋同じ入力なら最後の状態が一致する（runReplay と同じ）", () => {
     const real = initRun(SEED);
-    const r1 = real.floor.rooms.find((r) => r.id === "r1")!;
+    const r1 = real.floors[real.currentFloor - 1]!.rooms.find((r) => r.id === "r1")!;
     const input: Action[] = [{ t: "move", room: r1.id }, { t: "endTurn" }, { t: "endTurn" }];
     const a = input.reduce((s, x) => apply(s, x), real);
     const b = runReplay(runReducer, {

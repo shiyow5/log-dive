@@ -97,7 +97,7 @@ export function legality(s: RunState): Legality {
 
 /** RunEvent をログ用の日本語1行にする（読み上げにも流す）。 */
 export function describeEvents(s: RunState, events: readonly RunEvent[]): string | null {
-  const roomLabel = (id: string) => s.floor.rooms.find((r) => r.id === id)?.label ?? id;
+  const roomLabel = (id: string) => s.floors[s.currentFloor - 1]!.rooms.find((r) => r.id === id)?.label ?? id;
   const parts = events.map((e): string => {
     switch (e.t) {
       case "moved":
@@ -122,7 +122,7 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
         return "この階のバグを全部閉じた。階段が開いた";
       case "descended":
         return `階段を降りた（${e.floor}階）`;
-      case "looted":
+      case "loot":
         return `宝箱から「${skillInfo(e.skill).name}」を手に入れた`;
       case "playerDamaged":
         return `バグの攻撃で稼働率 -${e.amount}`;
@@ -132,6 +132,8 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
           : e.phase === "lost"
             ? "ダウンした"
             : "ランを放棄した";
+      case "nextFloor":
+        return e.floor + "階へ降りる";
     }
   });
   return parts.length ? parts.join("。") : null;

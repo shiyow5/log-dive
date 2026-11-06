@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 import { initFixedRun } from "./fixed-run";
 import { startBattle } from "../../src/core/battle";
 import { BUG_IDS, bugDef, loadGameData, type BugId } from "../../src/core/data";
-import { apply, legalActions, type RunState } from "../../src/core/run";
+import { apply, initRun, legalActions, RULES_VERSION, type FloorState, type RunState } from "../../src/core/run";
+import { seedFrom } from "../../src/core/rng";
 
 const data = loadGameData();
 const SEEDS = Array.from({ length: 300 }, (_, i) => `sk28-${i}`);
@@ -18,10 +19,33 @@ function battleWith(
   candidates: readonly BugId[] = BUG_IDS,
   cpu = 99,
 ): RunState {
-  const s = apply(initFixedRun(seed), { t: "move", room: "r1" });
   const battle = startBattle({ data, runSeed: seed, n: 0, roomId: "r1", bug, candidates });
   const skills = data.skills.skills.map((x) => x.id);
-  return { ...s, battle, player: { ...s.player, skills, cpu, cpuMax: Math.min(cpu, 3) } };
+  const floor: FloorState = {
+    number: 1,
+    boss: false,
+    rooms: [
+      { id: "r0", label: "main()", x: 0, y: 0, neighbors: ["r1"], visited: true, content: { kind: "empty" } },
+      { id: "r1", label: "parse()", x: 1, y: 0, neighbors: ["r0", "r2"], visited: true, content: { kind: "bug", bugs: [bug] } },
+      { id: "r2", label: "render()", x: 2, y: 0, neighbors: ["r1"], visited: false, content: { kind: "empty" } },
+    ],
+  };
+  return {
+    version: RULES_VERSION,
+    seed,
+    phase: "battle",
+    floors: [floor],
+    currentFloor: 1,
+    roomId: "r1",
+    player: { hp: 30, maxHp: 30, cpu, cpuMax: Math.min(cpu, 3), skills },
+    battle,
+    floorRng: seedFrom(`floor:${seed}:1`),
+    battleCount: 1,
+    reinforcements: 0,
+    stats: { bugsClosed: 0, turns: 0, degrades: 0 },
+    lastError: null,
+    events: [],
+  };
 }
 
 describe("bisect: 候補を半分（切り捨て）消す。2以下なら1つ", () => {

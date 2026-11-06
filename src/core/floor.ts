@@ -142,6 +142,8 @@ export interface GenerateFloorOptions {
   /** デグレで増えたバグ（v0.2 決定2: 空き部屋へ。空きが無ければ同じ部屋に複数体）。 */
   readonly reinforcements?: number;
   readonly floors?: FloorsData;
+  /** ボス階か（ボスバグを配置）。 */
+  readonly boss?: boolean;
 }
 
 const DIRS: readonly (readonly [number, number])[] = [
@@ -232,6 +234,7 @@ export function generateFloor(
 
   const shape: FloorState = {
     number: n,
+    boss: def.boss,
     rooms: cells.map((c, i): RoomState => ({
       id: `r${i}`,
       label: i === 0 ? floors.startLabel : (labels[i - 1] as string),
@@ -280,6 +283,7 @@ export function generateFloor(
 
   return {
     ...shape,
+    boss: def.boss,
     rooms: shape.rooms.map((r) => ({ ...r, content: contents.get(r.id) ?? r.content })),
   };
 }
@@ -293,6 +297,7 @@ export function generateFloor(
 export function fixedFloor(): FloorState {
   return {
     number: 1,
+    boss: false,
     rooms: [
       {
         id: "r0",
