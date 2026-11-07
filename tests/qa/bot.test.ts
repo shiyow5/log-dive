@@ -10,6 +10,7 @@ import {
   type BotGame,
 } from "./bot";
 import { toyIsTerminal, toyLegalActions, toyReducer, type ToyAction, type ToyState } from "./toy";
+import { runReducer, legalActions, type Action, type RunState } from "../../src/core/run";
 
 const hpNonNegative = (s: ToyState): string | null =>
   s.hp >= 0 && s.bugHp >= 0 ? null : `HP がマイナス: hp=${s.hp} bugHp=${s.bugHp}`;
@@ -168,6 +169,41 @@ describe("BOT 足場（おもちゃ reducer）", () => {
 });
 
 describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
-  it.todo("縦切り（1部屋）: 200 seed で例外0・上限ターンで必ず終わる・HP>=0");
-  it.todo("不変条件を足す: CPU が 0 未満にならない / 不正な手で state が変わらない（LD-04）");
+  it("縦切り（1部屋）: 200 seed で例外0・上限ターンで必ず終わる・HP>=0", () => {
+    const hpNonNegative = (s: RunState): string | null =>
+      s.player.hp >= 0 ? null : `HP がマイナス: ${s.player.hp}`;
+    const cpuNonNegative = (s: RunState): string | null =>
+      s.player.cpu >= 0 ? null : `CPU がマイナス: ${s.player.cpu}`;
+    const runGame: BotGame<RunState, Action> = {
+      name: "log-dive",
+      version: 4,
+      reducer: runReducer,
+      legalActions: (state) => legalActions(state),
+      isTerminal: (state) => state.phase === "won" || state.phase === "lost" || state.phase === "abandoned",
+      invariants: [hpNonNegative, cpuNonNegative],
+    };
+    const res = runBotSeeds(runGame, { count: botSeedCount(), maxTurns: 1000 });
+    expect(res.failures, formatBotFailures(res.failures)).toEqual([]);
+    expect(res.runs).toBe(botSeedCount());
+    expect(res.maxTurnsSeen).toBeGreaterThan(0);
+  });
+
+  it("不変条件を足す: CPU が 0 未満にならない（LD-04 未完成）", () => {
+    const cpuNonNegative = (s: RunState): string | null =>
+      s.player.cpu >= 0 ? null : `CPU がマイナス: ${s.player.cpu}`;
+    // NOTE: "不正な手で state が変わらない" invariant は未実装。
+    // lastError が立ってる手を replay して state が変わらないことを確認する予定。
+    const runGame: BotGame<RunState, Action> = {
+      name: "log-dive",
+      version: 4,
+      reducer: runReducer,
+      legalActions: (state) => legalActions(state),
+      isTerminal: (state) => state.phase === "won" || state.phase === "lost" || state.phase === "abandoned",
+      invariants: [cpuNonNegative],
+    };
+    const res = runBotSeeds(runGame, { count: 200, maxTurns: 1000 });
+    expect(res.failures, formatBotFailures(res.failures)).toEqual([]);
+    expect(res.runs).toBe(200);
+    expect(res.maxTurnsSeen).toBeGreaterThan(0);
+  });
 });
