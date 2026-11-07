@@ -179,7 +179,8 @@ describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
       version: 4,
       reducer: runReducer,
       legalActions: (state) => legalActions(state),
-      isTerminal: (state) => state.phase === "won" || state.phase === "lost" || state.phase === "abandoned",
+      isTerminal: (state) =>
+        state.phase === "won" || state.phase === "lost" || state.phase === "abandoned",
       invariants: [hpNonNegative, cpuNonNegative],
     };
     const res = runBotSeeds(runGame, { count: botSeedCount(), maxTurns: 1000 });
@@ -198,7 +199,8 @@ describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
       version: 4,
       reducer: runReducer,
       legalActions: (state) => legalActions(state),
-      isTerminal: (state) => state.phase === "won" || state.phase === "lost" || state.phase === "abandoned",
+      isTerminal: (state) =>
+        state.phase === "won" || state.phase === "lost" || state.phase === "abandoned",
       invariants: [cpuNonNegative],
     };
     const res = runBotSeeds(runGame, { count: 200, maxTurns: 1000 });
