@@ -188,16 +188,11 @@ describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
     expect(res.maxTurnsSeen).toBeGreaterThan(0);
   });
 
-  it("不変条件を足す: CPU が 0 未満にならない / 不正な手で state が変わらない（LD-04）", () => {
+  it("不変条件を足す: CPU が 0 未満にならない（LD-04 未完成）", () => {
     const cpuNonNegative = (s: RunState): string | null =>
       s.player.cpu >= 0 ? null : `CPU がマイナス: ${s.player.cpu}`;
-    const stateUnchangedOnIllegal = (s: RunState): string | null => {
-      if (s.lastError === null) return null;
-      // lastError が立っている == 不正な手。state が変わらないことを確認
-      const all = legalActions(s);
-      // 不正な手は legalActions の結果に含まれないので、legalActions にある手だけで apply して state が変わらないか確認
-      return null;
-    };
+    // NOTE: "不正な手で state が変わらない" invariant は未実装。
+    // lastError が立ってる手を replay して state が変わらないことを確認する予定。
     const runGame: BotGame<RunState, Action> = {
       name: "log-dive",
       version: 4,
