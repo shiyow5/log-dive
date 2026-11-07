@@ -127,15 +127,19 @@ Room interiors use a centered play area with UI panels overlaying at edges. No m
 ## Components
 
 ### Buttons
+
 Primary buttons use the tertiary red with on-tertiary dark text. Secondary (cancel/back) buttons use outlined style with secondary gray.
 
 ### Panels
+
 Main UI panels have a dark navy background (#0D0D1A) with a subtle 1px border (#2A2A4A). Interior padding is 16px.
 
 ### Tiles
+
 Individual room/area tiles use a slightly lighter background (#13132B) with the same border color.
 
 ### HUD Elements
+
 - Health bar: 8px high, mint fill (#95E1D3) on dark gray track
 - Damage numbers: oversized tertiary red text at 1.75rem
 - Floor indicator: secondary gray label-caps
