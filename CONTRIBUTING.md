@@ -31,6 +31,11 @@
 - Secrets・`.env` は絶対にコミットしない（`.gitignore` 済み。例は `.env.example` のみ）
 - 画像・音などの素材は `CREDITS.md` に1件ずつ記録する
 
+## レビュースタンダード
+
+DRY/SOLID原則を基本としたレビューを行います。PR作成時は `.github/PULL_REQUEST_TEMPLATE.md` のチェックリストに✓をつけてください。
+詳細なレビュー基準は `common_knowledge/game-planning/review-criteria.md` を参照してください。
+
 ## コミットメッセージ
 
 `feat:` / `fix:` / `refactor:` / `docs:` / `test:` / `chore:` で始める
