@@ -10,7 +10,7 @@ import {
   type BotGame,
 } from "./bot";
 import { toyIsTerminal, toyLegalActions, toyReducer, type ToyAction, type ToyState } from "./toy";
-import { runReducer, legalActions, type Action, type RunState } from "../../src/core/run";
+import { initRun, runReducer, legalActions, type Action, type RunState } from "../../src/core/run";
 
 const hpNonNegative = (s: ToyState): string | null =>
   s.hp >= 0 && s.bugHp >= 0 ? null : `HP がマイナス: hp=${s.hp} bugHp=${s.bugHp}`;
@@ -192,8 +192,6 @@ describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
   it("不変条件を足す: CPU が 0 未満にならない（LD-04 未完成）", () => {
     const cpuNonNegative = (s: RunState): string | null =>
       s.player.cpu >= 0 ? null : `CPU がマイナス: ${s.player.cpu}`;
-    // NOTE: "不正な手で state が変わらない" invariant は未実装。
-    // lastError が立ってる手を replay して state が変わらないことを確認する予定。
     const runGame: BotGame<RunState, Action> = {
       name: "log-dive",
       version: 4,
@@ -207,5 +205,33 @@ describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
     expect(res.failures, formatBotFailures(res.failures)).toEqual([]);
     expect(res.runs).toBe(200);
     expect(res.maxTurnsSeen).toBeGreaterThan(0);
+  });
+
+  it("不正な手で state が変わらない（LD-04）", () => {
+    // 複数のシードで初期stateを作り、不正手を食らわせた際にstateが変わらないことを確認する
+    for (const seed of ["ld-legal-x", "ld-legal-y", "ld-legal-z"]) {
+      const initState = initRun(seed);
+
+      // 存在しない部屋IDへの移動（不正手）
+      const illegalMove: Action = { t: "move", room: "nonexistent-room" };
+      const afterIllegalMove = runReducer.apply(initState, illegalMove);
+      expect(afterIllegalMove.lastError).not.toBeNull();
+      // stateが変わらないことを確認（lastError・events以外は同一）
+      const { lastError: _, events: __, ...restAfterIllegal } = afterIllegalMove;
+      // initStateと同じ（不正手なので状態は変化しない）
+      const { lastError: ___, events: ____, ...restInit } = initState;
+      expect(restAfterIllegal).toEqual(restInit);
+
+      // 終局状態での操作（abandonで終了させた後）
+      const abandoned: Action = { t: "abandon" };
+      const afterAbandon = runReducer.apply(initState, abandoned);
+      expect(afterAbandon.phase).toBe("abandoned");
+      const illegalAfterEnd: Action = { t: "move", room: initState.floor.rooms[0]?.id ?? "x" };
+      const afterIllegalEnd = runReducer.apply(afterAbandon, illegalAfterEnd);
+      expect(afterIllegalEnd.lastError).not.toBeNull();
+      const { lastError: __a, events: __b, ...restAfterIllegalEnd } = afterIllegalEnd;
+      const { lastError: __c, events: __d, ...restAfterAbandon } = afterAbandon;
+      expect(restAfterIllegalEnd).toEqual(restAfterAbandon);
+    }
   });
 });

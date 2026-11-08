@@ -131,21 +131,11 @@ describe("golden 足場そのもの（おもちゃ reducer）", () => {
 });
 
 describe("LD-01 本物のゴールデン（Log Dive の reducer 待ち）", () => {
-  it("縦切り: 1部屋移動 → バグ1種と戦闘 → 終了 のリプレイ（qa-plan-v3 §3-1）", () => {
-    // 縦切りリプレイのフィクスチャが作成され次第、reducer "log-dive" の fixture を tests/fixtures/replays/ に追加
-    // 現時点ではフィクスチャ未作成のため、REDUCERS登録と足場の確認のみ
-    expect(REDUCERS["log-dive"]).toBeDefined();
-  });
+  it.todo("縦切り: 1部屋移動 → バグ1種と戦闘 → 終了 のリプレイ（qa-plan-v3 §3-1）");
 
-  it("最小版: クリアのリプレイ", () => {
-    expect(REDUCERS["log-dive"]).toBeDefined();
-  });
+  it.todo("最小版: クリアのリプレイ");
 
-  it("最小版: 死亡（HP 0）のリプレイ", () => {
-    expect(REDUCERS["log-dive"]).toBeDefined();
-  });
+  it.todo("最小版: 死亡（HP 0）のリプレイ");
 
-  it("最小版: 途中セーブ→ロード→続き が通しと同じ stateHash（LD-02）", () => {
-    expect(REDUCERS["log-dive"]).toBeDefined();
-  });
+  it.todo("最小版: 途中セーブ→ロード→続き が通しと同じ stateHash（LD-02）");
 });
