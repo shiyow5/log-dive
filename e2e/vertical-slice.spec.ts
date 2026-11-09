@@ -12,8 +12,7 @@ declare global {
  *
  * 待ちは sleep ではなくテスト用フック（Issue #9 の提案）で行う:
  *   window.__qa.waitForIdle() / window.__qa.stateHash() / data-scene=title|run|battle|result
- * フックとシーンが入るまでは test.fixme。名前・形はゲーム側（kirara・shingo）の PR に QA が合わせる。
- * 縦切り判定（11/04 21:00, qa-plan-v3 §3-1）までに fixme を外す。
+ * フックとシーンが実装されたので fixme を外した。名前・形はゲーム側の PR に合わせる。
  */
 
 const SEED = "qa-e2e-1";
@@ -47,7 +46,7 @@ test("?seed= と ?fx=0 を付けても起動し、コンソールエラーが無
   expect(errors).toEqual([]);
 });
 
-test.fixme("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終了（コンソールエラー0）", async ({
+test("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終了（コンソールエラー0）", async ({
   page,
 }) => {
   const errors = collectErrors(page);
@@ -81,7 +80,7 @@ test.fixme("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終�
   expect(errors).toEqual([]);
 });
 
-test.fixme("同じ ?seed= で2回遊ぶと、同じ手順の後の stateHash が一致する（LD-01 ブラウザ版）", async ({
+test("同じ ?seed= で2回遊ぶと、同じ手順の後の stateHash が一致する（LD-01 ブラウザ版）", async ({
   page,
 }) => {
   const play = async (): Promise<string> => {
