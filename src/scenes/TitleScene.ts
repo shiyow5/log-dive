@@ -116,7 +116,7 @@ export class TitleScene extends Phaser.Scene {
     fadeIn(this);
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, TITLE, {
-        fontFamily: "monospace",
+        fontFamily: '"DotGothic16", monospace',
         fontSize: "16px",
         color: "#7ebeab",
       })

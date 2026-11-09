@@ -115,7 +115,7 @@ export class MapScene extends Phaser.Scene {
       if (sym) {
         this.add
           .text(x, y - ROOM / 2 - 2, sym, {
-            fontFamily: "monospace",
+            fontFamily: '"DotGothic16", monospace',
             fontSize: "10px",
             color: symbolColor(r),
           })
@@ -126,7 +126,7 @@ export class MapScene extends Phaser.Scene {
       if (nameText !== null) {
         this.add
           .text(x, y + ROOM / 2 + 2, nameText, {
-            fontFamily: "monospace",
+            fontFamily: '"DotGothic16", monospace',
             fontSize: "8px",
             color: r.visited ? COLOR.text : COLOR.weak,
           })
@@ -135,14 +135,18 @@ export class MapScene extends Phaser.Scene {
       // 部屋ID（移動ボタンとの対応用、右上に小さく）
       this.add
         .text(x + ROOM / 2 - 2, y - ROOM / 2 + 2, r.id, {
-          fontFamily: "monospace",
+          fontFamily: '"DotGothic16", monospace',
           fontSize: "8px",
           color: COLOR.weak,
         })
         .setOrigin(1, 0);
       if (isHere) {
         this.add
-          .text(x, y, "@", { fontFamily: "monospace", fontSize: "12px", color: "#0f1a1c" })
+          .text(x, y, "@", {
+            fontFamily: '"DotGothic16", monospace',
+            fontSize: "12px",
+            color: "#0f1a1c",
+          })
           .setOrigin(0.5);
       }
     }
