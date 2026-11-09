@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { GAME_HEIGHT, GAME_WIDTH } from "../config";
+import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
 import { loadGameData } from "../core/data";
 import { flags } from "../ui/flags";
 import { button, el, renderHud } from "../ui/hud";
@@ -116,7 +116,7 @@ export class TitleScene extends Phaser.Scene {
     fadeIn(this);
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, TITLE, {
-        fontFamily: "monospace",
+        fontFamily: FONT_FAMILY,
         fontSize: "16px",
         color: "#7ebeab",
       })

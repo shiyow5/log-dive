@@ -1,4 +1,14 @@
 /* Log Dive HUD — 「夜のサーバー室」パレット（design-detail §1-1）。仮の見た目。 */
+
+/* DotGothic16 フォント — SIL OFL 1.1 (Fontworks Inc.) */
+@font-face {
+  font-family: "DotGothic16";
+  src: url("/assets/font/DotGothic16-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --ld-bg: #0f1a1c;
   --ld-surface: #1b2b2e;
@@ -9,6 +19,8 @@
   --ld-hint: #e8c468;
   --ld-danger: #ff6b5e;
   --ld-ok: #8fd694;
+  /* フォントは1か所で管理。Phaser Text 側は src/config.ts の FONT_FAMILY（同じ値） */
+  --ld-font: "DotGothic16", monospace;
 }
 
 /* キャンバスは上寄せ。横長画面ではほぼ全面、縦長画面では上に置いて下を HUD に空ける */
@@ -27,7 +39,7 @@
   padding: 16px;
   box-sizing: border-box;
   pointer-events: none;
-  font-family: ui-monospace, "DotGothic16", monospace;
+  font-family: var(--ld-font);
   font-size: 16px;
   line-height: 1.5;
   color: var(--ld-text);

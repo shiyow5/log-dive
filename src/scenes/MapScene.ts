@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { FONT_FAMILY } from "../config";
 import { button, el, renderHud } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
@@ -115,7 +116,7 @@ export class MapScene extends Phaser.Scene {
       if (sym) {
         this.add
           .text(x, y - ROOM / 2 - 2, sym, {
-            fontFamily: "monospace",
+            fontFamily: FONT_FAMILY,
             fontSize: "10px",
             color: symbolColor(r),
           })
@@ -126,7 +127,7 @@ export class MapScene extends Phaser.Scene {
       if (nameText !== null) {
         this.add
           .text(x, y + ROOM / 2 + 2, nameText, {
-            fontFamily: "monospace",
+            fontFamily: FONT_FAMILY,
             fontSize: "8px",
             color: r.visited ? COLOR.text : COLOR.weak,
           })
@@ -135,14 +136,18 @@ export class MapScene extends Phaser.Scene {
       // 部屋ID（移動ボタンとの対応用、右上に小さく）
       this.add
         .text(x + ROOM / 2 - 2, y - ROOM / 2 + 2, r.id, {
-          fontFamily: "monospace",
+          fontFamily: FONT_FAMILY,
           fontSize: "8px",
           color: COLOR.weak,
         })
         .setOrigin(1, 0);
       if (isHere) {
         this.add
-          .text(x, y, "@", { fontFamily: "monospace", fontSize: "12px", color: "#0f1a1c" })
+          .text(x, y, "@", {
+            fontFamily: FONT_FAMILY,
+            fontSize: "12px",
+            color: "#0f1a1c",
+          })
           .setOrigin(0.5);
       }
     }
