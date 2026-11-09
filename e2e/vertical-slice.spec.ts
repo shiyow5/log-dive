@@ -46,9 +46,7 @@ test("?seed= と ?fx=0 を付けても起動し、コンソールエラーが無
   expect(errors).toEqual([]);
 });
 
-test("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終了（コンソールエラー0）", async ({
-  page,
-}) => {
+test("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終了（コンソールエラー0）", async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto(`/?seed=${encodeURIComponent(SEED)}&fx=0`);
 
