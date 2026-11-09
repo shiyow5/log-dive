@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 // (Actions の成果物をダウンロードして手元で配信する試遊方法に対応)
 export default defineConfig({
   base: "./",
+  preview: { port: Number(process.env.PW_PORT ?? 4174), strictPort: true },
   build: { target: "es2022", chunkSizeWarningLimit: 2000 },
   test: {
     include: ["tests/**/*.test.ts"],
