@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = process.env.PW_PORT ? `http://localhost:${process.env.PW_PORT}` : "http://localhost:4174";
+const port = process.env.PW_PORT
+  ? `http://localhost:${process.env.PW_PORT}`
+  : "http://localhost:4174";
 
 export default defineConfig({
   testDir: "e2e",
