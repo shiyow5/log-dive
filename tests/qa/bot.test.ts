@@ -10,6 +10,7 @@ import {
   type BotGame,
 } from "./bot";
 import { toyIsTerminal, toyLegalActions, toyReducer, type ToyAction, type ToyState } from "./toy";
+import { initRun, runReducer, legalActions, type Action, type RunState } from "../../src/core/run";
 
 const hpNonNegative = (s: ToyState): string | null =>
   s.hp >= 0 && s.bugHp >= 0 ? null : `HP がマイナス: hp=${s.hp} bugHp=${s.bugHp}`;
@@ -168,6 +169,69 @@ describe("BOT 足場（おもちゃ reducer）", () => {
 });
 
 describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
-  it.todo("縦切り（1部屋）: 200 seed で例外0・上限ターンで必ず終わる・HP>=0");
-  it.todo("不変条件を足す: CPU が 0 未満にならない / 不正な手で state が変わらない（LD-04）");
+  it("縦切り（1部屋）: 200 seed で例外0・上限ターンで必ず終わる・HP>=0", () => {
+    const hpNonNegative = (s: RunState): string | null =>
+      s.player.hp >= 0 ? null : `HP がマイナス: ${s.player.hp}`;
+    const cpuNonNegative = (s: RunState): string | null =>
+      s.player.cpu >= 0 ? null : `CPU がマイナス: ${s.player.cpu}`;
+    const runGame: BotGame<RunState, Action> = {
+      name: "log-dive",
+      version: 4,
+      reducer: runReducer,
+      legalActions: (state) => legalActions(state),
+      isTerminal: (state) =>
+        state.phase === "won" || state.phase === "lost" || state.phase === "abandoned",
+      invariants: [hpNonNegative, cpuNonNegative],
+    };
+    const res = runBotSeeds(runGame, { count: botSeedCount(), maxTurns: 1000 });
+    expect(res.failures, formatBotFailures(res.failures)).toEqual([]);
+    expect(res.runs).toBe(botSeedCount());
+    expect(res.maxTurnsSeen).toBeGreaterThan(0);
+  });
+
+  it("不変条件を足す: CPU が 0 未満にならない（LD-04 未完成）", () => {
+    const cpuNonNegative = (s: RunState): string | null =>
+      s.player.cpu >= 0 ? null : `CPU がマイナス: ${s.player.cpu}`;
+    const runGame: BotGame<RunState, Action> = {
+      name: "log-dive",
+      version: 4,
+      reducer: runReducer,
+      legalActions: (state) => legalActions(state),
+      isTerminal: (state) =>
+        state.phase === "won" || state.phase === "lost" || state.phase === "abandoned",
+      invariants: [cpuNonNegative],
+    };
+    const res = runBotSeeds(runGame, { count: 200, maxTurns: 1000 });
+    expect(res.failures, formatBotFailures(res.failures)).toEqual([]);
+    expect(res.runs).toBe(200);
+    expect(res.maxTurnsSeen).toBeGreaterThan(0);
+  });
+
+  it("不正な手で state が変わらない（LD-04）", () => {
+    // 複数のシードで初期stateを作り、不正手を食らわせた際にstateが変わらないことを確認する
+    for (const seed of ["ld-legal-x", "ld-legal-y", "ld-legal-z"]) {
+      const initState = initRun(seed);
+
+      // 存在しない部屋IDへの移動（不正手）
+      const illegalMove: Action = { t: "move", room: "nonexistent-room" };
+      const afterIllegalMove = runReducer.apply(initState, illegalMove);
+      expect(afterIllegalMove.lastError).not.toBeNull();
+      // stateが変わらないことを確認（lastError・events以外は同一）
+      const { lastError: _, events: __, ...restAfterIllegal } = afterIllegalMove;
+      // initStateと同じ（不正手なので状態は変化しない）
+      const { lastError: ___, events: ____, ...restInit } = initState;
+      expect(restAfterIllegal).toEqual(restInit);
+
+      // 終局状態での操作（abandonで終了させた後）
+      const abandoned: Action = { t: "abandon" };
+      const afterAbandon = runReducer.apply(initState, abandoned);
+      expect(afterAbandon.phase).toBe("abandoned");
+      const illegalAfterEnd: Action = { t: "move", room: initState.floor.rooms[0]?.id ?? "x" };
+      const afterIllegalEnd = runReducer.apply(afterAbandon, illegalAfterEnd);
+      expect(afterIllegalEnd.lastError).not.toBeNull();
+      const { lastError: __a, events: __b, ...restAfterIllegalEnd } = afterIllegalEnd;
+      const { lastError: __c, events: __d, ...restAfterAbandon } = afterAbandon;
+      expect(restAfterIllegalEnd).toEqual(restAfterAbandon);
+    }
+  });
 });
