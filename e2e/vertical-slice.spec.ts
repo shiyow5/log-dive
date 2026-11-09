@@ -11,11 +11,11 @@ declare global {
  * LD-20 縮小版（縦切り）: ?seed= 固定 → 1部屋移動 → バグ1種と戦闘 → 撃破か失敗で終わる。コンソールエラー0。
  *
  * 待ちは sleep ではなくテスト用フック（Issue #9 の提案）で行う:
- *   window.__qa.waitForIdle() / window.__qa.stateHash() / data-scene=title|run|battle|result
+ *   window.__qa.waitForIdle() / window.__qa.stateHash() / data-scene=title|map|battle|result
  * フックとシーンが実装されたので fixme を外した。名前・形はゲーム側の PR に合わせる。
  */
 
-const SEED = "qa-e2e-1";
+const SEED = "e2e-7";
 
 /** ページのエラーとコンソールの error を集める（smoke.spec.ts と同じ基準）。 */
 function collectErrors(page: Page): string[] {
@@ -48,33 +48,37 @@ test("?seed= と ?fx=0 を付けても起動し、コンソールエラーが無
 
 test("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終了（コンソールエラー0）", async ({ page }) => {
   const errors = collectErrors(page);
-  await page.goto(`/?seed=${encodeURIComponent(SEED)}&fx=0`);
+  await page.goto(`/?fx=0&seed=${encodeURIComponent(SEED)}&qa=1`);
 
   // タイトル → ラン開始
   await sceneIs(page, "title");
-  await page.keyboard.press("Enter");
-  await sceneIs(page, "run");
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  await sceneIs(page, "map");
   await waitForIdle(page);
   const startHash = await page.evaluate(() => window.__qa!.stateHash());
 
-  // 1部屋移動（キー割り当てはゲーム側に合わせて直す）
-  await page.keyboard.press("ArrowRight");
+  // 1部屋移動（r0→r1）
+  await page.getByRole("button", { name: /r1へ移動/ }).click();
   await waitForIdle(page);
   const movedHash = await page.evaluate(() => window.__qa!.stateHash());
   expect(movedHash).not.toBe(startHash);
 
   // バグと接触 → 戦闘
   await sceneIs(page, "battle");
-  // 戦闘: 決まった手順を打つ（reproduce → patch …）。終わるまで上限つきで進める
-  for (let i = 0; i < 30; i++) {
-    const scene = await page.locator("body").getAttribute("data-scene");
-    if (scene !== "battle") break;
-    await page.keyboard.press("Enter");
-    await waitForIdle(page);
-  }
-
-  // 撃破なら run に戻る / 失敗なら result。どちらでも「終わった」こと
-  await expect(page.locator("body")).toHaveAttribute("data-scene", /^(run|result)$/);
+  // 戦闘: 決まった手順を打つ（reproduce → patch …）
+  // 未再現のうちはパッチを押せず、理由が出ている
+  await expect(page.getByRole("button", { name: /修正パッチ/ })).toBeDisabled();
+  await expect(page.getByRole("list", { name: "使えない理由" })).toContainText(
+    "再現できていないバグは直せません",
+  );
+  await page.getByRole("button", { name: /再現手順/ }).click();
+  await expect(page.getByRole("region", { name: "症状" }).getByRole("listitem")).toHaveCount(1);
+  await page.getByRole("button", { name: /修正パッチ/ }).click();
+  await page.getByRole("button", { name: "パッチを当てる: 境界ずれ" }).click();
+  // 1階にはまだバグが残っているので、倒したらマップに戻る
+  await waitForIdle(page);
+  const finalScene = await page.locator("body").getAttribute("data-scene");
+  expect(finalScene).toMatch(/^(map|result)$/);
   expect(errors).toEqual([]);
 });
 
@@ -82,11 +86,11 @@ test("同じ ?seed= で2回遊ぶと、同じ手順の後の stateHash が一致
   page,
 }) => {
   const play = async (): Promise<string> => {
-    await page.goto(`/?seed=${encodeURIComponent(SEED)}&fx=0`);
+    await page.goto(`/?fx=0&seed=${encodeURIComponent(SEED)}&qa=1`);
     await sceneIs(page, "title");
-    await page.keyboard.press("Enter");
-    await sceneIs(page, "run");
-    await page.keyboard.press("ArrowRight");
+    await page.getByRole("button", { name: "新しいラン" }).click();
+    await sceneIs(page, "map");
+    await page.getByRole("button", { name: /r1へ移動/ }).click();
     await waitForIdle(page);
     const h = await page.evaluate(() => window.__qa!.stateHash());
     if (h === null) throw new Error("stateHash returned null after move");
