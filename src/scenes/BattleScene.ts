@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import * as glitch from "pixelfx/fx/scifi/glitch";
-import { GAME_HEIGHT, GAME_WIDTH } from "../config";
+import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
 import { PixelFxLayer } from "../fx/PixelFxLayer";
 import { Rng } from "../core/rng";
 import { fxEnabled } from "../ui/flags";
@@ -67,7 +67,7 @@ export class BattleScene extends Phaser.Scene {
     g.strokeRect(BUG_X - 20, BUG_Y - 20, 40, 40);
     this.add
       .text(BUG_X, BUG_Y, "?", {
-        fontFamily: '"DotGothic16", monospace',
+        fontFamily: FONT_FAMILY,
         fontSize: "16px",
         color: "#ff6b5e",
       })

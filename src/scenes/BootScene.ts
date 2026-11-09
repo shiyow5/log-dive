@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import * as glitch from "pixelfx/fx/scifi/glitch";
-import { GAME_HEIGHT, GAME_WIDTH } from "../config";
+import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
 import { PixelFxLayer } from "../fx/PixelFxLayer";
 import { Rng } from "../core/rng";
 import { fxEnabled } from "../ui/flags";
@@ -14,7 +14,7 @@ async function waitForFont(): Promise<void> {
   try {
     await Promise.race([
       document.fonts.load('12px "DotGothic16"'),
-      // 5秒超时は失败时的回退（e2e をブロックしない）
+      // 5秒タイムアウトは失敗時のフォールバック（e2e をブロックしない）
       new Promise<void>((_res) => setTimeout(_res, 5000)),
     ]);
   } catch {
@@ -34,8 +34,8 @@ export class BootScene extends Phaser.Scene {
     document.body.dataset.scene = "boot";
     this.game.events.emit("ready");
 
-    // フォント読み込みを非同期で待つ（5秒超时でフォールバック）
-    waitForFont();
+    // フォント読み込みを待ってから Text を描く（Phaser Text は後から再描画されないため。5秒タイムアウトでフォールバック）
+    await waitForFont();
 
     if (!fxEnabled()) {
       goTo(this, "title");
@@ -46,7 +46,7 @@ export class BootScene extends Phaser.Scene {
     this.fx.play(glitch, { x: GAME_WIDTH / 2, y: GAME_HEIGHT / 2, seed: rng.int(1, 9999) });
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40, TITLE, {
-        fontFamily: '"DotGothic16", monospace',
+        fontFamily: FONT_FAMILY,
         fontSize: "12px",
         color: "#e4f1ec",
       })

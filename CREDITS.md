@@ -34,4 +34,4 @@
 
 | 名前                    | 作者           | URL                                            | ライセンス  | 使用箇所                                             |
 | ----------------------- | -------------- | ---------------------------------------------- | ----------- | ---------------------------------------------------- |
-| DotGothic16-Regular.ttf | Fontworks Inc. | https://github.com/fontworks-fonts/DotGothic16 | SIL OFL 1.1 | 全画面のテキスト表示（CSS @font-face / Phaser Text） |     |
+| DotGothic16-Regular.ttf | Fontworks Inc. | https://github.com/fontworks-fonts/DotGothic16 | SIL OFL 1.1 | 全画面のテキスト表示（CSS @font-face / Phaser Text） |

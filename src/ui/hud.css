@@ -19,7 +19,7 @@
   --ld-hint: #e8c468;
   --ld-danger: #ff6b5e;
   --ld-ok: #8fd694;
-  /* フォントは1か所で管理。Phaser の text もこの値を参照して「DotGothic16", monospace */
+  /* フォントは1か所で管理。Phaser Text 側は src/config.ts の FONT_FAMILY（同じ値） */
   --ld-font: "DotGothic16", monospace;
 }
 
