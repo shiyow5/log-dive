@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --port ${PW_PORT:-4174} --strictPort",
+    "preview": "vite preview --strictPort",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
