@@ -32,6 +32,8 @@ const COLOR = {
   unknown: 0x26393d,
   visited: 0x1b2b2e,
   current: num(COLORS.hint),
+  // 現在地の箱の塗り（暗い金）。宝箱の金枠と同じ枠でも、塗りで現在地と区別できるようにする
+  currentFill: 0x4a3f1c,
   bug: num(COLORS.bug),
   chest: num(COLORS.hint),
   stairs: num(COLORS.stairs),
@@ -120,7 +122,7 @@ export class MapScene extends Phaser.Scene {
     for (const r of visible) {
       const { x, y } = center(r);
       const isHere = r.id === s.roomId;
-      g.fillStyle(r.visited ? COLOR.visited : COLOR.unknown, 1);
+      g.fillStyle(isHere ? COLOR.currentFill : r.visited ? COLOR.visited : COLOR.unknown, 1);
       g.fillRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       // バグ部屋は「警告色の枠＋記号」（色だけに頼らない）
       if (r.visited && r.content.kind === "bug") {
