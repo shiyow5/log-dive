@@ -325,6 +325,8 @@ function closeBug(
     ...state,
     phase: "map",
     battle: null,
+    // CPU は戦闘中だけの行動力。撃破後のマップ画面に戦闘の残り（例 1/3）を出さないよう上限に戻す
+    player: { ...state.player, cpu: state.player.cpuMax },
     floor,
     stats: { ...state.stats, bugsClosed: state.stats.bugsClosed + 1 },
   };

@@ -104,6 +104,15 @@ describe("run: 1部屋移動 → off-by-one を倒せる（固定の階・固定
     expect(patched.events.map((e) => e.t)).toEqual(["bugDamaged", "bugClosed", "stairsOpened"]);
   });
 
+  it("撃破してマップに戻ったら CPU は上限に戻っている（戦闘の残りをマップに持ち越さない）", () => {
+    // patch(CPU2) を払った残りの 1 が戦闘後に残ると、マップ画面の CPU に「1/3」と出てしまう
+    const patched = INPUT.reduce((s, a) => apply(s, a), initFixedRun(SEED));
+    expect(patched.phase).toBe("map");
+    expect(patched.battle).toBeNull();
+    expect(patched.player.cpu).toBe(patched.player.cpuMax);
+    expect(patched.player.cpu).toBe(data.player.cpuPerTurn);
+  });
+
   it("同じシード＋同じ入力なら最後の状態が一致する（runReplay と同じ）", () => {
     const real = initRun(SEED);
     const r1 = real.floor.rooms.find((r) => r.id === "r1")!;
