@@ -193,7 +193,8 @@ export class MapScene extends Phaser.Scene {
         }
       }
       // 未踏は「?」を箱の中央に置く（#114。部屋 ID は出さない）
-      if (!r.visited && !dense) {
+      // 開いた階段の ▼ など記号が出ている未踏部屋には「?」を重ねない
+      if (!r.visited && !dense && !(sym && symbolFits(layout))) {
         this.add
           .text(x, y, "?", {
             fontFamily: FONT_FAMILY,

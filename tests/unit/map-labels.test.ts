@@ -57,6 +57,12 @@ describe("部屋 ID・未踏「?」の配置（#88）", () => {
     }
   });
 
+  it("記号（開いた階段の ▼ など）が出る未踏部屋は「?」を重ねない（#114 Codex P2）", () => {
+    const { symbol, unknown } = partRects(room("r1", 1, 1), at(30), true);
+    expect(symbol).not.toBeNull();
+    expect(unknown).toBeNull();
+  });
+
   it("訪問済みの部屋は「?」を持たない", () => {
     expect(partRects(room("r1", 0, 0, true), at(30), false).unknown).toBeNull();
   });
