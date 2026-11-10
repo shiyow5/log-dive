@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
 import { loadGameData } from "../core/data";
+import { playSfx } from "../audio/player";
 import { flags } from "../ui/flags";
 import { button, el, renderHud } from "../ui/hud";
 import { sceneFor, skillInfo, startRun } from "./run-port";
@@ -139,6 +140,7 @@ export class TitleScene extends Phaser.Scene {
       started = true;
       const seed = input.value.trim() || newSeed();
       const s = startRun(seed);
+      playSfx("start");
       goTo(this, sceneFor(s));
     };
     const form = el(

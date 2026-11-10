@@ -223,3 +223,24 @@
 .hud-dl dd {
   margin: 0;
 }
+
+/* 音のオン/オフ（#hud の外。src/ui/audio-toggle.ts） */
+.audio-toggle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 50;
+  min-width: 44px;
+  min-height: 44px;
+  font-family: var(--ld-font);
+  font-size: 16px;
+  color: var(--ld-text);
+  background: var(--ld-surface);
+  border: 1px solid var(--ld-accent);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.audio-toggle:focus-visible {
+  outline: 2px solid var(--ld-accent);
+  outline-offset: 2px;
+}
