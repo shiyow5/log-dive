@@ -308,12 +308,75 @@
 .hud-cands li::before {
   content: none;
 }
-@media (max-height: 420px) {
+/*
+ * 横持ちスマホ（高さが低い横長）: パネルを2列にして高さを画面の45%に収める（#113）。
+ * 左=敵情報（上段）+ 候補・症状 / 右=スキル・パッチ + ターン終了・ランを放棄。
+ * 左右それぞれが自分でスクロールするので、操作ボタンが画面外に押し出されない。
+ */
+@media (orientation: landscape) and (max-height: 480px) {
+  #hud {
+    padding: 4px 8px;
+  }
   .hud-panel--battle {
-    max-height: 70vh;
+    height: 45vh;
+    max-height: none;
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head act"
+      "cols act"
+      "cols foot";
   }
   .hud-battle-head {
-    padding: 4px 12px;
+    grid-area: head;
+    padding: 4px 10px;
+    border-bottom: 0;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  .hud-battle-head h2 {
+    font-size: 14px;
+  }
+  .hud-battle-head .hud-row {
+    margin: 2px 0 0;
+    gap: 4px 8px;
+  }
+  .hud-battle-body {
+    display: contents;
+  }
+  .hud-battle-body .hud-cols {
+    grid-area: cols;
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 0 10px 4px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  .hud-cands li {
+    min-height: 30px;
+  }
+  .hud-battle-actions {
+    grid-area: act;
+    overflow-y: auto;
+    min-height: 0;
+    padding: 4px 10px;
+    border-left: 2px solid #4a6a70;
+  }
+  .hud-battle-actions .hud-row {
+    margin: 0 0 4px;
+    gap: 4px 6px;
+  }
+  .hud-battle-actions .hud-btn {
+    min-height: 32px;
+    padding: 2px 8px;
+    font-size: 13px;
+  }
+  .hud-battle-foot {
+    grid-area: foot;
+    border-left: 2px solid #4a6a70;
+    padding: 4px 10px;
   }
 }
 @media (max-aspect-ratio: 1/1) {

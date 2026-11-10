@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   DENSE_SYM_W,
+  CHAR_W,
   ID_FONT_PX,
+  PORTRAIT_AVAIL_H,
   UNKNOWN_H,
-  UNKNOWN_OFFSET,
   UNKNOWN_W,
   calcMapLayout,
   partCollisions,
   partRects,
+  roomLabelText,
   symbolFits,
 } from "../../src/scenes/map-symbols";
 import { floorCount, generateFloor } from "../../src/core/floor";
@@ -29,23 +31,16 @@ describe("部屋 ID・未踏「?」の配置（#88）", () => {
     expect(ID_FONT_PX).toBeGreaterThanOrEqual(10);
   });
 
-  it("未踏「?」は 6×8px、箱の右上角から (+2, -2) で、箱の上辺・右辺の接続線（辺の中央）と交わらない", () => {
-    expect([UNKNOWN_W, UNKNOWN_H]).toEqual([6, 8]);
-    expect(UNKNOWN_OFFSET).toEqual({ x: 2, y: -2 });
+  it("未踏「?」は 6×10px で、未踏の箱の中央に収まる（#114）", () => {
+    expect([UNKNOWN_W, UNKNOWN_H]).toEqual([6, 10]);
     for (const CELL of [20, 30]) {
-      const layout = at(CELL);
-      const r = room("r1", 2, 2);
-      const { box, unknown } = partRects(r, layout, false);
+      const { box, unknown } = partRects(room("r1", 2, 2), at(CELL), false);
       expect(unknown).not.toBeNull();
       const u = unknown!;
-      expect(u.x).toBe(box.x + box.w + 2);
-      expect(u.y + u.h).toBe(box.y - 2);
-      const cx = box.x + box.w / 2;
-      const cy = box.y + box.h / 2;
-      // 接続線: 上へ x=cx（y<box.top）、右へ y=cy（x>box.right）。「?」はどちらの線上にもない
-      expect(u.x > cx || u.x + u.w < cx).toBe(true);
-      expect(u.y + u.h <= box.y).toBe(true);
-      expect(u.y + u.h < cy).toBe(true);
+      expect(u.x + u.w / 2).toBe(box.x + box.w / 2);
+      expect(u.y + u.h / 2).toBe(box.y + box.h / 2);
+      expect(u.w).toBeLessThanOrEqual(box.w);
+      expect(u.h).toBeLessThanOrEqual(box.h);
     }
   });
 
@@ -62,15 +57,45 @@ describe("部屋 ID・未踏「?」の配置（#88）", () => {
     }
   });
 
+  it("記号（開いた階段の ▼ など）が出る未踏部屋は「?」を重ねない（#114 Codex P2）", () => {
+    const { symbol, unknown } = partRects(room("r1", 1, 1), at(30), true);
+    expect(symbol).not.toBeNull();
+    expect(unknown).toBeNull();
+  });
+
   it("訪問済みの部屋は「?」を持たない", () => {
     expect(partRects(room("r1", 0, 0, true), at(30), false).unknown).toBeNull();
   });
 
-  it("疎な階の ID は箱の外左下（箱の下辺より下・箱の左端始まり）", () => {
+  it("疎な階の探索済みの部屋は関数名ラベルを箱の真下に中央揃えで置く（#114）", () => {
     const layout = at(30);
     const { box, id } = partRects(room("r3", 1, 1, true), layout, false);
-    expect(id.x).toBe(box.x);
-    expect(id.y).toBe(box.y + box.h);
+    expect(id).not.toBeNull();
+    expect(id!.y).toBe(box.y + box.h);
+    expect(id!.x + id!.w / 2).toBe(box.x + box.w / 2);
+  });
+
+  it("部屋 ID（r0 等）はラベルに出さない。未踏と密な階はラベルなし（#114）", () => {
+    const layout = at(30);
+    const label = (r: RoomState, l = layout) => roomLabelText(r, l);
+    const named = { ...room("r7", 0, 0, true), label: "config.read()" };
+    expect(label(named)).toBe("read");
+    expect(label({ ...named, visited: false })).toBeNull();
+    expect(label(named, at(15))).toBeNull();
+    // 長い名前は CELL に収まる文字数で切る
+    const long = { ...named, label: "parseConfigLine()" };
+    expect(label(long)!.length * CHAR_W).toBeLessThanOrEqual(layout.CELL - 2);
+  });
+
+  it("縦持ちはマップの高さが広がり、同じ階で CELL が小さくならない（#114）", () => {
+    for (let i = 0; i < 50; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms;
+        const land = calcMapLayout(rooms);
+        const port = calcMapLayout(rooms, { availH: PORTRAIT_AVAIL_H });
+        expect(port.CELL).toBeGreaterThanOrEqual(land.CELL);
+      }
+    }
   });
 });
 
@@ -79,11 +104,14 @@ describe("partCollisions: 部屋ID・記号・四角の重なり（#66）", () =
     for (let i = 0; i < 300; i++) {
       for (let n = 1; n <= floorCount(); n++) {
         const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
+        for (const opts of [undefined, { availH: PORTRAIT_AVAIL_H }]) {
+          const l = calcMapLayout(rooms, opts);
+          expect(
+            partCollisions(rooms, l, () => true),
+            `seed-${i} floor=${n} CELL=${l.CELL} portrait=${!!opts}`,
+          ).toEqual([]);
+        }
         const layout = calcMapLayout(rooms);
-        expect(
-          partCollisions(rooms, layout, () => true),
-          `seed-${i} floor=${n} CELL=${layout.CELL}`,
-        ).toEqual([]);
         // 未踏の「?」が混じる場合（半分だけ訪問）
         const half = rooms.map((r, k) => ({ ...r, visited: k % 2 === 0 }));
         expect(

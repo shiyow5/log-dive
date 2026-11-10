@@ -219,12 +219,17 @@ export class BattleScene extends Phaser.Scene {
         "div",
         { class: "hud-battle-body" },
         el("div", { class: "hud-cols" }, candidates, symptoms),
-        skillRow,
-        picker,
-        reasons.length
-          ? el("ul", { class: "hud-list", "aria-label": "使えない理由" }, ...reasons)
-          : null,
-        logLine(s),
+        // 操作ボタン群。横持ちスマホ（hud.css の @media）では右列に分けて、情報と操作を並べる（#113）
+        el(
+          "div",
+          { class: "hud-battle-actions" },
+          skillRow,
+          picker,
+          reasons.length
+            ? el("ul", { class: "hud-list", "aria-label": "使えない理由" }, ...reasons)
+            : null,
+          logLine(s),
+        ),
       ),
       el(
         "footer",
