@@ -229,7 +229,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 50;
+  z-index: 200;
   min-width: 44px;
   min-height: 44px;
   font-family: var(--ld-font);
