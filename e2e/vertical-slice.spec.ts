@@ -77,13 +77,11 @@ test("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終了（�
   await page.getByRole("button", { name: "パッチを当てる: 境界ずれ" }).click();
   // 1階にはまだバグが残っているので、倒したらマップに戻る
   await waitForIdle(page);
-  // data-scene は Phaser 遷移タイミングで更新が遅れる場合があるため、
-  // マップ画面固有の要素で判定する（region "マップ" + ラン放棄ボタン）。
-  const hasMapRegion = page.locator('[aria-label="マップ"]').first();
-  const abandonBtn = page.getByRole("button", { name: /ランを放棄/ });
-  const isMap = await hasMapRegion.count().then((c) => c > 0);
-  const isAbandon = await abandonBtn.count().then((c) => c > 0);
-  expect(isMap || isAbandon).toBe(true);
+  // data-scene が map または result に遷移していることを確認（auto-wait付き）
+  // 失敗時は実際の値がコンソール出力される
+  await expect(page.locator("body")).toHaveAttribute("data-scene", /^(map|result)$/, {
+    timeout: 5000,
+  });
   expect(errors).toEqual([]);
 });
 
