@@ -3,6 +3,7 @@
  * 操作できるものはすべてここに <button> などで置く（キーボード・読み上げ・getByRole のため）。
  */
 import "./hud.css";
+import { playSfx } from "../audio/player";
 
 type Child = Node | string | null | undefined | false;
 
@@ -37,6 +38,7 @@ export function button(
   b.textContent = text;
   b.addEventListener("click", () => {
     if (hudBusy) return;
+    playSfx("click");
     onClick();
   });
   return b;
