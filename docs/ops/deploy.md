@@ -55,6 +55,10 @@
    - GitHub Pages のステータス（Settings > Pages）を確認
    - environment `github-pages` の設定（restrictions 等）を確認
 
+5. **一時的な deploy 失敗の再実行（ロールバックではない）**
+   - コードに問題がなく、Pages 側の障害など外部要因で deploy ジョブだけが失敗した場合に限り、Actions の `Deploy Pages`（deploy-pages.yml）を `workflow_dispatch` で再実行する
+   - 再実行は main の現在の HEAD を checkout して build し直す。過去の artifact は選べない。壊れたコミットが main にある状態で実行すると、同じ内容が再デプロイされる
+
 4. **main-guard の失敗の場合**
    - main への直接 push がないか確認（CONTRIBUTING.md のワークフローに則っているか）
    - 誤検知の場合は rei / haruto に報告
@@ -63,12 +67,11 @@
 
 ### GitHub Pages へのロールバック
 
-1. **revert PR → 再デプロイ**
+1. **revert PR → 再デプロイ**（ロールバックの手順はこれだけ）
    - `git revert <失敗したコミット>` で main を元の状態に戻す
    - PR 経由で main にマージ → deploy-pages.yml が自動的に再デプロイを実行
 
-2. **workflow_dispatch による再実行**
-   - deploy-pages.yml は `workflow_dispatch` で手動実行可能。main ブランチから再ビルド・再デプロイを実行する（ref 選択は不可）。ロールバックは主に revert PR 経由で行う
+※ `workflow_dispatch` による再実行はロールバックには使えない。下記「一時的な deploy 失敗の再実行」を参照。
 
 ### Nightly 実行の再実行
 
