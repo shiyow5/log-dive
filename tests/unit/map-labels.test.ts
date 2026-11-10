@@ -6,6 +6,7 @@ import {
   labelCollisions,
   labelRect,
   mapLabelText,
+  partCollisions,
   shortLabel,
 } from "../../src/scenes/map-symbols";
 import { floorCount, generateFloor } from "../../src/core/floor";
@@ -100,5 +101,20 @@ describe("labelCollisions: 描く文字列の幅で重なりを見る", () => {
     }
     // 密な階（CELL<20）も除外せずに回っていること
     expect([...cells].some((c) => c < 20)).toBe(true);
+  });
+});
+
+describe("partCollisions: 部屋ID・記号・四角の重なり（#66）", () => {
+  it("300 seed × 全階（全部屋に記号あり）で ID・記号が隣や下の部屋と重ならない", () => {
+    for (let i = 0; i < 300; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
+        const layout = calcMapLayout(rooms);
+        expect(
+          partCollisions(rooms, layout, () => true),
+          `seed-${i} floor=${n} CELL=${layout.CELL}`,
+        ).toEqual([]);
+      }
+    }
   });
 });

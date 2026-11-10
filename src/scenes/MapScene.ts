@@ -7,6 +7,9 @@ import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 import {
   calcMapLayout,
+  isDense,
+  symbolFits,
+  roomIdText,
   isShownOnMap,
   mapLabelText,
   roomSymbol,
@@ -74,7 +77,9 @@ export class MapScene extends Phaser.Scene {
   private drawMap(s: RunState): void {
     const rooms = s.floor.rooms;
     const visible = rooms.filter((r) => isShownOnMap(r, s));
-    const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = calcMapLayout(rooms);
+    const layout = calcMapLayout(rooms);
+    const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
+    const dense = isDense(layout);
 
     function center(r: RoomState): { x: number; y: number } {
       return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
@@ -113,14 +118,18 @@ export class MapScene extends Phaser.Scene {
       }
       // 記号（未踏は出さない。ただし開いた階段の ▼ は出す。判定は roomSymbol）
       const sym = roomSymbol(r, s);
-      if (sym) {
+      if (sym && symbolFits(layout)) {
+        // 密な階は箱の右隣（上下に余白がなく隣の部屋と重なるため）
+        const symPos = dense
+          ? { x: x + ROOM / 2 + 1, y, ox: 0, oy: 0.5, px: "7px" }
+          : { x, y: y - ROOM / 2 - 2, ox: 0.5, oy: 0, px: "10px" };
         this.add
-          .text(x, y - ROOM / 2 - 2, sym, {
+          .text(symPos.x, symPos.y, sym, {
             fontFamily: FONT_FAMILY,
-            fontSize: "10px",
+            fontSize: symPos.px,
             color: symbolColor(r),
           })
-          .setOrigin(0.5, 0);
+          .setOrigin(symPos.ox, symPos.oy);
       }
       // 部屋名（短縮。密な階では出さない → mapLabelText）
       const nameText = mapLabelText(r, CELL);
@@ -135,13 +144,19 @@ export class MapScene extends Phaser.Scene {
       }
       // 部屋ID（移動ボタンとの対応用、右上に小さく）
       this.add
-        .text(x + ROOM / 2 - 2, y - ROOM / 2 + 2, r.id, {
-          fontFamily: FONT_FAMILY,
-          fontSize: "8px",
-          color: COLOR.weak,
-        })
-        .setOrigin(1, 0);
-      if (isHere) {
+        .text(
+          dense ? x : x + ROOM / 2 - 2,
+          dense ? y : y - ROOM / 2 + 2,
+          roomIdText(r.id, layout),
+          {
+            fontFamily: FONT_FAMILY,
+            fontSize: "8px",
+            color: dense ? (isHere ? "#0f1a1c" : COLOR.text) : COLOR.weak,
+          },
+        )
+        .setOrigin(dense ? 0.5 : 1, dense ? 0.5 : 0);
+      // 密な階は「@」が ID と重なるので出さない（現在地は塗り色で区別）
+      if (isHere && !dense) {
         this.add
           .text(x, y, "@", {
             fontFamily: FONT_FAMILY,
