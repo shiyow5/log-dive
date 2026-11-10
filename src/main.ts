@@ -17,7 +17,7 @@ const game = new Phaser.Game({
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
   pixelArt: true,
-  backgroundColor: "#0b0d12",
+  backgroundColor: "#0f1a1c",
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_HORIZONTALLY },
   scene: [BootScene, TitleScene, MapScene, BattleScene, ResultScene],
 });
