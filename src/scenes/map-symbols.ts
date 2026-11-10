@@ -64,13 +64,23 @@ export function roomSymbol(r: RoomState, s: RunState): string | null {
   return null;
 }
 
+/** Color tokens for map symbols. */
+export const COLORS = {
+  hint: "#e8c468",
+  accent: "#7ebeab",
+  boss: "#b48ead",
+  bug: "#ff6b5e",
+  visited: "#e4f1ec",
+  bg: "#0f1a1c",
+} as const;
+
 /** 記号の色。 */
 export function symbolColor(r: RoomState): string {
   const c = r.content;
-  if (c.kind === "chest") return "#f0c040";
-  if (c.kind === "stairs") return "#88c0d0";
-  if (c.kind === "bug") return c.boss ? "#b48ead" : "#ff6b5e";
-  return "#e4f1ec";
+  if (c.kind === "chest") return COLORS.hint;
+  if (c.kind === "stairs") return COLORS.accent;
+  if (c.kind === "bug") return c.boss ? COLORS.boss : COLORS.bug;
+  return COLORS.visited;
 }
 
 /**
