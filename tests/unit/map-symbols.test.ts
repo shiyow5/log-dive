@@ -110,9 +110,9 @@ describe("symbolColor: 部屋の内容に応じた色を返す", () => {
     expect(symbolColor(r)).toBe("#e8c468");
   });
 
-  it("階段 → #7ebeab (accent)", () => {
+  it("階段 → #88c0d0 (stairs。現在地色 accent と別色)", () => {
     const r = room("r0", "stairs", 0, 0, { kind: "stairs" });
-    expect(symbolColor(r)).toBe("#7ebeab");
+    expect(symbolColor(r)).toBe("#88c0d0");
   });
 
   it("ボス → #b48ead", () => {

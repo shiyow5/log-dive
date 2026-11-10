@@ -68,6 +68,7 @@ export function roomSymbol(r: RoomState, s: RunState): string | null {
 export const COLORS = {
   hint: "#e8c468",
   accent: "#7ebeab",
+  stairs: "#88c0d0",
   boss: "#b48ead",
   bug: "#ff6b5e",
   visited: "#e4f1ec",
@@ -78,7 +79,7 @@ export const COLORS = {
 export function symbolColor(r: RoomState): string {
   const c = r.content;
   if (c.kind === "chest") return COLORS.hint;
-  if (c.kind === "stairs") return COLORS.accent;
+  if (c.kind === "stairs") return COLORS.stairs;
   if (c.kind === "bug") return c.boss ? COLORS.boss : COLORS.bug;
   return COLORS.visited;
 }

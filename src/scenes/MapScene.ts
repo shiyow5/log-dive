@@ -12,18 +12,23 @@ import {
   roomSymbol,
   stairsOpen,
   symbolColor,
+  COLORS,
 } from "./map-symbols";
 
+/** "#rrggbb" → Phaser の数値色。 */
+const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
+
+// 記号色は COLORS（map-symbols.ts）から作る。二重定義しない。
 const COLOR = {
   line: 0x26393d,
   unknown: 0x26393d,
   visited: 0x1b2b2e,
-  current: 0x7ebeab,
-  bug: 0xff6b5e,
-  chest: 0xe8c468,
-  stairs: 0x7ebeab,
-  boss: 0xb48ead,
-  text: "#e4f1ec",
+  current: num(COLORS.accent),
+  bug: num(COLORS.bug),
+  chest: num(COLORS.hint),
+  stairs: num(COLORS.stairs),
+  boss: num(COLORS.boss),
+  text: COLORS.visited,
   weak: "#8fa9a3",
 };
 
