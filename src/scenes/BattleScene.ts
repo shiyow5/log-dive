@@ -104,7 +104,11 @@ export class BattleScene extends Phaser.Scene {
       "section",
       { "aria-label": "候補" },
       el("h3", {}, `候補（${b.candidates.length}）`),
-      el("ul", { class: "hud-list" }, ...b.candidates.map((c) => el("li", {}, `? ${bugName(c)}`))),
+      el(
+        "ul",
+        { class: "hud-list hud-cands" },
+        ...b.candidates.map((c) => el("li", {}, `? ${bugName(c)}`)),
+      ),
     );
     const symptoms = el(
       "section",
@@ -181,42 +185,52 @@ export class BattleScene extends Phaser.Scene {
         : null;
 
     const endTurn: Action = { t: "endTurn" };
+    // 3段構造（#87）: 上段=敵名・HP・予告・ステータス（固定）/ 中段=候補・症状・スキル（ここだけスクロール）
+    // / 下段=ターン終了・ランを放棄（固定）。2階以降で候補が増えても主ボタンが画面外に出ない。
     const panel = el(
       "section",
-      { class: "hud-panel", "aria-label": "バトル" },
+      { class: "hud-panel hud-panel--battle", "aria-label": "バトル" },
       el(
-        "h2",
-        {},
-        `${here?.label ?? ""} — 正体不明のバグ `,
-        el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
+        "header",
+        { class: "hud-battle-head" },
+        el(
+          "h2",
+          {},
+          `${here?.label ?? ""} — 正体不明のバグ `,
+          el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
+        ),
+        el(
+          "p",
+          { class: "hud-stat" },
+          "予告: 次のターン ",
+          el("strong", { class: "hud-danger" }, `${b.intent.damage} ダメージ`),
+          b.intent.countdown !== undefined
+            ? el("span", {}, `（大ダメージまで ${b.intent.countdown}）`)
+            : null,
+          b.reproduced ? el("span", { class: "hud-ok" }, "　✓ 再現済み") : null,
+        ),
+        statsRow(s),
       ),
-      el(
-        "p",
-        { class: "hud-stat" },
-        "予告: 次のターン ",
-        el("strong", { class: "hud-danger" }, `${b.intent.damage} ダメージ`),
-        b.intent.countdown !== undefined
-          ? el("span", {}, `（大ダメージまで ${b.intent.countdown}）`)
-          : null,
-        b.reproduced ? el("span", { class: "hud-ok" }, "　✓ 再現済み") : null,
-      ),
-      statsRow(s),
-      el("div", { class: "hud-cols" }, candidates, symptoms),
-      skillRow,
-      picker,
       el(
         "div",
-        { class: "hud-row" },
+        { class: "hud-battle-body" },
+        el("div", { class: "hud-cols" }, candidates, symptoms),
+        skillRow,
+        picker,
+        reasons.length
+          ? el("ul", { class: "hud-list", "aria-label": "使えない理由" }, ...reasons)
+          : null,
+        logLine(s),
+      ),
+      el(
+        "footer",
+        { class: "hud-battle-foot" },
         button("ターン終了", () => this.act(endTurn), {
           primary: true,
           disabled: !legal.can(endTurn),
         }),
         abandonButton(() => this.act({ t: "abandon" })),
       ),
-      reasons.length
-        ? el("ul", { class: "hud-list", "aria-label": "使えない理由" }, ...reasons)
-        : null,
-      logLine(s),
     );
     renderHud("battle", panel);
   }
