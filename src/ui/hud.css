@@ -321,3 +321,67 @@
     max-height: none;
   }
 }
+
+/* ---- ランを放棄（#119）: 危険操作はゴースト＋主操作から離す ---- */
+.hud-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ld-text-weak);
+  text-decoration: underline;
+  min-height: 40px;
+}
+.hud-btn--ghost:hover:not(:disabled) {
+  border-color: #ff6b5e;
+  color: #ff6b5e;
+}
+.hud-btn--danger {
+  border-color: #ff6b5e;
+  color: #ff6b5e;
+}
+.hud-battle-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.hud-battle-title h2 {
+  flex: 1;
+  min-width: 0;
+}
+.hud-battle-title .hud-abandon {
+  flex: none;
+  min-height: 40px;
+}
+.hud-row--danger {
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px dashed #4a6a70;
+}
+.hud-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  pointer-events: auto;
+}
+.hud-modal-box {
+  background: #1b2b2e;
+  border: 1px solid #7ebeab;
+  border-radius: 8px;
+  padding: 16px 20px;
+  width: 90%;
+  max-width: 360px;
+  color: #e4f1ec;
+}
+.hud-modal-box h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.hud-modal-box .hud-btn {
+  min-height: 44px;
+  flex: 1;
+}

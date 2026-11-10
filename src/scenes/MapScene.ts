@@ -250,7 +250,7 @@ export class MapScene extends Phaser.Scene {
         : []),
       el(
         "div",
-        { class: "hud-row" },
+        { class: "hud-row hud-row--danger" },
         abandonButton(() => this.act({ t: "abandon" })),
       ),
       logLine(s),
