@@ -244,3 +244,80 @@
   outline: 2px solid var(--ld-accent);
   outline-offset: 2px;
 }
+
+/* 戦闘HUD 3段構造（#87）: 上段・下段は固定、中段だけスクロール */
+.hud-panel--battle {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  max-height: 60vh;
+  overflow: hidden;
+}
+.hud-battle-head {
+  flex: none;
+  padding: 8px 12px;
+  border-bottom: 2px solid #4a6a70;
+}
+.hud-battle-head h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  color: var(--ld-text);
+}
+.hud-battle-head p {
+  margin: 0;
+}
+.hud-battle-head .hud-row {
+  margin: 4px 0 0;
+}
+.hud-battle-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+.hud-battle-foot {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--ld-surface);
+  border-top: 2px solid #4a6a70;
+}
+.hud-battle-foot .hud-btn {
+  min-height: 36px;
+}
+.hud-battle-foot .hud-btn--primary {
+  flex: 1 1 60%;
+  min-height: 44px;
+}
+.hud-cands {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.hud-cands li {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid #4a6a70;
+  box-sizing: border-box;
+}
+.hud-cands li::before {
+  content: none;
+}
+@media (max-height: 420px) {
+  .hud-panel--battle {
+    max-height: 70vh;
+  }
+  .hud-battle-head {
+    padding: 4px 12px;
+  }
+}
+@media (max-aspect-ratio: 1/1) {
+  .hud-panel--battle {
+    max-height: none;
+  }
+}
