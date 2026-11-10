@@ -14,6 +14,7 @@ import {
   symbolFits,
   roomLabelText,
   PORTRAIT_AVAIL_H,
+  PORTRAIT_ID_FONT_PX,
   isShownOnMap,
   ID_FONT_PX,
   UNKNOWN_H,
@@ -210,7 +211,7 @@ export class MapScene extends Phaser.Scene {
         this.add
           .text(x, y + ROOM / 2 - 2, label, {
             fontFamily: FONT_FAMILY,
-            fontSize: portrait ? "12px" : `${ID_FONT_PX}px`,
+            fontSize: `${portrait ? PORTRAIT_ID_FONT_PX : ID_FONT_PX}px`,
             color: isHere ? COLOR.text : COLOR.weak,
             stroke: "#0f1a1c",
             strokeThickness: 1,

@@ -105,6 +105,8 @@ export interface MapLayoutOptions {
 }
 /** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
 export const PORTRAIT_AVAIL_H = 180;
+/** 縦持ち（aspect<1）時の部屋 ID フォントサイズ（内部 px）。判読性のため横持ちの ID_FONT_PX より大きくする。 */
+export const PORTRAIT_ID_FONT_PX = 12;
 
 export interface MapLayout {
   /** 1マスの間隔（px）。 */
