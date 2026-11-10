@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { createSceneFx } from "../fx/scene-fx";
 import { button, el, renderHud } from "../ui/hud";
 import { current } from "./run-port";
 import type { RunPhase } from "./run-port";
@@ -21,6 +22,7 @@ export class ResultScene extends Phaser.Scene {
   create(): void {
     fadeIn(this);
     const s = current();
+    createSceneFx(this, "fx-result").emitRunEvents(s.events);
     const rows: [string, string][] = [
       ["閉じたバグ票", String(s.stats.bugsClosed)],
       ["ターン数", String(s.stats.turns)],
