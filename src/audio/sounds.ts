@@ -53,12 +53,15 @@ const EVENT_PRIORITY: readonly RunEvent["t"][] = [
   "bugHaltedTurn",
   "candidateRemoved",
   "symptom",
+  "reproduced",
   "battleStart",
   "moved",
 ];
 
 function sfxForEvent(e: RunEvent): SfxName {
   if (e.t === "runEnd") return e.phase;
+  // 症状なしの再現は、症状が出たときと同じ音（新しい SE は足さない）
+  if (e.t === "reproduced") return "symptom";
   return e.t;
 }
 
