@@ -202,6 +202,8 @@ export class BattleScene extends Phaser.Scene {
             `${here?.label ?? ""} — 正体不明のバグ `,
             el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
           ),
+          // 危険操作はパネル右上（ターン終了から離す。#119）
+          abandonButton(() => this.act({ t: "abandon" })),
         ),
         el(
           "p",
@@ -238,12 +240,6 @@ export class BattleScene extends Phaser.Scene {
           primary: true,
           disabled: !legal.can(endTurn),
         }),
-        // 危険操作は主操作の下の別行・右寄せ（#119）。DOM順もターン終了の後ろ
-        el(
-          "div",
-          { class: "hud-abandon-row" },
-          abandonButton(() => this.act({ t: "abandon" })),
-        ),
       ),
     );
     renderHud("battle", panel);
