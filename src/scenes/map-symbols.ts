@@ -142,6 +142,85 @@ export function mapLabelText(r: RoomState, CELL: number): string | null {
   return shortLabel(r.label, maxChars);
 }
 
+/** これより CELL が小さい階は「密」。ID を箱の中、記号を箱の右隣に置く（上下に余白がないため）。 */
+export const DENSE_CELL = 20;
+/**
+ * 密な階の記号が占める幅。DotGothic16 の 7px フォントは ◆▼♦▲★ の送り幅が 7px なので、
+ * 実測 7px + 余白 1px = 8px。箱の右隣の隙間(CELL-ROOM)に収める。
+ * symbolFits（出す/出さない）と partRects（衝突判定の矩形）の両方がこの値を使う。
+ */
+export const DENSE_SYM_W = 8;
+/** 密な階で記号を箱の右隣に置けるか（隙間 CELL-ROOM が足りないほど密なら出さない。枠色で区別は残る）。 */
+export function symbolFits(layout: MapLayout): boolean {
+  return !isDense(layout) || layout.CELL - layout.ROOM >= DENSE_SYM_W + 1;
+}
+export function isDense(layout: MapLayout): boolean {
+  return layout.CELL < DENSE_CELL;
+}
+
+/** 部屋 ID の表示文字列。密な階は数字のみ（"r12" → "12"）。 */
+export function roomIdText(id: string, layout: MapLayout): string {
+  return isDense(layout) ? id.replace(/^\D+/, "") : id;
+}
+
+/**
+ * 部屋の四角・ID・記号が描かれる矩形（px、近似）。MapScene の配置と同じ式。
+ * 密な階: ID=箱の中央、記号=箱の右隣（中央揃え縦）。疎な階: ID=右上、記号=箱の上。
+ */
+export function partRects(
+  r: RoomState,
+  layout: MapLayout,
+  hasSymbolIn: boolean,
+): { box: Rect; id: Rect; symbol: Rect | null } {
+  const cx = layout.ORIGIN_X + r.x * layout.CELL;
+  const cy = layout.ORIGIN_Y + r.y * layout.CELL;
+  const R = layout.ROOM;
+  const hasSymbol = hasSymbolIn && symbolFits(layout);
+  const box = { x: cx - R / 2, y: cy - R / 2, w: R, h: R };
+  const idW = roomIdText(r.id, layout).length * CHAR_W;
+  if (isDense(layout)) {
+    return {
+      box,
+      id: { x: cx - idW / 2, y: cy - 4, w: idW, h: 8 },
+      symbol: hasSymbol ? { x: cx + R / 2 + 1, y: cy - 4, w: DENSE_SYM_W, h: 8 } : null,
+    };
+  }
+  return {
+    box,
+    id: { x: cx + R / 2 - 2 - idW, y: cy - R / 2 + 2, w: idW, h: 8 },
+    symbol: hasSymbol ? { x: cx - CHAR_W, y: cy - R / 2 - 2, w: 2 * CHAR_W, h: 10 } : null,
+  };
+}
+
+/** 隣・下の部屋の四角や記号と重なる要素の組（なければ空）。ID が自分の箱からはみ出す場合も検出。 */
+export function partCollisions(
+  rooms: readonly RoomState[],
+  layout: MapLayout,
+  hasSymbol: (r: RoomState) => boolean,
+): string[] {
+  const hits: string[] = [];
+  const parts = rooms.map((r) => ({ rid: r.id, ...partRects(r, layout, hasSymbol(r)) }));
+  for (const a of parts) {
+    for (const b of parts) {
+      if (a === b) continue;
+      for (const [an, ar] of [
+        ["id", a.id],
+        ["sym", a.symbol],
+      ] as const) {
+        if (!ar) continue;
+        for (const [bn, br] of [
+          ["box", b.box],
+          ["id", b.id],
+          ["sym", b.symbol],
+        ] as const) {
+          if (br && rectsOverlap(ar, br)) hits.push(`${a.rid}.${an}x${b.rid}.${bn}`);
+        }
+      }
+    }
+  }
+  return hits;
+}
+
 type Rect = { x: number; y: number; w: number; h: number };
 
 /** 名前ラベルが実際に描かれる矩形（px）。描かないなら null。幅は描く文字列の長さから出す。 */

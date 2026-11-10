@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   CHAR_W,
+  DENSE_SYM_W,
   MIN_NAME_CHARS,
   calcMapLayout,
   labelCollisions,
   labelRect,
   mapLabelText,
+  partCollisions,
   shortLabel,
+  symbolFits,
 } from "../../src/scenes/map-symbols";
 import { floorCount, generateFloor } from "../../src/core/floor";
 import type { RoomState } from "../../src/core/run";
@@ -100,5 +103,29 @@ describe("labelCollisions: 描く文字列の幅で重なりを見る", () => {
     }
     // 密な階（CELL<20）も除外せずに回っていること
     expect([...cells].some((c) => c < 20)).toBe(true);
+  });
+});
+
+describe("partCollisions: 部屋ID・記号・四角の重なり（#66）", () => {
+  it("300 seed × 全階（全部屋に記号あり）で ID・記号が隣や下の部屋と重ならない", () => {
+    for (let i = 0; i < 300; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
+        const layout = calcMapLayout(rooms);
+        expect(
+          partCollisions(rooms, layout, () => true),
+          `seed-${i} floor=${n} CELL=${layout.CELL}`,
+        ).toEqual([]);
+      }
+    }
+  });
+
+  it("DENSE_SYM_W は 7px 送り幅（DotGothic16 の ◆▼♦▲★）より小さくならず、symbolFits と partRects が同じ値を使う", () => {
+    expect(DENSE_SYM_W).toBeGreaterThanOrEqual(7 + 1);
+    // seed-2 の2階（CELL=15, ROOM=9: 隙間6px）は実測幅7pxの記号が入らないので出さない
+    const rooms = generateFloor("seed-2", 2).rooms.map((r) => ({ ...r, visited: true }));
+    const layout = calcMapLayout(rooms);
+    expect(layout.CELL - layout.ROOM).toBeLessThan(DENSE_SYM_W + 1);
+    expect(symbolFits(layout)).toBe(false);
   });
 });

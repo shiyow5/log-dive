@@ -114,6 +114,8 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
         return "バグが出た";
       case "symptom":
         return `再現した。症状「${e.text}」`;
+      case "reproduced":
+        return "再現できた（新しい症状はない）";
       case "candidateRemoved":
         return `ログから「${bugName(e.bug)}」ではないとわかった`;
       case "bugDamaged":
