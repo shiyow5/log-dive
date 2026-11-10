@@ -180,7 +180,7 @@ export function partRects(
   const idW = (text?.length ?? 0) * CHAR_W;
   // 密な階は上の段の ID と干渉するので「?」は出さない（未踏は暗い箱＋弱い色の ID で区別）
   const unknown =
-    r.visited || isDense(layout)
+    r.visited || isDense(layout) || hasSymbol
       ? null
       : {
           x: cx - UNKNOWN_W / 2,
