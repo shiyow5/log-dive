@@ -90,15 +90,21 @@ export const ID_FONT_PX = 10;
 export const CHAR_W = 6;
 /** ID の文字の高さ（px、衝突判定用）。 */
 export const ID_H = 8;
-/** 未踏マーク「?」の大きさ（px。minori 指定 6×8）。右上角から (+2, -2) に置く。 */
+/** 未踏マーク「?」の大きさ（px。6×10。10px フォント）。未踏の箱の中央に置く（#114: 下の段のラベルと重ならない）。 */
 export const UNKNOWN_W = 6;
-export const UNKNOWN_H = 8;
-export const UNKNOWN_OFFSET = { x: 2, y: -2 } as const;
+export const UNKNOWN_H = 10;
 
 const MIN_CELL = 8;
 const BASE_ROOM_RATIO = 20 / 32;
 /** 疎な階（CELL>=DENSE_CELL）の箱の比率。箱の下に 10px の ID を置く隙間（CELL-ROOM >= 10）を空けるため小さめ。 */
 const SPARSE_ROOM_RATIO = 1 / 2;
+
+export interface MapLayoutOptions {
+  /** マップに使える高さ（内部px）。省略時は横長の既定値（60px）。縦持ちは PORTRAIT_AVAIL_H。 */
+  readonly availH?: number;
+}
+/** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
+export const PORTRAIT_AVAIL_H = 180 - 20;
 
 export interface MapLayout {
   /** 1マスの間隔（px）。 */
@@ -113,12 +119,13 @@ export interface MapLayout {
  * マップの CELL/ROOM/原点を決める（ビューポート 320x180、下 100px は HUD）。
  * MapScene.drawMap とテストの両方がこれを使う（テスト側で式を写さない）。
  */
-export function calcMapLayout(rooms: readonly RoomState[]): MapLayout {
+export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptions): MapLayout {
   const width = 320;
   const mapW = Math.max(...rooms.map((r) => r.x)) + 1;
   const mapH = Math.max(...rooms.map((r) => r.y)) + 1;
   const availW = width - 40; // 左右マージン20px
-  const availH = 180 - 20 - 100; // 上部マージン20 + HUD下部100px
+  // 上部マージン20 + HUD下部100px。縦持ちは HUD が canvas の外（下）なので全高を使える（#114）
+  const availH = opts?.availH ?? 180 - 20 - 100;
   const CELL = Math.max(MIN_CELL, Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH)));
   const ratio = CELL >= DENSE_CELL ? SPARSE_ROOM_RATIO : BASE_ROOM_RATIO;
   const ROOM = Math.max(4, Math.floor(CELL * ratio));
@@ -141,49 +148,57 @@ export function isDense(layout: MapLayout): boolean {
   return layout.CELL < DENSE_CELL;
 }
 
-/** 部屋 ID の表示文字列。密な階は数字のみ（"r12" → "12"）。 */
-export function roomIdText(id: string, layout: MapLayout): string {
-  return isDense(layout) ? id.replace(/^\D+/, "") : id;
+/**
+ * 探索済みの部屋の関数名ラベル（#114）。部屋 ID（r0 等）はキャンバスに出さない。
+ * "config.read()" → "read"（モジュール名と () を省く）。箱の幅（CELL）に収まる文字数で切る。
+ * 未踏・密な階は null（未踏は「?」、密な階は箱が小さく文字が入らないため記号と枠色で区別）。
+ */
+export function roomLabelText(r: RoomState, layout: MapLayout): string | null {
+  if (!r.visited || isDense(layout)) return null;
+  const name = r.label.replace(/\(\)$/, "").split(".").pop() ?? "";
+  const max = Math.max(1, Math.floor((layout.CELL - 2) / CHAR_W));
+  return name.length > max ? `${name.slice(0, max - 1)}…` : name;
 }
 
 /**
- * 部屋の四角・ID・記号・未踏「?」が描かれる矩形（px、近似）。MapScene の配置と同じ式。
- * 密な階: ID=箱の中央、記号=箱の右隣（中央揃え縦）。
- * 疎な階: ID=箱の外左下（#88）、記号=箱の中央（ID と上の部屋の記号が重ならないように。現在地の 4×4 は記号がないときだけ）。
- * 未踏「?」（疎な階のみ）は箱の右上角から (+2, -2)。接続線は辺の中央から出るので「?」とは交わらない。
+ * 部屋の四角・ラベル・記号・未踏「?」が描かれる矩形（px、近似）。MapScene の配置と同じ式。
+ * 密な階: ラベルなし、記号=箱の右隣（中央揃え縦）。
+ * 疎な階: ラベル（探索済みのみ、関数名）=箱の真下に中央揃え（#114）、記号=箱の中央。
+ * 未踏「?」（疎な階のみ）は箱の中央（箱が接続線を隠す）。
  */
 export function partRects(
   r: RoomState,
   layout: MapLayout,
   hasSymbolIn: boolean,
-): { box: Rect; id: Rect; symbol: Rect | null; unknown: Rect | null } {
+): { box: Rect; id: Rect | null; symbol: Rect | null; unknown: Rect | null } {
   const cx = layout.ORIGIN_X + r.x * layout.CELL;
   const cy = layout.ORIGIN_Y + r.y * layout.CELL;
   const R = layout.ROOM;
   const hasSymbol = hasSymbolIn && symbolFits(layout);
   const box = { x: cx - R / 2, y: cy - R / 2, w: R, h: R };
-  const idW = roomIdText(r.id, layout).length * CHAR_W;
+  const text = roomLabelText(r, layout);
+  const idW = (text?.length ?? 0) * CHAR_W;
   // 密な階は上の段の ID と干渉するので「?」は出さない（未踏は暗い箱＋弱い色の ID で区別）
   const unknown =
     r.visited || isDense(layout)
       ? null
       : {
-          x: cx + R / 2 + UNKNOWN_OFFSET.x,
-          y: cy - R / 2 + UNKNOWN_OFFSET.y - UNKNOWN_H,
+          x: cx - UNKNOWN_W / 2,
+          y: cy - UNKNOWN_H / 2,
           w: UNKNOWN_W,
           h: UNKNOWN_H,
         };
   if (isDense(layout)) {
     return {
       box,
-      id: { x: cx - idW / 2, y: cy - ID_H / 2, w: idW, h: ID_H },
+      id: null,
       symbol: hasSymbol ? { x: cx + R / 2 + 1, y: cy - 4, w: DENSE_SYM_W, h: 8 } : null,
       unknown,
     };
   }
   return {
     box,
-    id: { x: cx - R / 2, y: cy + R / 2, w: idW, h: ID_H },
+    id: text ? { x: cx - idW / 2, y: cy + R / 2, w: idW, h: ID_H } : null,
     symbol: hasSymbol ? { x: cx - 5, y: cy - 5, w: 10, h: 10 } : null,
     unknown,
   };
