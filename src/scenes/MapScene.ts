@@ -12,10 +12,10 @@ import {
   calcMapLayout,
   isDense,
   symbolFits,
-  roomIdText,
+  roomLabelText,
+  PORTRAIT_AVAIL_H,
   isShownOnMap,
   ID_FONT_PX,
-  UNKNOWN_OFFSET,
   UNKNOWN_H,
   roomSymbol,
   stairsOpen,
@@ -42,12 +42,23 @@ const COLOR = {
   weak: "#8fa9a3",
 };
 
+/** 現在地 a から見た b の向き（マップ上の位置との対応用）。y は下向きが正。 */
+function direction(a: RoomState, b: RoomState): string {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "→右" : dx < 0 ? "←左" : "";
+  return dy > 0 ? "↓下" : "↑上";
+}
+
 /**
  * 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
  * Playwright では getByRole("button", { name: /r1へ移動/ }) で取れる。
  */
 export function moveLabel(r: RoomState, s: RunState): string {
-  if (!r.visited) return `${r.id}へ移動（未踏）`;
+  // 部屋 ID はマップ上に出さないので、ボタンには現在地から見た向きを添える（#114）
+  const here = s.floor.rooms.find((x) => x.id === s.roomId);
+  const dir = here ? direction(here, r) : "";
+  if (!r.visited) return `${r.id}へ移動（未踏${dir ? `・${dir}` : ""}）`;
   const suffixes: string[] = [];
   if (r.content.kind === "stairs" && stairsOpen(s)) {
     suffixes.push("階段・開いている");
@@ -58,6 +69,7 @@ export function moveLabel(r: RoomState, s: RunState): string {
   if (r.content.kind === "bug" && r.content.bugs.length > 0) {
     suffixes.push("バグあり");
   }
+  if (dir) suffixes.push(dir);
   const suffix = suffixes.length > 0 ? `（${suffixes.join("・")}）` : "";
   return `${r.id}へ移動: ${r.label}${suffix}`;
 }
@@ -79,6 +91,23 @@ export class MapScene extends Phaser.Scene {
     fx.emitRunEvents(s.events);
     this.drawMap(s);
     this.renderHud(s);
+    // 端末を回したとき（縦横でマップの大きさが変わる）に描き直す
+    const mq = window.matchMedia("(max-aspect-ratio: 1/1)");
+    const onTurn = (): void => this.redrawMap();
+    mq.addEventListener("change", onTurn);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => mq.removeEventListener("change", onTurn));
+  }
+
+  private redrawMap(): void {
+    this.clearMapObjects();
+    this.drawMap(current());
+  }
+
+  /** 演出レイヤー(fx-*)は消さずに、マップの描画物だけ消す。 */
+  private clearMapObjects(): void {
+    for (const o of [...this.children.list]) {
+      if (!(o instanceof Phaser.GameObjects.Image && o.texture.key.startsWith("fx-"))) o.destroy();
+    }
   }
 
   private act(a: Action): void {
@@ -89,10 +118,7 @@ export class MapScene extends Phaser.Scene {
       return;
     }
     this.fx?.emitRunEvents(next.events);
-    // 演出レイヤー(fx-*)は消さずに、マップの描画物だけ作り直す
-    for (const o of [...this.children.list]) {
-      if (!(o instanceof Phaser.GameObjects.Image && o.texture.key.startsWith("fx-"))) o.destroy();
-    }
+    this.clearMapObjects();
     this.drawMap(next);
     this.renderHud(next);
   }
@@ -100,7 +126,9 @@ export class MapScene extends Phaser.Scene {
   private drawMap(s: RunState): void {
     const rooms = s.floor.rooms;
     const visible = rooms.filter((r) => isShownOnMap(r, s));
-    const layout = calcMapLayout(rooms);
+    // 縦持ち（aspect<1）は HUD が canvas の下なので、マップに全高を使う（#114）
+    const portrait = window.matchMedia("(max-aspect-ratio: 1/1)").matches;
+    const layout = calcMapLayout(rooms, portrait ? { availH: PORTRAIT_AVAIL_H } : undefined);
     const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
     const dense = isDense(layout);
 
@@ -164,29 +192,32 @@ export class MapScene extends Phaser.Scene {
           g.fillRect(x - 2, y - 2, 4, 4);
         }
       }
-      // 未踏は「?」を右上角に固定オフセットで置く（接続線は辺の中央から出るので重ならない）
-      if (!r.visited && !dense) {
+      // 未踏は「?」を箱の中央に置く（#114。部屋 ID は出さない）
+      // 開いた階段の ▼ など記号が出ている未踏部屋には「?」を重ねない
+      if (!r.visited && !dense && !(sym && symbolFits(layout))) {
         this.add
-          .text(x + ROOM / 2 + UNKNOWN_OFFSET.x, y - ROOM / 2 + UNKNOWN_OFFSET.y, "?", {
+          .text(x, y, "?", {
             fontFamily: FONT_FAMILY,
             fontSize: `${UNKNOWN_H}px`,
             color: COLOR.weak,
           })
-          .setOrigin(0, 1)
+          .setOrigin(0.5, 0.5)
           .setResolution(RENDER_SCALE);
       }
-      // 部屋 ID（移動ボタンとの対応用）。部屋名はキャンバスに出さない（現在地・名前は HUD に任せる）。
-      // 疎な階は箱の外左下、密な階は箱の中央（数字のみ）。内部 10px 以上。
-      this.add
-        .text(dense ? x : x - ROOM / 2, dense ? y : y + ROOM / 2 - 2, roomIdText(r.id, layout), {
-          fontFamily: FONT_FAMILY,
-          fontSize: `${ID_FONT_PX}px`,
-          color: dense ? (r.visited ? COLOR.text : COLOR.weak) : isHere ? COLOR.text : COLOR.weak,
-          stroke: "#0f1a1c",
-          strokeThickness: dense ? 0 : 1,
-        })
-        .setOrigin(dense ? 0.5 : 0, dense ? 0.5 : 0)
-        .setResolution(RENDER_SCALE);
+      // 探索済みの部屋は関数名を箱の真下に（#114）。部屋 ID はキャンバスに出さない。未踏は上の「?」。
+      const label = roomLabelText(r, layout);
+      if (label) {
+        this.add
+          .text(x, y + ROOM / 2 - 2, label, {
+            fontFamily: FONT_FAMILY,
+            fontSize: `${ID_FONT_PX}px`,
+            color: isHere ? COLOR.text : COLOR.weak,
+            stroke: "#0f1a1c",
+            strokeThickness: 1,
+          })
+          .setOrigin(0.5, 0)
+          .setResolution(RENDER_SCALE);
+      }
     }
   }
 
