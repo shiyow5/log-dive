@@ -77,8 +77,17 @@ test("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終了（�
   await page.getByRole("button", { name: "パッチを当てる: 境界ずれ" }).click();
   // 1階にはまだバグが残っているので、倒したらマップに戻る
   await waitForIdle(page);
-  const finalScene = await page.locator("body").getAttribute("data-scene");
-  expect(finalScene).toMatch(/^(map|result)$/);
+  // data-scene が map または result に遷移していることを確認（auto-wait付き）。
+  // 失敗時は実際の data-scene 値を標準出力（CI ログ）に出してから、同じエラーを投げ直す。
+  const body = page.locator("body");
+  try {
+    await expect(body).toHaveAttribute("data-scene", /^(map|result)$/, { timeout: 5000 });
+  } catch (e) {
+    console.log(
+      `[vertical-slice] data-scene actual=${JSON.stringify(await body.getAttribute("data-scene"))}`,
+    );
+    throw e;
+  }
   expect(errors).toEqual([]);
 });
 
