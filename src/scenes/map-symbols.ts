@@ -104,7 +104,7 @@ export interface MapLayoutOptions {
   readonly availH?: number;
 }
 /** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
-export const PORTRAIT_AVAIL_H = 180 - 20;
+export const PORTRAIT_AVAIL_H = 180;
 
 export interface MapLayout {
   /** 1マスの間隔（px）。 */

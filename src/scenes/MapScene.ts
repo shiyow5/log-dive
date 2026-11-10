@@ -209,7 +209,7 @@ export class MapScene extends Phaser.Scene {
         this.add
           .text(x, y + ROOM / 2 - 2, label, {
             fontFamily: FONT_FAMILY,
-            fontSize: `${ID_FONT_PX}px`,
+            fontSize: portrait ? "12px" : `${ID_FONT_PX}px`,
             color: isHere ? COLOR.text : COLOR.weak,
             stroke: "#0f1a1c",
             strokeThickness: 1,
