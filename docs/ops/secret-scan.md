@@ -45,11 +45,13 @@ fingerprint: fake-test-api-key-001
 ローカルでのシークレット混入を未然に防ぐため、pre-commit を導入する場合は以下の手順を踏む:
 
 1. パッケージのインストール
+
    ```bash
    pip install pre-commit gitleaks
    ```
 
 2. `.pre-commit-config.yaml` の作成（参考）
+
    ```yaml
    repos:
      - repo: https://github.com/gitleaks/gitleaks
@@ -59,6 +61,7 @@ fingerprint: fake-test-api-key-001
    ```
 
 3. pre-commit フックのインストール
+
    ```bash
    pre-commit install
    ```
