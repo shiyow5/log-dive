@@ -3,6 +3,7 @@ import * as glitch from "pixelfx/fx/scifi/glitch";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
 import { PixelFxLayer } from "../fx/PixelFxLayer";
 import { Rng } from "../core/rng";
+import { ensureBugTexture } from "../art/bug-sprite";
 import { fxEnabled } from "../ui/flags";
 import { button, el, renderHud, setHudBusy } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
@@ -13,10 +14,14 @@ import { fadeIn, goTo } from "./transition";
 const FX_KEY = "fx-battle";
 const BUG_X = GAME_WIDTH / 2;
 const BUG_Y = 44;
+const BAR_W = 48;
+const BAR_Y = BUG_Y + 32;
+const BUG_TEX = "bug-sprite";
 
 export class BattleScene extends Phaser.Scene {
   private fx?: PixelFxLayer;
   private hpBar?: Phaser.GameObjects.Graphics;
+  private hpText?: Phaser.GameObjects.Text;
   /** patch の種類を選んでいる途中か */
   private picking = false;
 
@@ -60,19 +65,27 @@ export class BattleScene extends Phaser.Scene {
   private drawBug(s: RunState): void {
     const b = s.battle;
     if (!b) return;
-    const g = this.add.graphics();
-    g.fillStyle(0x26393d, 1);
-    g.fillRect(BUG_X - 20, BUG_Y - 20, 40, 40);
-    g.lineStyle(2, 0xff6b5e, 1);
-    g.strokeRect(BUG_X - 20, BUG_Y - 20, 40, 40);
+    // 16x16 ドット絵（全バグ共通の「正体不明の虫」）。3 倍=48px。ボスは 4 倍。
+    ensureBugTexture(this.textures, BUG_TEX);
+    const scale = b.boss ? 4 : 3;
+    const img = this.add.image(BUG_X, BUG_Y, BUG_TEX).setScale(scale);
+    img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    // 正体未特定の印。『?』を虫の右上に重ねる
     this.add
-      .text(BUG_X, BUG_Y, "?", {
+      .text(BUG_X + 8 * scale, BUG_Y - 8 * scale, "?", {
         fontFamily: FONT_FAMILY,
         fontSize: "16px",
-        color: "#ff6b5e",
+        color: "#ffd166",
       })
       .setOrigin(0.5);
     this.hpBar = this.add.graphics();
+    this.hpText = this.add
+      .text(BUG_X + BAR_W / 2 + 4, BAR_Y + 2, "", {
+        fontFamily: FONT_FAMILY,
+        fontSize: "12px",
+        color: "#e4f1ec",
+      })
+      .setOrigin(0, 0.5);
     this.drawHp(b);
   }
 
@@ -80,13 +93,13 @@ export class BattleScene extends Phaser.Scene {
     const g = this.hpBar;
     if (!g || !b) return;
     g.clear();
-    const w = 48;
-    const x = BUG_X - w / 2;
-    const y = BUG_Y + 26;
+    const x = BUG_X - BAR_W / 2;
     g.fillStyle(0x1b2b2e, 1);
-    g.fillRect(x, y, w, 4);
+    g.fillRect(x, BAR_Y, BAR_W, 4);
     g.fillStyle(0xff6b5e, 1);
-    g.fillRect(x, y, Math.round((w * b.hp) / b.maxHp), 4);
+    g.fillRect(x, BAR_Y, Math.round((BAR_W * b.hp) / b.maxHp), 4);
+    // 数値はバーの右に（色だけに頼らない）
+    this.hpText?.setText(`${b.hp}/${b.maxHp}`);
   }
 
   private renderHud(s: RunState): void {
@@ -188,12 +201,7 @@ export class BattleScene extends Phaser.Scene {
     const panel = el(
       "section",
       { class: "hud-panel", "aria-label": "バトル" },
-      el(
-        "h2",
-        {},
-        `${here?.label ?? ""} — 正体不明のバグ `,
-        el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
-      ),
+      el("h2", {}, `${here?.label ?? ""} — 正体不明のバグ`),
       el(
         "p",
         { class: "hud-stat" },
