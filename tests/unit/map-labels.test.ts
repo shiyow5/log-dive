@@ -97,6 +97,20 @@ describe("部屋 ID・未踏「?」の配置（#88）", () => {
       }
     }
   });
+
+  it("縦持ちは最下段のラベル下端が canvas 全高（PORTRAIT_AVAIL_H）に収まる（Codex P2）", () => {
+    for (let i = 0; i < 100; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
+        const l = calcMapLayout(rooms, { availH: PORTRAIT_AVAIL_H });
+        for (const r of rooms) {
+          const { id, box } = partRects(r, l, false);
+          const bottom = id ? id.y + id.h : box.y + box.h;
+          expect(bottom, `seed-${i} floor=${n} ${r.id}`).toBeLessThanOrEqual(PORTRAIT_AVAIL_H);
+        }
+      }
+    }
+  });
 });
 
 describe("partCollisions: 部屋ID・記号・四角の重なり（#66）", () => {

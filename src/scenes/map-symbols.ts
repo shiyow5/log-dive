@@ -95,16 +95,20 @@ export const UNKNOWN_W = 6;
 export const UNKNOWN_H = 10;
 
 const MIN_CELL = 8;
+/** 部屋の原点Y（上マージン）。 */
+const MAP_ORIGIN_Y = 20;
 const BASE_ROOM_RATIO = 20 / 32;
 /** 疎な階（CELL>=DENSE_CELL）の箱の比率。箱の下に 10px の ID を置く隙間（CELL-ROOM >= 10）を空けるため小さめ。 */
 const SPARSE_ROOM_RATIO = 1 / 2;
 
 export interface MapLayoutOptions {
-  /** マップに使える高さ（内部px）。省略時は横長の既定値（60px）。縦持ちは PORTRAIT_AVAIL_H。 */
+  /** マップに使える高さ（内部px）。省略時は横長の既定値（60px）。指定時は canvas 全高（縦持ちは PORTRAIT_AVAIL_H）。 */
   readonly availH?: number;
 }
 /** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
-export const PORTRAIT_AVAIL_H = 180 - 20;
+export const PORTRAIT_AVAIL_H = 180;
+/** 縦持ち（aspect<1）時の部屋 ID フォントサイズ（内部 px）。判読性のため横持ちの ID_FONT_PX より大きくする。 */
+export const PORTRAIT_ID_FONT_PX = 12;
 
 export interface MapLayout {
   /** 1マスの間隔（px）。 */
@@ -125,11 +129,12 @@ export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptio
   const mapH = Math.max(...rooms.map((r) => r.y)) + 1;
   const availW = width - 40; // 左右マージン20px
   // 上部マージン20 + HUD下部100px。縦持ちは HUD が canvas の外（下）なので全高を使える（#114）
-  const availH = opts?.availH ?? 180 - 20 - 100;
+  // availH 指定時は canvas 全高。上マージン(ORIGIN_Y)と最下段の ID ラベル(ID_H)を引いて部屋が収まる高さにする
+  const availH = opts?.availH !== undefined ? opts.availH - MAP_ORIGIN_Y - ID_H : 180 - 20 - 100;
   const CELL = Math.max(MIN_CELL, Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH)));
   const ratio = CELL >= DENSE_CELL ? SPARSE_ROOM_RATIO : BASE_ROOM_RATIO;
   const ROOM = Math.max(4, Math.floor(CELL * ratio));
-  return { CELL, ROOM, ORIGIN_X: Math.floor((width - mapW * CELL) / 2), ORIGIN_Y: 20 };
+  return { CELL, ROOM, ORIGIN_X: Math.floor((width - mapW * CELL) / 2), ORIGIN_Y: MAP_ORIGIN_Y };
 }
 
 /** これより CELL が小さい階は「密」。ID を箱の中、記号を箱の右隣に置く（上下に余白がないため）。 */
