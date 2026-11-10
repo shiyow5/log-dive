@@ -28,16 +28,15 @@ gitleaks でシークレット（API キー、トークン、秘密鍵など）�
 
 1. `.gitleaksignore` ファイルに fingerprint を記載して除外する
 2. 各エントリには以下の情報を明記すること:
-   - fingerprint: gitleaks が出力する識別子
-   - reason: なぜ誤検知か（例: テストデータ、ドキュメント内のサンプル値等）
+   - fingerprint: gitleaks が出力する識別子（`<commit>:<file>:<rule>:<line>` 形式）。**接頭辞を付けず、1行に fingerprint だけを書く**
+   - reason: 直前の `#` コメント行に、なぜ誤検知か（例: テストデータ、ドキュメント内のサンプル値等）
 3. `.gitleaksignore` への変更はレビュー必須（誤った除外により本物のシークレットが放置されないよう）
 
 ### `.gitleaksignore` のフォーマット例
 
 ```
-# Test fixture: fake API key used in unit tests only
-fingerprint: fake-test-api-key-001
-# reason: unit test fixture, never used in production
+# reason: unit test fixture (fake API key), never used in production
+0123abcd4567ef89:tests/fixtures/api.ts:generic-api-key:12
 ```
 
 ## pre-commitフックの導入手順
@@ -47,7 +46,7 @@ fingerprint: fake-test-api-key-001
 1. パッケージのインストール
 
    ```bash
-   pip install pre-commit gitleaks
+   pip install pre-commit
    ```
 
 2. `.pre-commit-config.yaml` の作成（参考）
@@ -68,7 +67,7 @@ fingerprint: fake-test-api-key-001
 
 4. 全履歴の一発チェック（任意）
    ```bash
-   gitleaks detect --source . -v
+   gitleaks detect --source . -v --redact
    ```
 
 > **注意**: pre-commit は予防策であり、CI 上の gitleaks ワークフローに代わるものではありません。両方を併用する。
@@ -95,15 +94,15 @@ gitleaks.yml のジョブ名は `gitleaks`（`jobs.gitleaks.name`）のため、
 
 - gitleaks でシークレットが検出された場合、main への PR マージがブロックされる
 - CI 実行時間がやや増える（通常数秒〜十数秒）
-- gitleaks ワークフローが削除・無効化されている間はマーhibitブロックされる
+- gitleaks ワークフローが削除・無効化されている間はチェックが報告されないためマージがブロックされる
 
 ### 戻し方
 
-- Settings > Branches で該当ルールを編集し、status checks から `gitlekas` を削除するのみで元に戻る
+- Settings > Branches で該当ルールを編集し、status checks から `gitleaks` を削除するのみで元に戻る
 - gitleaks workflow を削除した場合も同様に除去可能
 
 ### 注意事項
 
-- **本設定の変更は東雲さん（rei）の承認を得てから実施すること**
-- Free プランでは branch protection そのものも使用可能だが、gitleaks は CI 上のワークフローとして動作するため、プラン依存の設定ではない
+- **本設定の変更はしよをさんの承認（東雲さん経由）を得てから実施すること**
+- **前提: このリポジトリは Private かつ GitHub Free のため、現状では branch protection / required status checks は強制されない**（CONTRIBUTING.md 参照）。本案は Public 化または有料プランへの移行後に適用する。それまでは CI の gitleaks 結果をレビュー時に目視確認する
 - 誤検知が増える場合は `.gitleaksignore` に対応し、必要な分だけ除外する
