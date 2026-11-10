@@ -7,6 +7,7 @@ import { initFixedRun } from "./fixed-run";
 import { startBattle } from "../../src/core/battle";
 import { BUG_IDS, bugDef, loadGameData, type BugId } from "../../src/core/data";
 import { apply, legalActions, type RunState } from "../../src/core/run";
+import { describeEvents } from "../../src/scenes/run-port";
 
 const data = loadGameData();
 const SEEDS = Array.from({ length: 300 }, (_, i) => `sk28-${i}`);
@@ -143,6 +144,9 @@ describe("breakpoint: 次のバグ行動を1回止める＋症状を1つ公開",
     expect(rep.battle!.reproduced).toBe(true);
     expect(rep.battle!.symptoms).toEqual(s.battle!.symptoms);
     expect(rep.player.cpu).toBe(s.player.cpu - 1);
+    // 症状が残っていなくても、再現できたことがログに出る（Issue #42）
+    expect(rep.events).toEqual([{ t: "reproduced" }]);
+    expect(describeEvents(rep, rep.events)).toBe("再現できた（新しい症状はない）");
 
     expect(rep.battle!.hp).toBe(15);
     const fixed = apply(rep, { t: "skill", id: "patch", arg: "off-by-one" });

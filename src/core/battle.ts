@@ -198,7 +198,7 @@ function resolveSkill(
         return {
           battle: { ...battle, reproduced: true },
           player: paid,
-          events: [],
+          events: [{ t: "reproduced" }],
           degraded: false,
         };
       }
