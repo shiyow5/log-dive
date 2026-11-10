@@ -134,6 +134,8 @@ export type RunEvent =
   | { readonly t: "moved"; readonly room: string }
   | { readonly t: "battleStart"; readonly room: string }
   | { readonly t: "symptom"; readonly text: string }
+  /** 症状が残っていない状態で再現だけ済ませた（新しい症状はない）。 */
+  | { readonly t: "reproduced" }
   | { readonly t: "candidateRemoved"; readonly bug: BugId }
   | { readonly t: "bugDamaged"; readonly amount: number }
   | { readonly t: "degrade" }
