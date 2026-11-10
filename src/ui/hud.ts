@@ -108,6 +108,9 @@ export function setHudBusy(busy: boolean): void {
 
 /** 最初のボタン（または指定要素）にフォーカスを移す。画面が変わったときにキーボードで迷子にしない。 */
 export function focusFirst(container: HTMLElement): void {
-  const target = container.querySelector<HTMLElement>("[data-autofocus], button:not([disabled])");
+  // 危険操作（.hud-abandon）は初期フォーカスにしない（Enter 連打で放棄ダイアログが開かないように）
+  const target = container.querySelector<HTMLElement>(
+    "[data-autofocus], button:not([disabled]):not(.hud-abandon)",
+  );
   target?.focus();
 }

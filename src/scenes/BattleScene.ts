@@ -186,7 +186,7 @@ export class BattleScene extends Phaser.Scene {
 
     const endTurn: Action = { t: "endTurn" };
     // 3段構造（#87）: 上段=敵名・HP・予告・ステータス（固定）/ 中段=候補・症状・スキル（ここだけスクロール）
-    // / 下段=ターン終了・ランを放棄（固定）。2階以降で候補が増えても主ボタンが画面外に出ない。
+    // / 下段=ターン終了（固定）+ 放棄は最下段の別行（ゴースト・右寄せ、#119）。2階以降で候補が増えても主ボタンが画面外に出ない。
     const panel = el(
       "section",
       { class: "hud-panel hud-panel--battle", "aria-label": "バトル" },
@@ -194,10 +194,16 @@ export class BattleScene extends Phaser.Scene {
         "header",
         { class: "hud-battle-head" },
         el(
-          "h2",
-          {},
-          `${here?.label ?? ""} — 正体不明のバグ `,
-          el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
+          "div",
+          { class: "hud-battle-title" },
+          el(
+            "h2",
+            {},
+            `${here?.label ?? ""} — 正体不明のバグ `,
+            el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
+          ),
+          // 危険操作はパネル右上（ターン終了から離す。#119）
+          abandonButton(() => this.act({ t: "abandon" })),
         ),
         el(
           "p",
@@ -234,7 +240,6 @@ export class BattleScene extends Phaser.Scene {
           primary: true,
           disabled: !legal.can(endTurn),
         }),
-        abandonButton(() => this.act({ t: "abandon" })),
       ),
     );
     renderHud("battle", panel);

@@ -384,3 +384,119 @@
     max-height: none;
   }
 }
+
+/* ---- ランを放棄（#119）: 危険操作はゴースト＋主操作から離す ---- */
+.hud-btn--ghost {
+  background: transparent;
+  border: 1px solid #5c6b6e;
+  color: #9fb3b6;
+  min-height: 44px;
+}
+.hud-btn--ghost:hover:not(:disabled) {
+  border-color: #ff6b5e;
+  color: #ff6b5e;
+}
+.hud-btn--danger {
+  border-color: #ff6b5e;
+  color: #ff6b5e;
+}
+/* 戦闘: パネル右上（タイトル行の右端）。タップ領域は 44px 以上 */
+.hud-battle-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hud-battle-title .hud-btn--ghost {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 2px 10px;
+  font-size: 13px;
+}
+/* マップ: 移動ボタン列との間は 24px 以上 */
+.hud-row--danger {
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+@keyframes hud-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.hud-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  animation: hud-fade 150ms ease-out;
+}
+.hud-modal-box {
+  background: #1b2b2e;
+  border: 1px solid #7ebeab;
+  border-radius: 8px;
+  padding: 16px 20px;
+  width: min(420px, calc(100% - 32px));
+  color: #e4f1ec;
+}
+@media (max-width: 480px) {
+  .hud-modal-box {
+    width: min(340px, calc(100% - 32px));
+  }
+}
+.hud-modal-box h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+/* 見出しの ▲ は図形（色＋形の二重表示。色覚対応） */
+.hud-modal-title::before {
+  content: "▲";
+  color: #ff6b5e;
+  margin-right: 6px;
+}
+.hud-modal-note {
+  margin: 4px 0 0;
+  color: #9fb3b6;
+  font-size: 13px;
+}
+.hud-modal-actions {
+  gap: 16px;
+  margin-top: 16px;
+}
+.hud-modal-box .hud-btn {
+  min-height: 48px;
+  flex: 1;
+}
+/* 続ける（既定・安全）: 塗り accent */
+.hud-modal-box .hud-btn--primary {
+  background: #7ebeab;
+  border: 2px solid #7ebeab;
+  color: #0f1a1c;
+}
+/* 放棄する（危険）: 塗りなし・danger 枠。hover/押下で danger 塗り */
+.hud-modal-box .hud-btn--danger {
+  background: transparent;
+  border: 2px solid #ff6b5e;
+  color: #ff6b5e;
+}
+.hud-modal-box .hud-btn--danger:hover:not(:disabled) {
+  background: #ff6b5e;
+  color: #0f1a1c;
+}
+@media (max-width: 480px) {
+  /* SP は縦積み（続ける → 放棄する）、各 48px・全幅 */
+  .hud-modal-actions {
+    flex-direction: column;
+  }
+  .hud-modal-actions .hud-btn {
+    width: 100%;
+    flex: none;
+  }
+}
