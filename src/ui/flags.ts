@@ -40,3 +40,17 @@ export function markFade(durationMs: number): void {
 export function isFading(): boolean {
   return performance.now() < fadeEndsAt;
 }
+
+/**
+ * 画面を開いている途中で OS の「視差効果を減らす」が有効になったら cb を呼ぶ。戻り値で解除。
+ * matchMedia が無い環境（Node のテストなど）では何もしない。
+ */
+export function onReducedMotion(cb: () => void): () => void {
+  if (typeof matchMedia !== "function") return () => {};
+  const mq = matchMedia("(prefers-reduced-motion: reduce)");
+  const handler = (e: MediaQueryListEvent) => {
+    if (e.matches) cb();
+  };
+  mq.addEventListener("change", handler);
+  return () => mq.removeEventListener("change", handler);
+}

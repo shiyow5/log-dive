@@ -1,21 +1,19 @@
 import Phaser from "phaser";
-import * as glitch from "pixelfx/fx/scifi/glitch";
-import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
-import { PixelFxLayer } from "../fx/PixelFxLayer";
+import { BUG_POS, FONT_FAMILY } from "../config";
+import { createSceneFx } from "../fx/scene-fx";
+import type { FxDirector } from "../fx/FxDirector";
 import { Rng } from "../core/rng";
-import { fxEnabled } from "../ui/flags";
 import { button, el, renderHud, setHudBusy } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { bugName, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, BattleState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 
-const FX_KEY = "fx-battle";
-const BUG_X = GAME_WIDTH / 2;
-const BUG_Y = 44;
+const BUG_X = BUG_POS.x;
+const BUG_Y = BUG_POS.y;
 
 export class BattleScene extends Phaser.Scene {
-  private fx?: PixelFxLayer;
+  private fx?: FxDirector;
   private hpBar?: Phaser.GameObjects.Graphics;
   /** patch の種類を選んでいる途中か */
   private picking = false;
@@ -27,22 +25,16 @@ export class BattleScene extends Phaser.Scene {
   create(): void {
     fadeIn(this);
     this.picking = false;
-    this.fx = undefined;
     const s = current();
+    const fx = createSceneFx(this, "fx-battle");
+    this.fx = fx;
     this.drawBug(s);
-    if (fxEnabled() && s.battle) {
-      // バグ出現 = グリッチ（0.6 秒以内。再生中は入力を止める）
-      if (this.textures.exists(FX_KEY)) this.textures.remove(FX_KEY);
-      this.fx = new PixelFxLayer(this, FX_KEY, GAME_WIDTH, GAME_HEIGHT);
-      this.fx.play(glitch, { x: BUG_X, y: BUG_Y, seed: new Rng(s.seed).int(1, 9999) });
+    // バグ出現 = グリッチ＋雷（0.6 秒だけ入力を止める）
+    if (s.battle && fx.emit("battleStart", new Rng(s.seed).int(1, 9999))) {
       setHudBusy(true);
       this.time.delayedCall(600, () => setHudBusy(false));
     }
     this.renderHud(s);
-  }
-
-  override update(_time: number, delta: number): void {
-    this.fx?.update(delta / 1000);
   }
 
   private act(a: Action): void {
@@ -53,6 +45,7 @@ export class BattleScene extends Phaser.Scene {
       goTo(this, to);
       return;
     }
+    this.fx?.emitRunEvents(next.events);
     this.drawHp(next.battle);
     this.renderHud(next);
   }

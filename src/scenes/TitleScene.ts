@@ -1,3 +1,4 @@
+import { createSceneFx } from "../fx/scene-fx";
 import Phaser from "phaser";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
 import { loadGameData } from "../core/data";
@@ -115,6 +116,7 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     fadeIn(this);
+    createSceneFx(this, "fx-title").emit("title");
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, TITLE, {
         fontFamily: FONT_FAMILY,
