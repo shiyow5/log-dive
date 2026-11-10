@@ -14,7 +14,9 @@ import {
   symbolFits,
   roomIdText,
   isShownOnMap,
-  mapLabelText,
+  ID_FONT_PX,
+  UNKNOWN_OFFSET,
+  UNKNOWN_H,
   roomSymbol,
   stairsOpen,
   symbolColor,
@@ -29,7 +31,7 @@ const COLOR = {
   line: 0x26393d,
   unknown: 0x26393d,
   visited: 0x1b2b2e,
-  current: num(COLORS.accent),
+  current: num(COLORS.hint),
   bug: num(COLORS.bug),
   chest: num(COLORS.hint),
   stairs: num(COLORS.stairs),
@@ -118,7 +120,7 @@ export class MapScene extends Phaser.Scene {
     for (const r of visible) {
       const { x, y } = center(r);
       const isHere = r.id === s.roomId;
-      g.fillStyle(isHere ? COLOR.current : r.visited ? COLOR.visited : COLOR.unknown, 1);
+      g.fillStyle(r.visited ? COLOR.visited : COLOR.unknown, 1);
       g.fillRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       // バグ部屋は「警告色の枠＋記号」（色だけに頼らない）
       if (r.visited && r.content.kind === "bug") {
@@ -141,7 +143,7 @@ export class MapScene extends Phaser.Scene {
         // 密な階は箱の右隣（上下に余白がなく隣の部屋と重なるため）
         const symPos = dense
           ? { x: x + ROOM / 2 + 1, y, ox: 0, oy: 0.5, px: "7px" }
-          : { x, y: y - ROOM / 2 - 2, ox: 0.5, oy: 0, px: "10px" };
+          : { x, y, ox: 0.5, oy: 0.5, px: "10px" };
         this.add
           .text(symPos.x, symPos.y, sym, {
             fontFamily: FONT_FAMILY,
@@ -151,44 +153,38 @@ export class MapScene extends Phaser.Scene {
           .setOrigin(symPos.ox, symPos.oy)
           .setResolution(RENDER_SCALE);
       }
-      // 部屋名（短縮。密な階では出さない → mapLabelText）
-      const nameText = mapLabelText(r, CELL);
-      if (nameText !== null) {
+      // 現在地: 2px の黄色い枠 + 中央に 4×4 の塗り（「@」は使わない。#88）。中央に ID（密な階）や記号があるときは枠だけ
+      if (isHere) {
+        g.lineStyle(2, COLOR.current, 1);
+        g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
+        if (!dense && !sym) {
+          g.fillStyle(COLOR.current, 1);
+          g.fillRect(x - 2, y - 2, 4, 4);
+        }
+      }
+      // 未踏は「?」を右上角に固定オフセットで置く（接続線は辺の中央から出るので重ならない）
+      if (!r.visited && !dense) {
         this.add
-          .text(x, y + ROOM / 2 + 2, nameText, {
+          .text(x + ROOM / 2 + UNKNOWN_OFFSET.x, y - ROOM / 2 + UNKNOWN_OFFSET.y, "?", {
             fontFamily: FONT_FAMILY,
-            fontSize: "8px",
-            color: r.visited ? COLOR.text : COLOR.weak,
+            fontSize: `${UNKNOWN_H}px`,
+            color: COLOR.weak,
           })
-          .setOrigin(0.5, 0)
+          .setOrigin(0, 1)
           .setResolution(RENDER_SCALE);
       }
-      // 部屋ID（移動ボタンとの対応用、右上に小さく）。現在地は「@」と重なるので出さない（隣の部屋のIDだけあれば足りる）
-      if (!isHere || dense)
-        this.add
-          .text(
-            dense ? x : x + ROOM / 2 - 2,
-            dense ? y : y - ROOM / 2 + 2,
-            roomIdText(r.id, layout),
-            {
-              fontFamily: FONT_FAMILY,
-              fontSize: "8px",
-              color: dense ? (isHere ? "#0f1a1c" : COLOR.text) : COLOR.weak,
-            },
-          )
-          .setOrigin(dense ? 0.5 : 1, dense ? 0.5 : 0)
-          .setResolution(RENDER_SCALE);
-      // 密な階は「@」を出さない（ID を優先。現在地は塗り色で区別）
-      if (isHere && !dense) {
-        this.add
-          .text(x, y, "@", {
-            fontFamily: FONT_FAMILY,
-            fontSize: "12px",
-            color: "#0f1a1c",
-          })
-          .setOrigin(0.5)
-          .setResolution(RENDER_SCALE);
-      }
+      // 部屋 ID（移動ボタンとの対応用）。部屋名はキャンバスに出さない（現在地・名前は HUD に任せる）。
+      // 疎な階は箱の外左下、密な階は箱の中央（数字のみ）。内部 10px 以上。
+      this.add
+        .text(dense ? x : x - ROOM / 2, dense ? y : y + ROOM / 2 - 2, roomIdText(r.id, layout), {
+          fontFamily: FONT_FAMILY,
+          fontSize: `${ID_FONT_PX}px`,
+          color: dense ? (r.visited ? COLOR.text : COLOR.weak) : isHere ? COLOR.text : COLOR.weak,
+          stroke: "#0f1a1c",
+          strokeThickness: dense ? 0 : 1,
+        })
+        .setOrigin(dense ? 0.5 : 0, dense ? 0.5 : 0)
+        .setResolution(RENDER_SCALE);
     }
   }
 
