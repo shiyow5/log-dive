@@ -33,6 +33,12 @@ describe("fx-map（イベント名 → エフェクト）", () => {
   });
 });
 
+describe("battleStart（Issue #106）", () => {
+  it("敵・敵名・HP バーに重ならないよう、手前(front)には出さない", () => {
+    for (const spec of FX_MAP.battleStart) expect(spec.layer).toBe("back");
+  });
+});
+
 describe("FxDirector", () => {
   it("演出が有効なら対応表どおりのレイヤーに再生する", () => {
     const back = fakeSink();

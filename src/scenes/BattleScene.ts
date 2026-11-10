@@ -1,5 +1,6 @@
 import Phaser from "phaser";
-import { BUG_POS, FONT_FAMILY } from "../config";
+import { setupView } from "./view";
+import { BUG_POS, FONT_FAMILY, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
 import { Rng } from "../core/rng";
@@ -23,6 +24,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupView(this);
     fadeIn(this);
     this.picking = false;
     const s = current();
@@ -64,7 +66,8 @@ export class BattleScene extends Phaser.Scene {
         fontSize: "16px",
         color: "#ff6b5e",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(RENDER_SCALE);
     this.hpBar = this.add.graphics();
     this.drawHp(b);
   }
