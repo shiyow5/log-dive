@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CHAR_W,
+  DENSE_SYM_W,
   MIN_NAME_CHARS,
   calcMapLayout,
   labelCollisions,
@@ -8,6 +9,7 @@ import {
   mapLabelText,
   partCollisions,
   shortLabel,
+  symbolFits,
 } from "../../src/scenes/map-symbols";
 import { floorCount, generateFloor } from "../../src/core/floor";
 import type { RoomState } from "../../src/core/run";
@@ -116,5 +118,14 @@ describe("partCollisions: 部屋ID・記号・四角の重なり（#66）", () =
         ).toEqual([]);
       }
     }
+  });
+
+  it("DENSE_SYM_W は 7px 送り幅（DotGothic16 の ◆▼♦▲★）より小さくならず、symbolFits と partRects が同じ値を使う", () => {
+    expect(DENSE_SYM_W).toBeGreaterThanOrEqual(7 + 1);
+    // seed-2 の2階（CELL=15, ROOM=9: 隙間6px）は実測幅7pxの記号が入らないので出さない
+    const rooms = generateFloor("seed-2", 2).rooms.map((r) => ({ ...r, visited: true }));
+    const layout = calcMapLayout(rooms);
+    expect(layout.CELL - layout.ROOM).toBeLessThan(DENSE_SYM_W + 1);
+    expect(symbolFits(layout)).toBe(false);
   });
 });

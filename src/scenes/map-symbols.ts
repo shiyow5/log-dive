@@ -133,8 +133,12 @@ export function mapLabelText(r: RoomState, CELL: number): string | null {
 
 /** これより CELL が小さい階は「密」。ID を箱の中、記号を箱の右隣に置く（上下に余白がないため）。 */
 export const DENSE_CELL = 20;
-/** 密な階の記号（7px フォント）の幅。箱の右隣の隙間(CELL-ROOM)に収める。 */
-export const DENSE_SYM_W = 4;
+/**
+ * 密な階の記号が占める幅。DotGothic16 の 7px フォントは ◆▼♦▲★ の送り幅が 7px なので、
+ * 実測 7px + 余白 1px = 8px。箱の右隣の隙間(CELL-ROOM)に収める。
+ * symbolFits（出す/出さない）と partRects（衝突判定の矩形）の両方がこの値を使う。
+ */
+export const DENSE_SYM_W = 8;
 /** 密な階で記号を箱の右隣に置けるか（隙間 CELL-ROOM が足りないほど密なら出さない。枠色で区別は残る）。 */
 export function symbolFits(layout: MapLayout): boolean {
   return !isDense(layout) || layout.CELL - layout.ROOM >= DENSE_SYM_W + 1;
