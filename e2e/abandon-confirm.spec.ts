@@ -18,7 +18,7 @@ for (const where of ["map", "battle"] as const) {
     expect((await open.boundingBox())!.height).toBeGreaterThanOrEqual(40);
     await open.click();
     const dlg = page.getByRole("alertdialog");
-    await expect(dlg).toContainText("放棄すると今回のランは終了します。");
+    await expect(dlg).toContainText("放棄すると今回のランはここで終わります。");
     await expect(page.getByRole("button", { name: /^続ける/ })).toBeFocused();
     expect(
       (await page.getByRole("button", { name: /放棄する/ }).boundingBox())!.height,

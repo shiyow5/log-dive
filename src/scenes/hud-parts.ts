@@ -49,7 +49,12 @@ export function abandonButton(onAbandon: () => void): HTMLButtonElement {
 /** 確認ダイアログを開く。Esc・「続ける」で閉じて元のボタンにフォーカスを戻す。 */
 export function openAbandonConfirm(onAbandon: () => void, opener?: HTMLElement): void {
   if (document.getElementById("abandon-confirm")) return;
+  // 開いた直後の連打貫通を防ぐため、300ms は「放棄する」を無効にする（go は 300ms 後に参照される）
+  const armTimer = setTimeout(() => {
+    go.disabled = false;
+  }, 300);
   const close = () => {
+    clearTimeout(armTimer);
     document.removeEventListener("keydown", onKey, true);
     document.getElementById("abandon-confirm")?.remove();
     if (opener?.isConnected) opener.focus();
@@ -70,6 +75,7 @@ export function openAbandonConfirm(onAbandon: () => void, opener?: HTMLElement):
       btns[next]?.focus();
     }
   };
+  // 「続ける」が安全側・既定フォーカス。左（SPは上）に置く
   const keep = button("続ける", close, { primary: true, label: "続ける（放棄しない）" });
   const go = button(
     "放棄する",
@@ -80,6 +86,7 @@ export function openAbandonConfirm(onAbandon: () => void, opener?: HTMLElement):
     { label: "放棄する（ランを終了）" },
   );
   go.classList.add("hud-btn--danger");
+  go.disabled = true;
   const overlay = el(
     "div",
     { id: "abandon-confirm", class: "hud-modal" },
@@ -92,11 +99,20 @@ export function openAbandonConfirm(onAbandon: () => void, opener?: HTMLElement):
         "aria-labelledby": "abandon-title",
         "aria-describedby": "abandon-desc",
       },
-      el("h2", { id: "abandon-title" }, "ランを放棄しますか？"),
-      el("p", { id: "abandon-desc" }, "放棄すると今回のランは終了します。"),
-      el("div", { class: "hud-row" }, go, keep),
+      el("h2", { id: "abandon-title", class: "hud-modal-title" }, "ランを放棄しますか？"),
+      el(
+        "p",
+        { id: "abandon-desc" },
+        "放棄すると今回のランはここで終わります。進行中の戦闘や集めたものは戻せません。",
+      ),
+      el("p", { class: "hud-modal-note" }, "この階の続きは、次のランでやり直しになります。"),
+      el("div", { class: "hud-row hud-modal-actions" }, keep, go),
     ),
   );
+  // 背景クリックは「続ける」と同じ（放棄しない）
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) close();
+  });
   document.getElementById("hud")?.append(overlay);
   document.addEventListener("keydown", onKey, true);
   keep.focus();
