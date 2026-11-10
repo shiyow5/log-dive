@@ -1,5 +1,6 @@
 import Phaser from "phaser";
-import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
+import { setupView } from "./view";
+import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import { Rng } from "../core/rng";
 import { fxEnabled } from "../ui/flags";
@@ -28,6 +29,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   async create(): Promise<void> {
+    setupView(this);
     document.body.dataset.scene = "boot";
     this.game.events.emit("ready");
 
@@ -46,7 +48,8 @@ export class BootScene extends Phaser.Scene {
         fontSize: "12px",
         color: "#e4f1ec",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(RENDER_SCALE);
     this.time.delayedCall(600, () => goTo(this, "title"));
   }
 }

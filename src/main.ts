@@ -4,7 +4,7 @@ import { BootScene } from "./scenes/BootScene";
 import { MapScene } from "./scenes/MapScene";
 import { ResultScene } from "./scenes/ResultScene";
 import { TitleScene } from "./scenes/TitleScene";
-import { GAME_HEIGHT, GAME_WIDTH } from "./config";
+import { GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "./config";
 import { installQa } from "./ui/qa";
 import { playSfx, startBgmOnFirstInput } from "./audio/player";
 import { sfxForRun } from "./audio/sounds";
@@ -14,8 +14,8 @@ import { installAudioToggle } from "./ui/audio-toggle";
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: "game",
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
+  width: GAME_WIDTH * RENDER_SCALE,
+  height: GAME_HEIGHT * RENDER_SCALE,
   pixelArt: true,
   backgroundColor: "#0f1a1c",
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_HORIZONTALLY },

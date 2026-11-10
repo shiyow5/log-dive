@@ -54,10 +54,12 @@ export const FX_MAP: Readonly<Record<FxEventName, readonly FxSpec[]>> = {
     { mod: fireflies, x: 160, y: 170, layer: "back" },
     { mod: cherryBlossoms, x: 160, y: 170, layer: "back" },
   ],
+  // 敵・敵名・HP バーに重ならないよう、全部 back レイヤー（描画物の後ろ）に置く。
+  // 雷は敵の左右に振り分け、glitch は短く(0.6 秒)。Issue #106
   battleStart: [
-    { mod: glitch, ...BUG_POS, ttl: 0.6, layer: "front" },
-    { mod: lightningStrike, x: BUG_POS.x, y: BUG_POS.y + 24, layer: "front" },
-    { mod: thunderclap, x: BUG_POS.x, y: BUG_POS.y + 20, layer: "front" },
+    { mod: glitch, ...BUG_POS, ttl: 0.6, layer: "back" },
+    { mod: lightningStrike, x: BUG_POS.x - 80, y: BUG_POS.y + 24, layer: "back" },
+    { mod: thunderclap, x: BUG_POS.x + 80, y: BUG_POS.y + 20, layer: "back" },
   ],
   bugHit: [{ mod: hitSpark, ...BUG_POS, layer: "front" }],
   playerHit: [

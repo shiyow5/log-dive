@@ -1,5 +1,6 @@
 import Phaser from "phaser";
-import { FONT_FAMILY } from "../config";
+import { setupView } from "./view";
+import { FONT_FAMILY, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
 import { button, el, renderHud } from "../ui/hud";
@@ -65,6 +66,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupView(this);
     fadeIn(this);
     const s = current();
     const fx = createSceneFx(this, "fx-map");
@@ -146,7 +148,8 @@ export class MapScene extends Phaser.Scene {
             fontSize: symPos.px,
             color: symbolColor(r),
           })
-          .setOrigin(symPos.ox, symPos.oy);
+          .setOrigin(symPos.ox, symPos.oy)
+          .setResolution(RENDER_SCALE);
       }
       // 部屋名（短縮。密な階では出さない → mapLabelText）
       const nameText = mapLabelText(r, CELL);
@@ -157,22 +160,25 @@ export class MapScene extends Phaser.Scene {
             fontSize: "8px",
             color: r.visited ? COLOR.text : COLOR.weak,
           })
-          .setOrigin(0.5, 0);
+          .setOrigin(0.5, 0)
+          .setResolution(RENDER_SCALE);
       }
-      // 部屋ID（移動ボタンとの対応用、右上に小さく）
-      this.add
-        .text(
-          dense ? x : x + ROOM / 2 - 2,
-          dense ? y : y - ROOM / 2 + 2,
-          roomIdText(r.id, layout),
-          {
-            fontFamily: FONT_FAMILY,
-            fontSize: "8px",
-            color: dense ? (isHere ? "#0f1a1c" : COLOR.text) : COLOR.weak,
-          },
-        )
-        .setOrigin(dense ? 0.5 : 1, dense ? 0.5 : 0);
-      // 密な階は「@」が ID と重なるので出さない（現在地は塗り色で区別）
+      // 部屋ID（移動ボタンとの対応用、右上に小さく）。現在地は「@」と重なるので出さない（隣の部屋のIDだけあれば足りる）
+      if (!isHere || dense)
+        this.add
+          .text(
+            dense ? x : x + ROOM / 2 - 2,
+            dense ? y : y - ROOM / 2 + 2,
+            roomIdText(r.id, layout),
+            {
+              fontFamily: FONT_FAMILY,
+              fontSize: "8px",
+              color: dense ? (isHere ? "#0f1a1c" : COLOR.text) : COLOR.weak,
+            },
+          )
+          .setOrigin(dense ? 0.5 : 1, dense ? 0.5 : 0)
+          .setResolution(RENDER_SCALE);
+      // 密な階は「@」を出さない（ID を優先。現在地は塗り色で区別）
       if (isHere && !dense) {
         this.add
           .text(x, y, "@", {
@@ -180,7 +186,8 @@ export class MapScene extends Phaser.Scene {
             fontSize: "12px",
             color: "#0f1a1c",
           })
-          .setOrigin(0.5);
+          .setOrigin(0.5)
+          .setResolution(RENDER_SCALE);
       }
     }
   }
