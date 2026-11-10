@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import { FONT_FAMILY } from "../config";
+import { createSceneFx } from "../fx/scene-fx";
+import type { FxDirector } from "../fx/FxDirector";
 import { button, el, renderHud } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
@@ -56,6 +58,8 @@ export function moveLabel(r: RoomState, s: RunState): string {
 }
 
 export class MapScene extends Phaser.Scene {
+  private fx?: FxDirector;
+
   constructor() {
     super("map");
   }
@@ -63,6 +67,10 @@ export class MapScene extends Phaser.Scene {
   create(): void {
     fadeIn(this);
     const s = current();
+    const fx = createSceneFx(this, "fx-map");
+    this.fx = fx;
+    fx.emit("mapAmbient");
+    fx.emitRunEvents(s.events);
     this.drawMap(s);
     this.renderHud(s);
   }
@@ -74,7 +82,11 @@ export class MapScene extends Phaser.Scene {
       goTo(this, to);
       return;
     }
-    this.children.removeAll(true);
+    this.fx?.emitRunEvents(next.events);
+    // 演出レイヤー(fx-*)は消さずに、マップの描画物だけ作り直す
+    for (const o of [...this.children.list]) {
+      if (!(o instanceof Phaser.GameObjects.Image && o.texture.key.startsWith("fx-"))) o.destroy();
+    }
     this.drawMap(next);
     this.renderHud(next);
   }
