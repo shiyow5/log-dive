@@ -55,11 +55,11 @@
    - GitHub Pages のステータス（Settings > Pages）を確認
    - environment `github-pages` の設定（restrictions 等）を確認
 
-5. **一時的な deploy 失敗の再実行（ロールバックではない）**
+4. **一時的な deploy 失敗の再実行（ロールバックではない）**
    - コードに問題がなく、Pages 側の障害など外部要因で deploy ジョブだけが失敗した場合に限り、Actions の `Deploy Pages`（deploy-pages.yml）を `workflow_dispatch` で再実行する
    - 再実行は main の現在の HEAD を checkout して build し直す。過去の artifact は選べない。壊れたコミットが main にある状態で実行すると、同じ内容が再デプロイされる
 
-4. **main-guard の失敗の場合**
+5. **main-guard の失敗の場合**
    - main への直接 push がないか確認（CONTRIBUTING.md のワークフローに則っているか）
    - 誤検知の場合は rei / haruto に報告
 
