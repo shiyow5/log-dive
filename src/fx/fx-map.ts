@@ -63,9 +63,9 @@ export const FX_MAP: Readonly<Record<FxEventName, readonly FxSpec[]>> = {
     { mod: hitSpark, x: 160, y: 150, layer: "front" },
   ],
   bugDefeated: [
-    // #115: マップ中央（現在地・部屋名が並ぶ所）に炎を置かない。上端の帯(y=14)に寄せる
-    { mod: smallExplosion, x: 160, y: 14, options: { size: 0.4 }, layer: "front" },
-    { mod: confetti, x: 160, y: 8, layer: "front" },
+    // #115: 画面中央（マップ・部屋名が並ぶ所）に炎を出さず、撃破した敵の位置に収める
+    { mod: smallExplosion, ...BUG_POS, options: { size: 0.4 }, layer: "front" },
+    { mod: confetti, x: BUG_POS.x, y: BUG_POS.y - 20, layer: "front" },
   ],
   chestOpen: [{ mod: collectBurst, x: 160, y: 90, layer: "front" }],
   // 階段は暗転フェード（MapScene）が主役。全画面系(blinds/dissolve)は重ねず、小さな光だけ添える
