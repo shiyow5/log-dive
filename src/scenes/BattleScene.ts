@@ -76,15 +76,16 @@ export class BattleScene extends Phaser.Scene {
     this.picking = false;
     const next = dispatch(a);
     const to = sceneFor(next);
-    if (to !== "battle") {
-      goTo(this, to);
-      return;
-    }
     this.fx?.emitRunEvents(next.events);
     this.impact(next.events);
     this.drawHp(next.battle);
     this.renderHud(next);
     if (next.events.some((e) => e.t === "candidateRemoved")) flashLogLine();
+    if (to !== "battle") {
+      // 終局の一撃・致死被弾も、ダメージ数字と被弾演出を見せてから遷移する（PR #147 review）
+      setHudBusy(true);
+      this.time.delayedCall(IMPACT.finalHoldMs, () => goTo(this, to));
+    }
   }
 
   /** 被弾シェイク・縁フラッシュ・ダメージ数字（Issue #104）。座標は敵・稼働率の位置から決める。 */

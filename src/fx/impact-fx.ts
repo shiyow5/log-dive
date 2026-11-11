@@ -21,6 +21,8 @@ export const IMPACT = {
   chestGlowMs: 300,
   stairsOutMs: 200,
   stairsInMs: 200,
+  /** 終局（敗北・撃破）で遷移前にダメージ数字を見せる時間。 */
+  finalHoldMs: 500,
   playerColor: "#ff6b6b",
   bugColor: "#ffe66d",
   outline: "#0d0d1a",
@@ -35,7 +37,9 @@ export function shakeX(scene: Phaser.Scene): void {
   if (!fxEnabled()) return;
   const cam = scene.cameras.main;
   cam.shakeEffect.reset();
-  cam.shake(IMPACT.shakeMs, new Phaser.Math.Vector2(IMPACT.shakePx / GAME_WIDTH, 0), true);
+  // Phaser の shake は offset = intensity × camera.width × zoom で揺れる。実カメラ幅とズームで割って、最大 shakePx になるように正規化する。
+  const k = cam.width * cam.zoom;
+  cam.shake(IMPACT.shakeMs, new Phaser.Math.Vector2(IMPACT.shakePx / k, 0), true);
 }
 
 /** 縁だけの赤フラッシュ（中央の文字には被せない）。 */
