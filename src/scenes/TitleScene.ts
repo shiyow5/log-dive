@@ -151,13 +151,11 @@ export class TitleScene extends Phaser.Scene {
     const form = el(
       "form",
       { class: "hud-panel", "aria-label": "新しいラン" },
-      el("h1", {}, "Log Dive"),
-      el("p", {}, "障害の起きたサーバーのログに潜って、バグの正体を推理で突き止めよう。"),
+      el("p", { class: "title-lead" }, "バグを再現して直す、1ラン15分のローグライク"),
       el(
         "div",
-        { class: "hud-row" },
-        el("label", { class: "hud-field", for: "seed-input" }, "シード"),
-        input,
+        { class: "hud-row title-seed-row" },
+        el("div", { class: "hud-field" }, el("label", { for: "seed-input" }, "シード"), input),
         button("ランダム", () => (input.value = newSeed()), { label: "シードをランダムにする" }),
       ),
     );
@@ -165,11 +163,11 @@ export class TitleScene extends Phaser.Scene {
     const startBtn = button("新しいラン", () => {}, { primary: true });
     startBtn.type = "submit";
     startBtn.dataset.autofocus = "";
-    // 「新しいラン」と「遊び方」は同じ行に並べる（遊び方は type=button なので submit しない）
+    // 「新しいラン」は最大ボタン（幅100%）、「遊び方」は枠のみ（type=button なので submit しない）
     form.append(
       el(
         "div",
-        { class: "hud-row" },
+        { class: "title-actions" },
         startBtn,
         button("遊び方", () => openHelp()),
       ),
