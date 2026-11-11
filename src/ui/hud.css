@@ -65,6 +65,32 @@
   overflow-y: auto;
 }
 
+/* #128: クリアは文言が増えた。ボタンまで見えるよう 50vh の上限をゆるめる（リボン＝上から約 22% は避ける） */
+@media (min-aspect-ratio: 1/1) {
+  #hud[data-scene="result"] .hud-panel {
+    max-height: 72%;
+  }
+}
+
+/* 横画面で背が低い端末（844x390 など）: 数値欄を2列にして、ボタンまでスクロールなしで見せる */
+@media (orientation: landscape) and (max-height: 480px) {
+  #hud[data-scene="result"] .hud-panel {
+    max-height: calc(100% - 8px);
+  }
+  #hud[data-scene="result"] .hud-panel h1 {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+  #hud[data-scene="result"] .hud-dl {
+    grid-template-columns: max-content 1fr max-content 1fr;
+    margin: 4px 0;
+  }
+}
+
+.hud-nowrap {
+  white-space: nowrap;
+}
+
 .hud-panel h1,
 .hud-panel h2,
 .hud-panel h3 {
@@ -251,7 +277,12 @@
   color: var(--ld-hint);
 }
 
+.hud-lines {
+  white-space: pre-line;
+}
+
 .hud-log {
+  white-space: pre-line;
   min-height: 1.5em;
   margin: 4px 0 0;
 }
