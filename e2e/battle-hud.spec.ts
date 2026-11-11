@@ -34,6 +34,40 @@ async function press(page: Page, p: Press): Promise<void> {
   for (const name of p.names) await page.getByRole("button", { name, exact: true }).click();
 }
 
+/**
+ * #111: 1280×720 で敵の赤い HP バー（#ff6b5e・満タンで横 192px 連続）が HUD パネル上端より上に見える。
+ * 虫のドット絵は同色でも横の連続が約 108px までなので、150px 以上の連続でバーと見分ける。
+ */
+async function expectEnemyHpBarAbovePanel(
+  page: Page,
+  panel: ReturnType<Page["getByRole"]>,
+): Promise<void> {
+  const top = Math.floor((await panel.boundingBox())!.y);
+  const png = await page.screenshot({ clip: { x: 0, y: 0, width: 1280, height: top } });
+  const found = await page.evaluate(
+    async ([b64, h]) => {
+      const bin = atob(b64 as string);
+      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      const bmp = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+      const cv = new OffscreenCanvas(bmp.width, bmp.height);
+      const ctx = cv.getContext("2d")!;
+      ctx.drawImage(bmp, 0, 0);
+      const d = ctx.getImageData(0, 0, bmp.width, h as number).data;
+      for (let y = 0; y < (h as number); y++) {
+        let run = 0;
+        for (let x = 0; x < bmp.width; x++) {
+          const i = (y * bmp.width + x) * 4;
+          run = d[i] === 255 && d[i + 1] === 107 && d[i + 2] === 94 ? run + 1 : 0;
+          if (run >= 150) return true;
+        }
+      }
+      return false;
+    },
+    [png.toString("base64"), top] as const,
+  );
+  expect(found, "1280 で敵の HP バーが HUD パネルの上に見える").toBe(true);
+}
+
 const SIZES = [
   { width: 1280, height: 720 },
   { width: 844, height: 390 },
@@ -74,6 +108,7 @@ test("戦闘HUD: 2階の戦闘で『ターン終了』が画面内・敵名とHP
     expect(await page.locator(".hud-battle-body").evaluate((e) => e.scrollTop)).toBe(0);
     // 候補は5件
     await expect(page.locator(".hud-cands li")).toHaveCount(5);
+    if (vp.width === 1280) await expectEnemyHpBarAbovePanel(page, panel);
   }
 });
 
