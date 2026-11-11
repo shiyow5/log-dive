@@ -11,7 +11,8 @@ import {
   type EnemyKind,
 } from "../art/enemy-sprites";
 import { button, el, renderHud, setHudBusy } from "../ui/hud";
-import { abandonButton, logLine, statsRow } from "./hud-parts";
+import { abandonButton, cpuDots, logLine, statsRow } from "./hud-parts";
+import { recommend } from "./battle-hint";
 import { bugName, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, BattleState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
@@ -172,16 +173,31 @@ export class BattleScene extends Phaser.Scene {
     const patchActions = b.candidates.map((c): Action => ({ t: "skill", id: "patch", arg: c }));
     const canPatch = patchActions.some((a) => legal.can(a));
 
+    const reproduceId = owned.find((id) => id === "reproduce");
+    const rec = recommend(
+      b.reproduced,
+      !!reproduceId && legal.can({ t: "skill", id: reproduceId }),
+      hasPatch && canPatch,
+    );
+    const mark = (btn: HTMLButtonElement, on: boolean) => {
+      if (on) btn.dataset.recommended = "";
+      return btn;
+    };
+
     const skillRow = el(
       "div",
-      { class: "hud-row", role: "group", "aria-label": "スキル" },
+      { class: "hud-row hud-skills", role: "group", "aria-label": "スキル" },
       ...owned.map((id) => {
         const k = skillInfo(id);
         const a: Action = { t: "skill", id };
         const btn = button(`${k.name}（CPU ${k.cpu}）`, () => this.act(a), {
           disabled: !legal.can(a),
         });
-        return withReason(btn, k.name, legal.why(a));
+        return withReason(
+          mark(btn, rec === "reproduce" && id === reproduceId),
+          k.name,
+          legal.why(a),
+        );
       }),
       hasPatch
         ? (() => {
@@ -196,7 +212,7 @@ export class BattleScene extends Phaser.Scene {
             );
             // 候補ぜんぶ押せないときは先頭の候補の理由を出す（未再現なら not_reproduced が先に来る）
             const first = patchActions[0];
-            return withReason(btn, k.name, first ? legal.why(first) : null);
+            return withReason(mark(btn, rec === "patch"), k.name, first ? legal.why(first) : null);
           })()
         : null,
     );
@@ -253,13 +269,15 @@ export class BattleScene extends Phaser.Scene {
           "p",
           { class: "hud-stat" },
           "予告: 次のターン ",
-          el("strong", { class: "hud-danger" }, `${b.intent.damage} ダメージ`),
+          el("strong", { class: "hud-danger" }, `${b.intent.damage}`),
+          " ダメージ",
           b.intent.countdown !== undefined
             ? el("span", {}, `（大ダメージまで ${b.intent.countdown}）`)
             : null,
           b.reproduced ? el("span", { class: "hud-ok" }, "　✓ 再現済み") : null,
         ),
-        statsRow(s),
+        cpuDots(s),
+        statsRow(s, { cpu: false }),
       ),
       el(
         "div",
@@ -280,10 +298,13 @@ export class BattleScene extends Phaser.Scene {
       el(
         "footer",
         { class: "hud-battle-foot" },
-        button("ターン終了", () => this.act(endTurn), {
-          primary: true,
-          disabled: !legal.can(endTurn),
-        }),
+        mark(
+          button("ターン終了", () => this.act(endTurn), {
+            primary: true,
+            disabled: !legal.can(endTurn),
+          }),
+          rec === "endTurn",
+        ),
       ),
     );
     renderHud("battle", panel);
