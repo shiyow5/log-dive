@@ -28,14 +28,33 @@ describe("ボス戦の物語文言（#128）", () => {
     expect(s.phase).toBe("won");
     expect(normalBattleStartLog).toMatch(/バグが出た$/);
     expect(bossLogs[0]).toMatch(new RegExp(`${STORY.bossAppear}$`));
-    expect(bossLogs.some((l) => l.startsWith("効いた。でも根が残っている（HP 10/30）"))).toBe(true);
-    expect(bossLogs.filter((l) => l.startsWith("バグに "))).toEqual([]);
+    expect(bossLogs.some((l) => l.includes(`バグに 20 ダメージ\n${STORY.bossPatched}`))).toBe(true);
   });
 
   it("文言は1か所（story-text）の関数で組み立てる", () => {
-    expect(STORY.bossTitle("session.load()")).toBe("根本原因 #BUG-000 — session.load()");
-    expect(STORY.bossPatched(10, 30)).toBe("効いた。でも根が残っている（HP 10/30）");
+    expect(STORY.bossTitle).toBe("根本原因 #BUG-000 — 正体不明のバグ");
+    expect(STORY.bossPatched).toBe("効いた。でも、根が残っている。");
+    expect(STORY.bossDegrade(5)).toBe("外した。根が、さらに深く潜った。(HP +5)");
+    expect(STORY.bossDegrade(0)).toBe("外した。根が、さらに深く潜った。");
     expect(STORY.clearStatsHeading(7)).toBe("全バグ票 7 件クローズ");
+  });
+
+  it("fumino v1.0: 1行32字以内・1枠3行以内", () => {
+    const texts = [
+      STORY.bossTitle,
+      STORY.bossAppear,
+      `バグに 20 ダメージ\n${STORY.bossPatched}`,
+      STORY.bossDefeated,
+      `デグレ！ ${STORY.bossDegrade(5)}\n${STORY.bossStuckHint}`,
+      STORY.clearEpilogue,
+      STORY.clearStatsHeading(8),
+      STORY.clearCoda,
+    ];
+    for (const t of texts) {
+      const lines = t.split("\n");
+      expect(lines.length).toBeLessThanOrEqual(3);
+      for (const l of lines) expect([...l].length).toBeLessThanOrEqual(32);
+    }
   });
 
   it("クリア演出に LEVEL UP! は含めない（このゲームにレベルアップは無い）", () => {

@@ -89,8 +89,11 @@ test("通し: 1階→2階→3階→ボス撃破→リザルト（毎手 stateHas
         const log = (await page.locator(".hud-log").textContent()) ?? "";
         if (!bossHeading) await shot("boss-start");
         bossHeading = true;
-        if (log.includes("ここが、すべての障害の出どころだ")) bossAppear = true;
-        if (log.includes("効いた。でも根が残っている（HP ")) {
+        if (
+          log.includes("ここが、すべての障害の出どころだ。\nログが多すぎる。どのバグにも見える。")
+        )
+          bossAppear = true;
+        if (log.includes("効いた。でも、根が残っている。")) {
           if (!bossPatched) await shot("boss-patched");
           bossPatched = true;
         }
@@ -102,7 +105,10 @@ test("通し: 1階→2階→3階→ボス撃破→リザルト（毎手 stateHas
   expect([bossHeading, bossAppear, bossPatched]).toEqual([true, true, true]);
 
   await expect(page.getByRole("heading", { name: "復旧完了" })).toBeVisible();
-  await expect(page.getByText("障害の根本原因を閉じた。サーバーは静かになった")).toBeVisible();
+  await expect(
+    page.getByText(/障害の根本原因を閉じた。\s*サーバーは、静かになった。/),
+  ).toBeVisible();
+  await expect(page.getByText("夜が、明けていく。")).toBeVisible();
   await expect(page.getByText(/^全バグ票 \d+ 件クローズ$/)).toBeVisible();
   await expect(page.getByTestId("result-閉じたバグ票")).not.toHaveText("0");
   await shot("clear");

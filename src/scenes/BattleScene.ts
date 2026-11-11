@@ -303,9 +303,7 @@ export class BattleScene extends Phaser.Scene {
           el(
             "h2",
             {},
-            b.boss
-              ? `${STORY.bossTitle(here?.label ?? "")} `
-              : `${here?.label ?? ""} — 正体不明のバグ `,
+            ...(b.boss ? bossHeading() : [`${here?.label ?? ""} — 正体不明のバグ `]),
             el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
           ),
           // 危険操作はパネル右上（ターン終了から離す。#119）
@@ -355,4 +353,10 @@ export class BattleScene extends Phaser.Scene {
     );
     renderHud("battle", panel);
   }
+}
+
+/** ボス見出し。「— 」の後ろ（正体不明のバグ）は途中で折り返さないよう1かたまりにする（スマホ幅）。 */
+function bossHeading(): (string | HTMLElement)[] {
+  const [head = "", tail = ""] = STORY.bossTitle.split("— ");
+  return [`${head}— `, el("span", { class: "hud-nowrap" }, `${tail} `)];
 }

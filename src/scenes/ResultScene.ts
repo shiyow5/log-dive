@@ -39,7 +39,7 @@ export class ResultScene extends Phaser.Scene {
       "section",
       { class: "hud-panel", "aria-label": "リザルト" },
       el("h1", { class: s.phase === "won" ? "hud-ok" : "hud-danger" }, HEADLINE[s.phase]),
-      s.phase === "won" ? el("p", { class: "hud-ok" }, STORY.clearEpilogue) : null,
+      s.phase === "won" ? el("p", { class: "hud-ok hud-lines" }, STORY.clearEpilogue) : null,
       s.phase === "won"
         ? el("h2", { class: "hud-stat" }, STORY.clearStatsHeading(s.stats.bugsClosed))
         : null,
@@ -51,6 +51,7 @@ export class ResultScene extends Phaser.Scene {
           el("dd", { "data-testid": `result-${k}` }, v),
         ]),
       ),
+      s.phase === "won" ? el("p", { class: "hud-ok" }, STORY.clearCoda) : null,
       el(
         "div",
         { class: "hud-row" },

@@ -56,9 +56,10 @@ export function hasRun(): boolean {
 
 /** Action を1つ流して、新しい状態を返す。 */
 export function dispatch(a: Action): RunState {
-  const next = apply(current(), a, data);
+  const prev = current();
+  const next = apply(prev, a, data);
   state = next;
-  lastLog = next.lastError ? null : describeEvents(next, next.events);
+  lastLog = next.lastError ? null : describeEvents(next, next.events, prev.battle?.maxHp);
   for (const l of listeners) l(next);
   return next;
 }
@@ -105,11 +106,17 @@ export function legality(s: RunState): Legality {
 }
 
 /** RunEvent をログ用の日本語1行にする（読み上げにも流す）。 */
-export function describeEvents(s: RunState, events: readonly RunEvent[]): string | null {
+export function describeEvents(
+  s: RunState,
+  events: readonly RunEvent[],
+  prevMaxHp?: number,
+): string | null {
   const roomLabel = (id: string) => s.floor.rooms.find((r) => r.id === id)?.label ?? id;
   const parts = events.map((e): string => {
     switch (e.t) {
       case "moved":
+        // ボス登場の2行ログ（fumino v1.0）に「移動した」を足すと32字を超える。ボス部屋では出さない
+        if (s.battle?.boss && events.some((x) => x.t === "battleStart")) return "";
         return `${roomLabel(e.room)} に移動した`;
       case "battleStart":
         return s.battle?.boss ? STORY.bossAppear : "バグが出た";
@@ -121,19 +128,28 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
         return `ログから「${bugName(e.bug)}」ではないとわかった`;
       case "bugDamaged": {
         const b = s.battle;
-        // ボスは1回目の正しいパッチでは倒れない。根が残っていることを一言添える（#128）。
-        // hotfix や2回目以降のパッチでは出さず、実ダメージを表示する
+        // ボスは1回目の正しいパッチでは倒れない。実ダメージの次の行に、根が残っていることを添える（#128）。
+        // hotfix や2回目以降のパッチでは出さない
         if (e.by === "patch" && e.patchNo === 1 && b?.boss && b.hp > 0 && b.patchesLeft > 0)
-          return STORY.bossPatched(b.hp, b.maxHp);
+          return `バグに ${e.amount} ダメージ\n${STORY.bossPatched}`;
         return `バグに ${e.amount} ダメージ`;
       }
-      case "degrade":
+      case "degrade": {
+        const b = s.battle;
+        // ボスのデグレは最大 HP が上がる。上限で増えなかったときは「(HP +n)」を付けない
+        if (b?.boss) {
+          const delta = prevMaxHp === undefined ? 0 : Math.max(0, b.maxHp - prevMaxHp);
+          return `デグレ！ ${STORY.bossDegrade(delta)}\n${STORY.bossStuckHint}`;
+        }
         return "デグレ！ 種類が違った。バグが回復した";
+      }
       case "halted":
         return "ブレークポイントを張った。次の行動を止める";
       case "bugHaltedTurn":
         return "ブレークポイントでバグの行動を止めた";
       case "bugClosed":
+        // ボスを閉じるとラン終了（won）。ボス専用の一言にする
+        if (events.some((x) => x.t === "runEnd" && x.phase === "won")) return STORY.bossDefeated;
         return `バグ票を閉じた（${bugName(e.bug)}）`;
       case "stairsOpened": {
         const stairRoom = s.floor.rooms.find((r) => r.content.kind === "stairs");
@@ -154,7 +170,9 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
             : "ランを放棄した";
     }
   });
-  return parts.length ? parts.join("。") : null;
+  // 「。」で終わる行（物語文言）の次は改行、それ以外は「。」でつなぐ
+  const shown = parts.filter((p) => p !== "");
+  return shown.length ? shown.reduce((a, p) => a + (a.endsWith("。") ? "\n" : "。") + p) : null;
 }
 
 export type SceneKey = "title" | "map" | "battle" | "result";
