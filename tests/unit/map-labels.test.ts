@@ -15,6 +15,7 @@ import {
   calcMapLayout,
   partCollisions,
   partRects,
+  portraitCanvasH,
   roomLabelText,
   symbolFits,
 } from "../../src/scenes/map-symbols";
@@ -116,6 +117,46 @@ describe("部屋 ID・未踏「?」の配置（#88）", () => {
         }
       }
     }
+  });
+});
+
+describe("縦持ちの canvas 高さ（#121）", () => {
+  it("390×844 では画面高の約45%（内部 312px）を canvas に割く", () => {
+    expect(portraitCanvasH(390, 844)).toBe(312);
+  });
+
+  it("横持ち相当の小さい値・不正値は PORTRAIT_AVAIL_H（180）に戻る", () => {
+    expect(portraitCanvasH(0, 0)).toBe(PORTRAIT_AVAIL_H);
+    expect(portraitCanvasH(390, 200)).toBe(PORTRAIT_AVAIL_H);
+  });
+
+  it("極端に縦長の画面でも 360 で止める", () => {
+    expect(portraitCanvasH(320, 2000)).toBe(360);
+  });
+});
+
+describe("縦持ちの高さを canvas に広げたときの配置（#121）", () => {
+  it("canvas を伸ばした高さで、マップの下端は canvas の内側に収まる", () => {
+    for (let i = 0; i < 50; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
+        const h = portraitCanvasH(390, 844);
+        const l = calcMapLayout(rooms, { availH: h });
+        for (const r of rooms) {
+          const { id, box } = partRects(r, l, false);
+          const bottom = id ? id.y + id.h : box.y + box.h;
+          expect(bottom, `seed-${i} floor=${n} ${r.id}`).toBeLessThanOrEqual(h);
+        }
+      }
+    }
+  });
+
+  it("canvas が高いほどマップは大きくなり（CELL は下がらない）、縦の中央に寄る", () => {
+    const rooms = generateFloor("seed-4", 3).rooms;
+    const short = calcMapLayout(rooms, { availH: PORTRAIT_AVAIL_H });
+    const tall = calcMapLayout(rooms, { availH: portraitCanvasH(390, 844) });
+    expect(tall.CELL).toBeGreaterThanOrEqual(short.CELL);
+    expect(tall.ORIGIN_Y).toBeGreaterThanOrEqual(short.ORIGIN_Y);
   });
 });
 

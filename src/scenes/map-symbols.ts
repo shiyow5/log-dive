@@ -131,6 +131,23 @@ export interface MapLayoutOptions {
 }
 /** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
 export const PORTRAIT_AVAIL_H = 180;
+/**
+ * 縦持ちのマップ画面で、画面高に対して canvas に割く割合（#121）。残りは HUD（パネル）に使う。
+ * 390×844 では約 380px（内部 312px）。HUD パネルは約 350px で収まる。
+ */
+export const PORTRAIT_MAP_VIEW_RATIO = 0.45;
+/** 縦持ち canvas の内部高さの上限（px）。極端に縦長の画面でも HUD が残るように抑える。 */
+export const PORTRAIT_CANVAS_H_MAX = 360;
+/**
+ * 縦持ちのマップ画面で canvas の内部高さ（px。幅は 320 固定）を決める。
+ * 画面高の PORTRAIT_MAP_VIEW_RATIO を canvas に割き、PORTRAIT_AVAIL_H（横持ちと同じ 180）〜 PORTRAIT_CANVAS_H_MAX に収める。
+ * 戻り値は内部 px なので、表示の高さは「戻り値 × 画面幅 / 320」になる。
+ */
+export function portraitCanvasH(viewW: number, viewH: number): number {
+  if (viewW <= 0 || viewH <= 0) return PORTRAIT_AVAIL_H;
+  const h = Math.round((viewH * PORTRAIT_MAP_VIEW_RATIO * 320) / viewW);
+  return Math.max(PORTRAIT_AVAIL_H, Math.min(PORTRAIT_CANVAS_H_MAX, h));
+}
 /** 縦持ち（aspect<1）時の部屋 ID フォントサイズ（内部 px）。判読性のため横持ちの ID_FONT_PX より大きくする。 */
 export const PORTRAIT_ID_FONT_PX = 12;
 
@@ -164,7 +181,16 @@ export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptio
   const ratio = CELL >= DENSE_CELL ? SPARSE_ROOM_RATIO : BASE_ROOM_RATIO;
   const ROOM = Math.max(4, Math.floor(CELL * ratio));
   const ORIGIN_X = Math.floor((width - (mapW - 1) * CELL - ROOM) / 2) + Math.floor(ROOM / 2);
-  if (portraitH !== undefined) return { CELL, ROOM, ORIGIN_X, ORIGIN_Y: MAP_ORIGIN_Y };
+  // 縦持ち: 余った高さは上下に振り分けて、マップを canvas の縦の中央に置く（#121）
+  if (portraitH !== undefined) {
+    const free = Math.max(0, availH - ((mapH - 1) * CELL + ROOM));
+    return {
+      CELL,
+      ROOM,
+      ORIGIN_X,
+      ORIGIN_Y: MAP_ORIGIN_Y + Math.floor(free / 2) + Math.floor(ROOM / 2),
+    };
+  }
   // 横持ち: 箱の上端〜最下段のラベル下端（疎な階のみ。ROOM の下に ID_H）を領域内で垂直中央に置く
   const extent = (mapH - 1) * CELL + ROOM + (CELL >= DENSE_CELL ? ID_H : 0);
   const top = MAP_AREA_TOP + Math.max(0, Math.floor((areaH - extent) / 2));
