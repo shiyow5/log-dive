@@ -14,7 +14,8 @@ import { fadeIn, goTo } from "./transition";
 const BUG_X = BUG_POS.x;
 const BUG_Y = BUG_POS.y;
 const BAR_W = 48;
-const BAR_Y = BUG_Y + 32;
+// HP バーは虫の上。下に置くと PC 幅（1280×720）で HUD パネル（上端 ≒ y69）に隠れる。ボス 4 倍の頭（y12）との間に 4px 空ける。
+const BAR_Y = BUG_Y - 40;
 const BUG_TEX = "bug-sprite";
 
 export class BattleScene extends Phaser.Scene {
@@ -76,12 +77,12 @@ export class BattleScene extends Phaser.Scene {
       .setResolution(RENDER_SCALE);
     this.hpBar = this.add.graphics();
     this.hpText = this.add
-      .text(BUG_X + BAR_W / 2 + 4, BAR_Y + 2, "", {
+      .text(BUG_X - BAR_W / 2 - 4, BAR_Y + 2, "", {
         fontFamily: FONT_FAMILY,
         fontSize: "12px",
         color: "#e4f1ec",
       })
-      .setOrigin(0, 0.5)
+      .setOrigin(1, 0.5)
       .setResolution(RENDER_SCALE);
     this.drawHp(b);
   }
@@ -95,7 +96,7 @@ export class BattleScene extends Phaser.Scene {
     g.fillRect(x, BAR_Y, BAR_W, 4);
     g.fillStyle(0xff6b5e, 1);
     g.fillRect(x, BAR_Y, Math.round((BAR_W * b.hp) / b.maxHp), 4);
-    // 数値はバーの右に（色だけに頼らない）
+    // 数値はバーの左に（右上の『?』と重ねない）（色だけに頼らない）
     this.hpText?.setText(`${b.hp}/${b.maxHp}`);
   }
 
