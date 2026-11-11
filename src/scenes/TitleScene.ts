@@ -1,5 +1,7 @@
+import { setupView } from "./view";
+import { createSceneFx } from "../fx/scene-fx";
 import Phaser from "phaser";
-import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
+import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { loadGameData } from "../core/data";
 import { playSfx } from "../audio/player";
 import { flags } from "../ui/flags";
@@ -114,14 +116,17 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupView(this);
     fadeIn(this);
+    createSceneFx(this, "fx-title").emit("title");
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, TITLE, {
         fontFamily: FONT_FAMILY,
         fontSize: "16px",
         color: "#7ebeab",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(RENDER_SCALE);
 
     const input = el("input", {
       id: "seed-input",

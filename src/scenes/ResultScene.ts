@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+import { setupView } from "./view";
+import { createSceneFx } from "../fx/scene-fx";
 import { button, el, renderHud } from "../ui/hud";
 import { current } from "./run-port";
 import type { RunPhase } from "./run-port";
@@ -19,11 +21,16 @@ export class ResultScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupView(this);
     fadeIn(this);
     const s = current();
+    // リザルトで鳴らすのは「復旧完了」の演出だけ。s.events には最終戦闘の演出（撃破の爆発・紙吹雪・
+    // バグ出現の雷など）が残っているので、まるごと再生すると戦闘の絵がリザルトに映ってしまう（#122）。
+    const fx = createSceneFx(this, "fx-result");
+    if (s.phase === "won") fx.emit("result");
     const rows: [string, string][] = [
       ["閉じたバグ票", String(s.stats.bugsClosed)],
-      ["ターン数", String(s.stats.turns)],
+      ["ターン終了の回数", String(s.stats.turns)],
       ["デグレ回数", String(s.stats.degrades)],
       ["シード", s.seed],
     ];

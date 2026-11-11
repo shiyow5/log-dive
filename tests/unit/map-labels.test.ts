@@ -1,104 +1,147 @@
 import { describe, expect, it } from "vitest";
 import {
+  DENSE_SYM_W,
   CHAR_W,
-  MIN_NAME_CHARS,
+  ID_FONT_PX,
+  PORTRAIT_AVAIL_H,
+  UNKNOWN_H,
+  UNKNOWN_W,
   calcMapLayout,
-  labelCollisions,
-  labelRect,
-  mapLabelText,
-  shortLabel,
+  partCollisions,
+  partRects,
+  roomLabelText,
+  symbolFits,
 } from "../../src/scenes/map-symbols";
 import { floorCount, generateFloor } from "../../src/core/floor";
 import type { RoomState } from "../../src/core/run";
 
-function room(id: string, label: string, x: number, y: number, visited = false): RoomState {
-  return {
-    id,
-    label,
-    x,
-    y,
-    neighbors: [],
-    visited,
-    content: { kind: "empty" },
-  };
+function room(id: string, x: number, y: number, visited = false): RoomState {
+  return { id, label: "main()", x, y, neighbors: [], visited, content: { kind: "empty" } };
 }
 
-// ---- shortLabel ----
-
-describe("shortLabel: ラベルを8文字に短縮する", () => {
-  it("9文字は7文字+…", () => {
-    expect(shortLabel("scheduler")).toBe("schedul\u2026"); // 9文字
-  });
-
-  it("12文字は7文字+…", () => {
-    expect(shortLabel("scheduler.tick()")).toBe("schedul\u2026");
-  });
-
-  it("ちょうど8文字はそのまま", () => {
-    expect(shortLabel("queue.pu")).toBe("queue.pu");
-  });
-
-  it("1文字はそのまま", () => {
-    expect(shortLabel("r")).toBe("r");
-  });
-
-  it("空文字列はそのまま", () => {
-    expect(shortLabel("")).toBe("");
-  });
-});
-
-// ---- ラベルの重なり（本番のレイアウトで） ----
-
-const at = (CELL: number, ROOM = Math.floor((CELL * 20) / 32)) => ({
+const at = (CELL: number, ROOM = Math.floor(CELL / 2)) => ({
   CELL,
   ROOM,
   ORIGIN_X: 20,
   ORIGIN_Y: 20,
 });
 
-describe("mapLabelText: 1マスに収まる名前だけ出す", () => {
-  it("未踏は ?", () => {
-    expect(mapLabelText(room("r1", "scheduler.tick()", 0, 0), 15)).toBe("?");
+describe("部屋 ID・未踏「?」の配置（#88）", () => {
+  it("内部フォントは 10px 以上（8px 禁止）", () => {
+    expect(ID_FONT_PX).toBeGreaterThanOrEqual(10);
   });
-  it("CELL=20 は4文字まで（scheduler.tick() → sch…）", () => {
-    expect(mapLabelText(room("r1", "scheduler.tick()", 0, 0, true), 20)).toBe("sch\u2026");
+
+  it("未踏「?」は 6×10px で、未踏の箱の中央に収まる（#114）", () => {
+    expect([UNKNOWN_W, UNKNOWN_H]).toEqual([6, 10]);
+    for (const CELL of [20, 30]) {
+      const { box, unknown } = partRects(room("r1", 2, 2), at(CELL), false);
+      expect(unknown).not.toBeNull();
+      const u = unknown!;
+      expect(u.x + u.w / 2).toBe(box.x + box.w / 2);
+      expect(u.y + u.h / 2).toBe(box.y + box.h / 2);
+      expect(u.w).toBeLessThanOrEqual(box.w);
+      expect(u.h).toBeLessThanOrEqual(box.h);
+    }
   });
-  it(`CELL=15 は ${Math.floor(15 / CHAR_W)} 文字しか入らないので名前を出さない（< ${MIN_NAME_CHARS}）`, () => {
-    expect(mapLabelText(room("r1", "scheduler.tick()", 0, 0, true), 15)).toBeNull();
-    expect(labelRect(room("r1", "scheduler.tick()", 0, 0, true), at(15))).toBeNull();
+
+  it("密な階（CELL<20）は「?」を出さない（上の段の ID と干渉するため）", () => {
+    expect(partRects(room("r1", 0, 0), at(15), false).unknown).toBeNull();
+  });
+
+  it("疎な階は箱の下に ID を置く隙間（CELL-ROOM >= 10）がある", () => {
+    for (let i = 0; i < 50; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const layout = calcMapLayout(generateFloor(`seed-${i}`, n).rooms);
+        if (layout.CELL >= 20) expect(layout.CELL - layout.ROOM).toBeGreaterThanOrEqual(10);
+      }
+    }
+  });
+
+  it("記号（開いた階段の ▼ など）が出る未踏部屋は「?」を重ねない（#114 Codex P2）", () => {
+    const { symbol, unknown } = partRects(room("r1", 1, 1), at(30), true);
+    expect(symbol).not.toBeNull();
+    expect(unknown).toBeNull();
+  });
+
+  it("訪問済みの部屋は「?」を持たない", () => {
+    expect(partRects(room("r1", 0, 0, true), at(30), false).unknown).toBeNull();
+  });
+
+  it("疎な階の探索済みの部屋は関数名ラベルを箱の真下に中央揃えで置く（#114）", () => {
+    const layout = at(30);
+    const { box, id } = partRects(room("r3", 1, 1, true), layout, false);
+    expect(id).not.toBeNull();
+    expect(id!.y).toBe(box.y + box.h);
+    expect(id!.x + id!.w / 2).toBe(box.x + box.w / 2);
+  });
+
+  it("部屋 ID（r0 等）はラベルに出さない。未踏と密な階はラベルなし（#114）", () => {
+    const layout = at(30);
+    const label = (r: RoomState, l = layout) => roomLabelText(r, l);
+    const named = { ...room("r7", 0, 0, true), label: "config.read()" };
+    expect(label(named)).toBe("read");
+    expect(label({ ...named, visited: false })).toBeNull();
+    expect(label(named, at(15))).toBeNull();
+    // 長い名前は CELL に収まる文字数で切る
+    const long = { ...named, label: "parseConfigLine()" };
+    expect(label(long)!.length * CHAR_W).toBeLessThanOrEqual(layout.CELL - 2);
+  });
+
+  it("縦持ちはマップの高さが広がり、同じ階で CELL が小さくならない（#114）", () => {
+    for (let i = 0; i < 50; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms;
+        const land = calcMapLayout(rooms);
+        const port = calcMapLayout(rooms, { availH: PORTRAIT_AVAIL_H });
+        expect(port.CELL).toBeGreaterThanOrEqual(land.CELL);
+      }
+    }
+  });
+
+  it("縦持ちは最下段のラベル下端が canvas 全高（PORTRAIT_AVAIL_H）に収まる（Codex P2）", () => {
+    for (let i = 0; i < 100; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
+        const l = calcMapLayout(rooms, { availH: PORTRAIT_AVAIL_H });
+        for (const r of rooms) {
+          const { id, box } = partRects(r, l, false);
+          const bottom = id ? id.y + id.h : box.y + box.h;
+          expect(bottom, `seed-${i} floor=${n} ${r.id}`).toBeLessThanOrEqual(PORTRAIT_AVAIL_H);
+        }
+      }
+    }
   });
 });
 
-describe("labelCollisions: 描く文字列の幅で重なりを見る", () => {
-  it("横に隣り合う部屋: 幅は CELL 固定ではなく描く文字列の長さ", () => {
-    const a = room("r0", "scheduler.tick()", 0, 0, true);
-    expect(labelRect(a, at(30))?.w).toBe(6 * CHAR_W); // "sched…"
-    expect(labelRect(room("r1", "?", 0, 0), at(30))?.w).toBe(CHAR_W);
-  });
-
-  it("同じマスに2部屋（あり得ないが）なら重なりを検出する", () => {
-    const rooms = [room("r0", "auth.login()", 0, 0, true), room("r1", "db.query()", 0, 0, true)];
-    expect(labelCollisions(rooms, at(32))).toEqual([["r0", "r1"]]);
-  });
-
-  it("本番の calcMapLayout で 300 seed × 全階・全部屋訪問済み（最悪ケース）でも名前が重ならない", () => {
-    const cells = new Set<number>();
+describe("partCollisions: 部屋ID・記号・四角の重なり（#66）", () => {
+  it("300 seed × 全階（全部屋に記号あり）で ID・記号が隣や下の部屋と重ならない", () => {
     for (let i = 0; i < 300; i++) {
       for (let n = 1; n <= floorCount(); n++) {
-        const seed = `seed-${i}`;
-        const rooms = generateFloor(seed, n).rooms.map((r) => ({ ...r, visited: true }));
+        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
+        for (const opts of [undefined, { availH: PORTRAIT_AVAIL_H }]) {
+          const l = calcMapLayout(rooms, opts);
+          expect(
+            partCollisions(rooms, l, () => true),
+            `seed-${i} floor=${n} CELL=${l.CELL} portrait=${!!opts}`,
+          ).toEqual([]);
+        }
         const layout = calcMapLayout(rooms);
-        cells.add(layout.CELL);
-        expect(
-          labelCollisions(rooms, layout),
-          `seed=${seed} floor=${n} CELL=${layout.CELL}`,
-        ).toEqual([]);
         // 未踏の「?」が混じる場合（半分だけ訪問）
         const half = rooms.map((r, k) => ({ ...r, visited: k % 2 === 0 }));
-        expect(labelCollisions(half, layout), `seed=${seed} floor=${n} half`).toEqual([]);
+        expect(
+          partCollisions(half, layout, () => true),
+          `seed-${i} floor=${n} half CELL=${layout.CELL}`,
+        ).toEqual([]);
       }
     }
-    // 密な階（CELL<20）も除外せずに回っていること
-    expect([...cells].some((c) => c < 20)).toBe(true);
+  });
+
+  it("DENSE_SYM_W は 7px 送り幅（DotGothic16 の ◆▼♦▲★）より小さくならず、symbolFits と partRects が同じ値を使う", () => {
+    expect(DENSE_SYM_W).toBeGreaterThanOrEqual(7 + 1);
+    // seed-2 の2階（CELL=15, ROOM=9: 隙間6px）は実測幅7pxの記号が入らないので出さない
+    const rooms = generateFloor("seed-2", 2).rooms.map((r) => ({ ...r, visited: true }));
+    const layout = calcMapLayout(rooms);
+    expect(layout.CELL - layout.ROOM).toBeLessThan(DENSE_SYM_W + 1);
+    expect(symbolFits(layout)).toBe(false);
   });
 });

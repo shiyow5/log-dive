@@ -1,5 +1,8 @@
 import Phaser from "phaser";
-import { FONT_FAMILY } from "../config";
+import { setupView } from "./view";
+import { FONT_FAMILY, RENDER_SCALE } from "../config";
+import { createSceneFx } from "../fx/scene-fx";
+import type { FxDirector } from "../fx/FxDirector";
 import { button, el, renderHud } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
@@ -7,32 +10,56 @@ import type { Action, RoomState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 import {
   calcMapLayout,
+  isDense,
+  symbolFits,
+  roomLabelText,
+  PORTRAIT_AVAIL_H,
+  PORTRAIT_ID_FONT_PX,
   isShownOnMap,
-  mapLabelText,
+  ID_FONT_PX,
+  UNKNOWN_H,
   roomSymbol,
   stairsOpen,
   symbolColor,
+  COLORS,
 } from "./map-symbols";
 
+/** "#rrggbb" → Phaser の数値色。 */
+const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
+
+// 記号色は COLORS（map-symbols.ts）から作る。二重定義しない。
 const COLOR = {
   line: 0x26393d,
   unknown: 0x26393d,
   visited: 0x1b2b2e,
-  current: 0x7ebeab,
-  bug: 0xff6b5e,
-  chest: 0xf0c040,
-  stairs: 0x88c0d0,
-  boss: 0xb48ead,
-  text: "#e4f1ec",
+  current: num(COLORS.hint),
+  // 現在地の箱の塗り（暗い金）。宝箱の金枠と同じ枠でも、塗りで現在地と区別できるようにする
+  currentFill: 0x4a3f1c,
+  bug: num(COLORS.bug),
+  chest: num(COLORS.hint),
+  stairs: num(COLORS.stairs),
+  boss: num(COLORS.boss),
+  text: COLORS.visited,
   weak: "#8fa9a3",
 };
+
+/** 現在地 a から見た b の向き（マップ上の位置との対応用）。y は下向きが正。 */
+function direction(a: RoomState, b: RoomState): string {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "→右" : dx < 0 ? "←左" : "";
+  return dy > 0 ? "↓下" : "↑上";
+}
 
 /**
  * 移動ボタンの文言（＝読み上げ名）。部屋 id（r0, r1 …）は未踏でも出す。
  * Playwright では getByRole("button", { name: /r1へ移動/ }) で取れる。
  */
 export function moveLabel(r: RoomState, s: RunState): string {
-  if (!r.visited) return `${r.id}へ移動（未踏）`;
+  // 部屋 ID はマップ上に出さないので、ボタンには現在地から見た向きを添える（#114）
+  const here = s.floor.rooms.find((x) => x.id === s.roomId);
+  const dir = here ? direction(here, r) : "";
+  if (!r.visited) return `${r.id}へ移動（未踏${dir ? `・${dir}` : ""}）`;
   const suffixes: string[] = [];
   if (r.content.kind === "stairs" && stairsOpen(s)) {
     suffixes.push("階段・開いている");
@@ -43,20 +70,45 @@ export function moveLabel(r: RoomState, s: RunState): string {
   if (r.content.kind === "bug" && r.content.bugs.length > 0) {
     suffixes.push("バグあり");
   }
+  if (dir) suffixes.push(dir);
   const suffix = suffixes.length > 0 ? `（${suffixes.join("・")}）` : "";
   return `${r.id}へ移動: ${r.label}${suffix}`;
 }
 
 export class MapScene extends Phaser.Scene {
+  private fx?: FxDirector;
+
   constructor() {
     super("map");
   }
 
   create(): void {
+    setupView(this);
     fadeIn(this);
     const s = current();
+    const fx = createSceneFx(this, "fx-map");
+    this.fx = fx;
+    fx.emit("mapAmbient");
+    fx.emitRunEvents(s.events);
     this.drawMap(s);
     this.renderHud(s);
+    // 端末を回したとき（縦横でマップの大きさが変わる）に描き直す
+    const mq = window.matchMedia("(max-aspect-ratio: 1/1)");
+    const onTurn = (): void => this.redrawMap();
+    mq.addEventListener("change", onTurn);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => mq.removeEventListener("change", onTurn));
+  }
+
+  private redrawMap(): void {
+    this.clearMapObjects();
+    this.drawMap(current());
+  }
+
+  /** 演出レイヤー(fx-*)は消さずに、マップの描画物だけ消す。 */
+  private clearMapObjects(): void {
+    for (const o of [...this.children.list]) {
+      if (!(o instanceof Phaser.GameObjects.Image && o.texture.key.startsWith("fx-"))) o.destroy();
+    }
   }
 
   private act(a: Action): void {
@@ -66,7 +118,8 @@ export class MapScene extends Phaser.Scene {
       goTo(this, to);
       return;
     }
-    this.children.removeAll(true);
+    this.fx?.emitRunEvents(next.events);
+    this.clearMapObjects();
     this.drawMap(next);
     this.renderHud(next);
   }
@@ -74,7 +127,11 @@ export class MapScene extends Phaser.Scene {
   private drawMap(s: RunState): void {
     const rooms = s.floor.rooms;
     const visible = rooms.filter((r) => isShownOnMap(r, s));
-    const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = calcMapLayout(rooms);
+    // 縦持ち（aspect<1）は HUD が canvas の下なので、マップに全高を使う（#114）
+    const portrait = window.matchMedia("(max-aspect-ratio: 1/1)").matches;
+    const layout = calcMapLayout(rooms, portrait ? { availH: PORTRAIT_AVAIL_H } : undefined);
+    const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
+    const dense = isDense(layout);
 
     function center(r: RoomState): { x: number; y: number } {
       return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
@@ -94,7 +151,7 @@ export class MapScene extends Phaser.Scene {
     for (const r of visible) {
       const { x, y } = center(r);
       const isHere = r.id === s.roomId;
-      g.fillStyle(isHere ? COLOR.current : r.visited ? COLOR.visited : COLOR.unknown, 1);
+      g.fillStyle(isHere ? COLOR.currentFill : r.visited ? COLOR.visited : COLOR.unknown, 1);
       g.fillRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       // バグ部屋は「警告色の枠＋記号」（色だけに頼らない）
       if (r.visited && r.content.kind === "bug") {
@@ -113,42 +170,54 @@ export class MapScene extends Phaser.Scene {
       }
       // 記号（未踏は出さない。ただし開いた階段の ▼ は出す。判定は roomSymbol）
       const sym = roomSymbol(r, s);
-      if (sym) {
+      if (sym && symbolFits(layout)) {
+        // 密な階は箱の右隣（上下に余白がなく隣の部屋と重なるため）
+        const symPos = dense
+          ? { x: x + ROOM / 2 + 1, y, ox: 0, oy: 0.5, px: "7px" }
+          : { x, y, ox: 0.5, oy: 0.5, px: "10px" };
         this.add
-          .text(x, y - ROOM / 2 - 2, sym, {
+          .text(symPos.x, symPos.y, sym, {
             fontFamily: FONT_FAMILY,
-            fontSize: "10px",
+            fontSize: symPos.px,
             color: symbolColor(r),
           })
-          .setOrigin(0.5, 0);
+          .setOrigin(symPos.ox, symPos.oy)
+          .setResolution(RENDER_SCALE);
       }
-      // 部屋名（短縮。密な階では出さない → mapLabelText）
-      const nameText = mapLabelText(r, CELL);
-      if (nameText !== null) {
-        this.add
-          .text(x, y + ROOM / 2 + 2, nameText, {
-            fontFamily: FONT_FAMILY,
-            fontSize: "8px",
-            color: r.visited ? COLOR.text : COLOR.weak,
-          })
-          .setOrigin(0.5, 0);
-      }
-      // 部屋ID（移動ボタンとの対応用、右上に小さく）
-      this.add
-        .text(x + ROOM / 2 - 2, y - ROOM / 2 + 2, r.id, {
-          fontFamily: FONT_FAMILY,
-          fontSize: "8px",
-          color: COLOR.weak,
-        })
-        .setOrigin(1, 0);
+      // 現在地: 2px の黄色い枠 + 中央に 4×4 の塗り（「@」は使わない。#88）。中央に ID（密な階）や記号があるときは枠だけ
       if (isHere) {
+        g.lineStyle(2, COLOR.current, 1);
+        g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
+        if (!dense && !sym) {
+          g.fillStyle(COLOR.current, 1);
+          g.fillRect(x - 2, y - 2, 4, 4);
+        }
+      }
+      // 未踏は「?」を箱の中央に置く（#114。部屋 ID は出さない）
+      // 開いた階段の ▼ など記号が出ている未踏部屋には「?」を重ねない
+      if (!r.visited && !dense && !(sym && symbolFits(layout))) {
         this.add
-          .text(x, y, "@", {
+          .text(x, y, "?", {
             fontFamily: FONT_FAMILY,
-            fontSize: "12px",
-            color: "#0f1a1c",
+            fontSize: `${UNKNOWN_H}px`,
+            color: COLOR.weak,
           })
-          .setOrigin(0.5);
+          .setOrigin(0.5, 0.5)
+          .setResolution(RENDER_SCALE);
+      }
+      // 探索済みの部屋は関数名を箱の真下に（#114）。部屋 ID はキャンバスに出さない。未踏は上の「?」。
+      const label = roomLabelText(r, layout);
+      if (label) {
+        this.add
+          .text(x, y + ROOM / 2 - 2, label, {
+            fontFamily: FONT_FAMILY,
+            fontSize: `${portrait ? PORTRAIT_ID_FONT_PX : ID_FONT_PX}px`,
+            color: isHere ? COLOR.text : COLOR.weak,
+            stroke: "#0f1a1c",
+            strokeThickness: 1,
+          })
+          .setOrigin(0.5, 0)
+          .setResolution(RENDER_SCALE);
       }
     }
   }
@@ -213,7 +282,7 @@ export class MapScene extends Phaser.Scene {
         : []),
       el(
         "div",
-        { class: "hud-row" },
+        { class: "hud-row hud-row--danger" },
         abandonButton(() => this.act({ t: "abandon" })),
       ),
       logLine(s),

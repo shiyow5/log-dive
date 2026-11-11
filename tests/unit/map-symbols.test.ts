@@ -105,12 +105,12 @@ describe("roomSymbol: 部屋の種類に応じた記号を返す", () => {
 });
 
 describe("symbolColor: 部屋の内容に応じた色を返す", () => {
-  it("宝箱 → #f0c040", () => {
+  it("宝箱 → #e8c468 (hint)", () => {
     const r = room("r0", "chest", 0, 0, { kind: "chest", skill: "patch" });
-    expect(symbolColor(r)).toBe("#f0c040");
+    expect(symbolColor(r)).toBe("#e8c468");
   });
 
-  it("階段 → #88c0d0", () => {
+  it("階段 → #88c0d0 (stairs。現在地色 accent と別色)", () => {
     const r = room("r0", "stairs", 0, 0, { kind: "stairs" });
     expect(symbolColor(r)).toBe("#88c0d0");
   });

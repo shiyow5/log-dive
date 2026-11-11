@@ -43,6 +43,7 @@ test("?fx=0: タイトル→r1 移動→再現→パッチ→マップに戻る�
   await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
   await expect(page.getByRole("status")).toContainText("バグ票を閉じた");
   await page.getByRole("button", { name: /ランを放棄/ }).click();
+  await page.getByRole("button", { name: /放棄する/ }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "result");
   await expect(page.getByTestId("result-閉じたバグ票")).toHaveText("1");
   await page.getByRole("button", { name: "タイトルへ" }).click();
@@ -54,6 +55,7 @@ test("?fx=0: ランを放棄でリザルト", async ({ page }) => {
   await page.goto("/?fx=0");
   await page.getByRole("button", { name: "新しいラン" }).click();
   await page.getByRole("button", { name: /ランを放棄/ }).click();
+  await page.getByRole("button", { name: /放棄する/ }).click();
   await expect(page.getByRole("heading", { name: "ランを放棄した" })).toBeVisible();
 });
 

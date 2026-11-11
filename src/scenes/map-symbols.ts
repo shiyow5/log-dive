@@ -64,36 +64,51 @@ export function roomSymbol(r: RoomState, s: RunState): string | null {
   return null;
 }
 
+/** Color tokens for map symbols. */
+export const COLORS = {
+  hint: "#e8c468",
+  accent: "#7ebeab",
+  stairs: "#88c0d0",
+  boss: "#b48ead",
+  bug: "#ff6b5e",
+  visited: "#e4f1ec",
+  bg: "#0f1a1c",
+} as const;
+
 /** 記号の色。 */
 export function symbolColor(r: RoomState): string {
   const c = r.content;
-  if (c.kind === "chest") return "#f0c040";
-  if (c.kind === "stairs") return "#88c0d0";
-  if (c.kind === "bug") return c.boss ? "#b48ead" : "#ff6b5e";
-  return "#e4f1ec";
+  if (c.kind === "chest") return COLORS.hint;
+  if (c.kind === "stairs") return COLORS.stairs;
+  if (c.kind === "bug") return c.boss ? COLORS.boss : COLORS.bug;
+  return COLORS.visited;
 }
 
-/**
- * ラベルを短縮して返す。
- *
- * label が maxChars を超える場合は先頭 maxChars-1 文字 + "…" に短縮する。
- * @param label  - 元ラベル
- * @param maxChars - 最大文字数（省略時は 8）
- */
-export function shortLabel(label: string, maxChars = 8): string {
-  if (label.length <= maxChars) return label;
-  return label.slice(0, maxChars - 1) + "\u2026"; // …
-}
-
-/** モノスペース 8px の1文字幅（px、少し大きめの概算）。 */
-export const CHAR_W = 5;
-/** 名前ラベルの高さ（8px フォント＋余白）。 */
-export const NAME_H = 10;
-/** これより短くしか出せないなら名前は出さない（"ab…" では読めないため）。 */
-export const MIN_NAME_CHARS = 4;
+/** キャンバス内の部屋 ID のフォントサイズ（内部 px。minori 指定: 10px 以上、8px は禁止。#88）。 */
+export const ID_FONT_PX = 10;
+/** 部屋 ID の1文字幅（px、10px フォントの概算）。 */
+export const CHAR_W = 6;
+/** ID の文字の高さ（px、衝突判定用）。 */
+export const ID_H = 8;
+/** 未踏マーク「?」の大きさ（px。6×10。10px フォント）。未踏の箱の中央に置く（#114: 下の段のラベルと重ならない）。 */
+export const UNKNOWN_W = 6;
+export const UNKNOWN_H = 10;
 
 const MIN_CELL = 8;
+/** 部屋の原点Y（上マージン）。 */
+const MAP_ORIGIN_Y = 20;
 const BASE_ROOM_RATIO = 20 / 32;
+/** 疎な階（CELL>=DENSE_CELL）の箱の比率。箱の下に 10px の ID を置く隙間（CELL-ROOM >= 10）を空けるため小さめ。 */
+const SPARSE_ROOM_RATIO = 1 / 2;
+
+export interface MapLayoutOptions {
+  /** マップに使える高さ（内部px）。省略時は横長の既定値（60px）。指定時は canvas 全高（縦持ちは PORTRAIT_AVAIL_H）。 */
+  readonly availH?: number;
+}
+/** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
+export const PORTRAIT_AVAIL_H = 180;
+/** 縦持ち（aspect<1）時の部屋 ID フォントサイズ（内部 px）。判読性のため横持ちの ID_FONT_PX より大きくする。 */
+export const PORTRAIT_ID_FONT_PX = 12;
 
 export interface MapLayout {
   /** 1マスの間隔（px）。 */
@@ -108,58 +123,124 @@ export interface MapLayout {
  * マップの CELL/ROOM/原点を決める（ビューポート 320x180、下 100px は HUD）。
  * MapScene.drawMap とテストの両方がこれを使う（テスト側で式を写さない）。
  */
-export function calcMapLayout(rooms: readonly RoomState[]): MapLayout {
+export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptions): MapLayout {
   const width = 320;
   const mapW = Math.max(...rooms.map((r) => r.x)) + 1;
   const mapH = Math.max(...rooms.map((r) => r.y)) + 1;
   const availW = width - 40; // 左右マージン20px
-  const availH = 180 - 20 - 100; // 上部マージン20 + HUD下部100px
+  // 上部マージン20 + HUD下部100px。縦持ちは HUD が canvas の外（下）なので全高を使える（#114）
+  // availH 指定時は canvas 全高。上マージン(ORIGIN_Y)と最下段の ID ラベル(ID_H)を引いて部屋が収まる高さにする
+  const availH = opts?.availH !== undefined ? opts.availH - MAP_ORIGIN_Y - ID_H : 180 - 20 - 100;
   const CELL = Math.max(MIN_CELL, Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH)));
-  const ROOM = Math.max(4, Math.floor(CELL * BASE_ROOM_RATIO));
-  return { CELL, ROOM, ORIGIN_X: Math.floor((width - mapW * CELL) / 2), ORIGIN_Y: 20 };
+  const ratio = CELL >= DENSE_CELL ? SPARSE_ROOM_RATIO : BASE_ROOM_RATIO;
+  const ROOM = Math.max(4, Math.floor(CELL * ratio));
+  return { CELL, ROOM, ORIGIN_X: Math.floor((width - mapW * CELL) / 2), ORIGIN_Y: MAP_ORIGIN_Y };
+}
+
+/** これより CELL が小さい階は「密」。ID を箱の中、記号を箱の右隣に置く（上下に余白がないため）。 */
+export const DENSE_CELL = 20;
+/**
+ * 密な階の記号が占める幅。DotGothic16 の 7px フォントは ◆▼♦▲★ の送り幅が 7px なので、
+ * 実測 7px + 余白 1px = 8px。箱の右隣の隙間(CELL-ROOM)に収める。
+ * symbolFits（出す/出さない）と partRects（衝突判定の矩形）の両方がこの値を使う。
+ */
+export const DENSE_SYM_W = 8;
+/** 密な階で記号を箱の右隣に置けるか（隙間 CELL-ROOM が足りないほど密なら出さない。枠色で区別は残る）。 */
+export function symbolFits(layout: MapLayout): boolean {
+  return !isDense(layout) || layout.CELL - layout.ROOM >= DENSE_SYM_W + 1;
+}
+export function isDense(layout: MapLayout): boolean {
+  return layout.CELL < DENSE_CELL;
 }
 
 /**
- * 部屋の下に出す名前。未踏は「?」。訪問済みは1マスの幅に収まるよう短縮し、
- * 収まる文字数が MIN_NAME_CHARS 未満の密な階では出さない（null。部屋 ID は別に出る）。
- * MapScene はこの戻り値をそのまま描く。
+ * 探索済みの部屋の関数名ラベル（#114）。部屋 ID（r0 等）はキャンバスに出さない。
+ * "config.read()" → "read"（モジュール名と () を省く）。箱の幅（CELL）に収まる文字数で切る。
+ * 未踏・密な階は null（未踏は「?」、密な階は箱が小さく文字が入らないため記号と枠色で区別）。
  */
-export function mapLabelText(r: RoomState, CELL: number): string | null {
-  if (!r.visited) return "?";
-  const maxChars = Math.floor(CELL / CHAR_W);
-  if (maxChars < MIN_NAME_CHARS) return null;
-  return shortLabel(r.label, maxChars);
+export function roomLabelText(r: RoomState, layout: MapLayout): string | null {
+  if (!r.visited || isDense(layout)) return null;
+  const name = r.label.replace(/\(\)$/, "").split(".").pop() ?? "";
+  const max = Math.max(1, Math.floor((layout.CELL - 2) / CHAR_W));
+  return name.length > max ? `${name.slice(0, max - 1)}…` : name;
 }
 
-type Rect = { x: number; y: number; w: number; h: number };
-
-/** 名前ラベルが実際に描かれる矩形（px）。描かないなら null。幅は描く文字列の長さから出す。 */
-export function labelRect(r: RoomState, layout: MapLayout): Rect | null {
-  const text = mapLabelText(r, layout.CELL);
-  if (text === null) return null;
+/**
+ * 部屋の四角・ラベル・記号・未踏「?」が描かれる矩形（px、近似）。MapScene の配置と同じ式。
+ * 密な階: ラベルなし、記号=箱の右隣（中央揃え縦）。
+ * 疎な階: ラベル（探索済みのみ、関数名）=箱の真下に中央揃え（#114）、記号=箱の中央。
+ * 未踏「?」（疎な階のみ）は箱の中央（箱が接続線を隠す）。
+ */
+export function partRects(
+  r: RoomState,
+  layout: MapLayout,
+  hasSymbolIn: boolean,
+): { box: Rect; id: Rect | null; symbol: Rect | null; unknown: Rect | null } {
   const cx = layout.ORIGIN_X + r.x * layout.CELL;
   const cy = layout.ORIGIN_Y + r.y * layout.CELL;
-  const w = text.length * CHAR_W;
-  // MapScene: text(x, y + ROOM / 2 + 2).setOrigin(0.5, 0)
-  return { x: cx - w / 2, y: cy + layout.ROOM / 2 + 2, w, h: NAME_H };
+  const R = layout.ROOM;
+  const hasSymbol = hasSymbolIn && symbolFits(layout);
+  const box = { x: cx - R / 2, y: cy - R / 2, w: R, h: R };
+  const text = roomLabelText(r, layout);
+  const idW = (text?.length ?? 0) * CHAR_W;
+  // 密な階は上の段の ID と干渉するので「?」は出さない（未踏は暗い箱＋弱い色の ID で区別）
+  const unknown =
+    r.visited || isDense(layout) || hasSymbol
+      ? null
+      : {
+          x: cx - UNKNOWN_W / 2,
+          y: cy - UNKNOWN_H / 2,
+          w: UNKNOWN_W,
+          h: UNKNOWN_H,
+        };
+  if (isDense(layout)) {
+    return {
+      box,
+      id: null,
+      symbol: hasSymbol ? { x: cx + R / 2 + 1, y: cy - 4, w: DENSE_SYM_W, h: 8 } : null,
+      unknown,
+    };
+  }
+  return {
+    box,
+    id: text ? { x: cx - idW / 2, y: cy + R / 2, w: idW, h: ID_H } : null,
+    symbol: hasSymbol ? { x: cx - 5, y: cy - 5, w: 10, h: 10 } : null,
+    unknown,
+  };
 }
 
-/** 名前ラベル同士が重なる部屋の組（なければ空）。 */
-export function labelCollisions(
+/** 隣・下の部屋の四角や記号と重なる要素の組（なければ空）。ID が自分の箱からはみ出す場合も検出。 */
+export function partCollisions(
   rooms: readonly RoomState[],
   layout: MapLayout,
-): Array<[string, string]> {
-  const rects = rooms
-    .map((r) => ({ id: r.id, rect: labelRect(r, layout) }))
-    .filter((x): x is { id: string; rect: Rect } => x.rect !== null);
-  const hits: Array<[string, string]> = [];
-  for (let i = 0; i < rects.length; i++) {
-    for (let j = i + 1; j < rects.length; j++) {
-      if (rectsOverlap(rects[i]!.rect, rects[j]!.rect)) hits.push([rects[i]!.id, rects[j]!.id]);
+  hasSymbol: (r: RoomState) => boolean,
+): string[] {
+  const hits: string[] = [];
+  const parts = rooms.map((r) => ({ rid: r.id, ...partRects(r, layout, hasSymbol(r)) }));
+  for (const a of parts) {
+    for (const b of parts) {
+      if (a === b) continue;
+      for (const [an, ar] of [
+        ["id", a.id],
+        ["sym", a.symbol],
+        ["unk", a.unknown],
+      ] as const) {
+        if (!ar) continue;
+        for (const [bn, br] of [
+          ["box", b.box],
+          ["id", b.id],
+          ["sym", b.symbol],
+          ["unk", b.unknown],
+        ] as const) {
+          if (br && rectsOverlap(ar, br)) hits.push(`${a.rid}.${an}x${b.rid}.${bn}`);
+        }
+      }
     }
   }
   return hits;
 }
+
+type Rect = { x: number; y: number; w: number; h: number };
 
 function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;

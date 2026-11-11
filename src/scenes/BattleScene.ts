@@ -1,25 +1,24 @@
 import Phaser from "phaser";
-import * as glitch from "pixelfx/fx/scifi/glitch";
-import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH } from "../config";
-import { PixelFxLayer } from "../fx/PixelFxLayer";
+import { setupView } from "./view";
+import { BUG_POS, FONT_FAMILY, RENDER_SCALE } from "../config";
+import { createSceneFx } from "../fx/scene-fx";
+import type { FxDirector } from "../fx/FxDirector";
 import { Rng } from "../core/rng";
 import { ensureBugTexture } from "../art/bug-sprite";
-import { fxEnabled } from "../ui/flags";
 import { button, el, renderHud, setHudBusy } from "../ui/hud";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { bugName, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, BattleState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 
-const FX_KEY = "fx-battle";
-const BUG_X = GAME_WIDTH / 2;
-const BUG_Y = 44;
+const BUG_X = BUG_POS.x;
+const BUG_Y = BUG_POS.y;
 const BAR_W = 48;
 const BAR_Y = BUG_Y + 32;
 const BUG_TEX = "bug-sprite";
 
 export class BattleScene extends Phaser.Scene {
-  private fx?: PixelFxLayer;
+  private fx?: FxDirector;
   private hpBar?: Phaser.GameObjects.Graphics;
   private hpText?: Phaser.GameObjects.Text;
   /** patch の種類を選んでいる途中か */
@@ -30,24 +29,19 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(): void {
+    setupView(this);
     fadeIn(this);
     this.picking = false;
-    this.fx = undefined;
     const s = current();
+    const fx = createSceneFx(this, "fx-battle");
+    this.fx = fx;
     this.drawBug(s);
-    if (fxEnabled() && s.battle) {
-      // バグ出現 = グリッチ（0.6 秒以内。再生中は入力を止める）
-      if (this.textures.exists(FX_KEY)) this.textures.remove(FX_KEY);
-      this.fx = new PixelFxLayer(this, FX_KEY, GAME_WIDTH, GAME_HEIGHT);
-      this.fx.play(glitch, { x: BUG_X, y: BUG_Y, seed: new Rng(s.seed).int(1, 9999) });
+    // バグ出現 = グリッチ＋雷（0.6 秒だけ入力を止める）
+    if (s.battle && fx.emit("battleStart", new Rng(s.seed).int(1, 9999))) {
       setHudBusy(true);
       this.time.delayedCall(600, () => setHudBusy(false));
     }
     this.renderHud(s);
-  }
-
-  override update(_time: number, delta: number): void {
-    this.fx?.update(delta / 1000);
   }
 
   private act(a: Action): void {
@@ -58,6 +52,7 @@ export class BattleScene extends Phaser.Scene {
       goTo(this, to);
       return;
     }
+    this.fx?.emitRunEvents(next.events);
     this.drawHp(next.battle);
     this.renderHud(next);
   }
@@ -77,7 +72,8 @@ export class BattleScene extends Phaser.Scene {
         fontSize: "16px",
         color: "#ffd166",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setResolution(RENDER_SCALE);
     this.hpBar = this.add.graphics();
     this.hpText = this.add
       .text(BUG_X + BAR_W / 2 + 4, BAR_Y + 2, "", {
@@ -85,7 +81,8 @@ export class BattleScene extends Phaser.Scene {
         fontSize: "12px",
         color: "#e4f1ec",
       })
-      .setOrigin(0, 0.5);
+      .setOrigin(0, 0.5)
+      .setResolution(RENDER_SCALE);
     this.drawHp(b);
   }
 
@@ -121,7 +118,11 @@ export class BattleScene extends Phaser.Scene {
       "section",
       { "aria-label": "候補" },
       el("h3", {}, `候補（${b.candidates.length}）`),
-      el("ul", { class: "hud-list" }, ...b.candidates.map((c) => el("li", {}, `? ${bugName(c)}`))),
+      el(
+        "ul",
+        { class: "hud-list hud-cands" },
+        ...b.candidates.map((c) => el("li", {}, `? ${bugName(c)}`)),
+      ),
     );
     const symptoms = el(
       "section",
@@ -198,37 +199,62 @@ export class BattleScene extends Phaser.Scene {
         : null;
 
     const endTurn: Action = { t: "endTurn" };
+    // 3段構造（#87）: 上段=敵名・HP・予告・ステータス（固定）/ 中段=候補・症状・スキル（ここだけスクロール）
+    // / 下段=ターン終了（固定）+ 放棄は最下段の別行（ゴースト・右寄せ、#119）。2階以降で候補が増えても主ボタンが画面外に出ない。
     const panel = el(
       "section",
-      { class: "hud-panel", "aria-label": "バトル" },
-      el("h2", {}, `${here?.label ?? ""} — 正体不明のバグ`),
+      { class: "hud-panel hud-panel--battle", "aria-label": "バトル" },
       el(
-        "p",
-        { class: "hud-stat" },
-        "予告: 次のターン ",
-        el("strong", { class: "hud-danger" }, `${b.intent.damage} ダメージ`),
-        b.intent.countdown !== undefined
-          ? el("span", {}, `（大ダメージまで ${b.intent.countdown}）`)
-          : null,
-        b.reproduced ? el("span", { class: "hud-ok" }, "　✓ 再現済み") : null,
+        "header",
+        { class: "hud-battle-head" },
+        el(
+          "div",
+          { class: "hud-battle-title" },
+          el(
+            "h2",
+            {},
+            `${here?.label ?? ""} — 正体不明のバグ `,
+            el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
+          ),
+          // 危険操作はパネル右上（ターン終了から離す。#119）
+          abandonButton(() => this.act({ t: "abandon" })),
+        ),
+        el(
+          "p",
+          { class: "hud-stat" },
+          "予告: 次のターン ",
+          el("strong", { class: "hud-danger" }, `${b.intent.damage} ダメージ`),
+          b.intent.countdown !== undefined
+            ? el("span", {}, `（大ダメージまで ${b.intent.countdown}）`)
+            : null,
+          b.reproduced ? el("span", { class: "hud-ok" }, "　✓ 再現済み") : null,
+        ),
+        statsRow(s),
       ),
-      statsRow(s),
-      el("div", { class: "hud-cols" }, candidates, symptoms),
-      skillRow,
-      picker,
       el(
         "div",
-        { class: "hud-row" },
+        { class: "hud-battle-body" },
+        el("div", { class: "hud-cols" }, candidates, symptoms),
+        // 操作ボタン群。横持ちスマホ（hud.css の @media）では右列に分けて、情報と操作を並べる（#113）
+        el(
+          "div",
+          { class: "hud-battle-actions" },
+          skillRow,
+          picker,
+          reasons.length
+            ? el("ul", { class: "hud-list", "aria-label": "使えない理由" }, ...reasons)
+            : null,
+          logLine(s),
+        ),
+      ),
+      el(
+        "footer",
+        { class: "hud-battle-foot" },
         button("ターン終了", () => this.act(endTurn), {
           primary: true,
           disabled: !legal.can(endTurn),
         }),
-        abandonButton(() => this.act({ t: "abandon" })),
       ),
-      reasons.length
-        ? el("ul", { class: "hud-list", "aria-label": "使えない理由" }, ...reasons)
-        : null,
-      logLine(s),
     );
     renderHud("battle", panel);
   }
