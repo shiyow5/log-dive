@@ -110,8 +110,9 @@ export const MAX_CELL = 24;
 /** 縦持ちの部屋の原点Y（上マージン）。 */
 const MAP_ORIGIN_Y = 20;
 /**
- * 横持ちのマップ領域（内部 px、minori 指定 #89）。HUD パネル（canvas 下 約70px）の上、y=6〜106 に収める。
- * 部屋の塊はこの領域の水平・垂直とも中央に置く（上偏りをなくす）。HUD との間の余白は 8px 以内。
+ * 横持ちのマップ領域の既定値（内部 px、minori 指定 #89）。下端は既定で y=106 だが、
+ * 実際の下端は MapScene が HUD パネルの実測位置から求めて `mapBottom` で渡す（HUD の高さは画面サイズで変わるため）。
+ * 部屋の塊はこの領域の水平・垂直とも中央に置く（上偏りをなくす）。
  */
 export const MAP_AREA_TOP = 6;
 export const MAP_AREA_H = 100;
