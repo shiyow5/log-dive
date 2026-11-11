@@ -49,3 +49,41 @@ test("遊び方を開いて閉じたあと「新しいラン」でマップへ�
   await start.click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
 });
+
+test("タイトル: シード入力はパネル配色で、『Log Dive』表記はHUD側に重複しない (#90)", async ({
+  page,
+}) => {
+  await page.goto("/?fx=0&qa=1&seed=e2e-full-1");
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  const input = page.locator("#seed-input");
+  await expect(input).toHaveCSS("background-color", "rgb(15, 26, 28)");
+  await expect(input).toHaveCSS("border-top-color", "rgb(143, 169, 163)");
+  const box = await input.boundingBox();
+  expect(box?.height).toBe(40);
+  await expect(page.locator("#hud h1")).toHaveCount(0);
+  await expect(page.locator("#hud")).not.toContainText("Log Dive");
+  const start = await page.getByRole("button", { name: "新しいラン" }).boundingBox();
+  expect(start?.height).toBe(52);
+});
+
+for (const vp of [
+  { width: 1280, height: 720 },
+  { width: 844, height: 390 },
+  { width: 390, height: 844 },
+]) {
+  test(`遊び方: ${vp.width}x${vp.height} で閉じるが見えて押せる・44px以上・本文16px (#136)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    await page.goto("/?fx=0");
+    await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+    await page.getByRole("button", { name: "遊び方" }).click();
+    const close = page.locator("#help-overlay").getByRole("button", { name: "閉じる" });
+    await expect(close).toBeInViewport({ ratio: 1 });
+    const box = await close.boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    await expect(page.locator("#help-overlay .help-body p").first()).toHaveCSS("font-size", "16px");
+    await close.click();
+    await expect(page.locator("#help-overlay")).toBeHidden();
+  });
+}

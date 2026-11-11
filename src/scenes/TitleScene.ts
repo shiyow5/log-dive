@@ -66,30 +66,41 @@ function createHelpPanel(): HTMLElement {
     },
     el(
       "div",
-      {
-        style:
-          "background:#1b2b2e;border:1px solid #7ebeab;border-radius:8px;padding:20px 24px;max-width:480px;width:90%;color:#e4f1ec;font-size:13px;line-height:1.6;",
-      },
-      el("h2", { style: "margin:0 0 12px;color:#7ebeab;font-size:16px;" }, "遊び方"),
+      { class: "hud-panel help-panel" },
       el(
-        "p",
-        {},
-        "3階の奥にいる根本原因（ボス）に修正パッチを当てて、障害の起きたサーバーを復旧しよう。稼働率（HP）が 0 になるとダウンして負け。",
+        "div",
+        { class: "help-body" },
+        el("h2", {}, "遊び方"),
+        el("h3", {}, "目的"),
+        el(
+          "p",
+          {},
+          "3階の奥にいる根本原因（ボス）に修正パッチを当てて、障害の起きたサーバーを復旧しよう。稼働率（HP）が 0 になるとダウンして負け。",
+        ),
+        el("h3", {}, "戦い方"),
+        el(
+          "p",
+          {},
+          "各部屋にはバグが潜んでいる。戦闘では症状（例:「配列の端で落ちる」→境界ずれ）とログから正体を絞り、修正パッチで直す。種類を外すとバグが悪化する。",
+        ),
+        el(
+          "p",
+          {},
+          `CPU は1ターンに使える行動力（毎ターン ${CPU_PER_TURN}）。${hotfix.name}は応急処置（CPU ${hotfix.cpu}・ダメージ ${hotfix.damage}）、${patch.name}は完全修正（CPU ${patch.cpu}・ダメージ ${patch.damage}。種類を当てる必要がある）。`,
+        ),
+        el("p", {}, `最初から${starters}を使える。宝箱を開けると${chestSkills}が増える。`),
+        el("h3", {}, "マップ記号"),
+        el(
+          "ul",
+          { class: "help-legend", "aria-label": "マップ記号" },
+          ...MAP_LEGEND.map((line) => el("li", {}, line)),
+        ),
       ),
       el(
-        "p",
-        {},
-        "各部屋にはバグが潜んでいる。戦闘では症状（例:「配列の端で落ちる」→境界ずれ）とログから正体を絞り、修正パッチで直す。種類を外すとバグが悪化する。",
+        "div",
+        { class: "help-footer" },
+        button("閉じる", () => closeHelp()),
       ),
-      el(
-        "p",
-        {},
-        `CPU は1ターンに使える行動力（毎ターン ${CPU_PER_TURN}）。${hotfix.name}は応急処置（CPU ${hotfix.cpu}・ダメージ ${hotfix.damage}）、${patch.name}は完全修正（CPU ${patch.cpu}・ダメージ ${patch.damage}。種類を当てる必要がある）。`,
-      ),
-      el("p", {}, `最初から${starters}を使える。宝箱を開けると${chestSkills}が増える。`),
-      el("p", {}, "マップ記号:"),
-      el("ul", { "aria-label": "マップ記号" }, ...MAP_LEGEND.map((line) => el("li", {}, line))),
-      button("閉じる", () => closeHelp()),
     ),
   );
 }
@@ -151,13 +162,11 @@ export class TitleScene extends Phaser.Scene {
     const form = el(
       "form",
       { class: "hud-panel", "aria-label": "新しいラン" },
-      el("h1", {}, "Log Dive"),
-      el("p", {}, "障害の起きたサーバーのログに潜って、バグの正体を推理で突き止めよう。"),
+      el("p", { class: "title-lead" }, "バグを再現して直す、1ラン15分のローグライク"),
       el(
         "div",
-        { class: "hud-row" },
-        el("label", { class: "hud-field", for: "seed-input" }, "シード"),
-        input,
+        { class: "hud-row title-seed-row" },
+        el("div", { class: "hud-field" }, el("label", { for: "seed-input" }, "シード"), input),
         button("ランダム", () => (input.value = newSeed()), { label: "シードをランダムにする" }),
       ),
     );
@@ -165,11 +174,11 @@ export class TitleScene extends Phaser.Scene {
     const startBtn = button("新しいラン", () => {}, { primary: true });
     startBtn.type = "submit";
     startBtn.dataset.autofocus = "";
-    // 「新しいラン」と「遊び方」は同じ行に並べる（遊び方は type=button なので submit しない）
+    // 「新しいラン」は最大ボタン（幅100%）、「遊び方」は枠のみ（type=button なので submit しない）
     form.append(
       el(
         "div",
-        { class: "hud-row" },
+        { class: "title-actions" },
         startBtn,
         button("遊び方", () => openHelp()),
       ),
