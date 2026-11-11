@@ -83,6 +83,20 @@
   color: var(--ld-text-weak);
 }
 
+.help-panel p,
+.help-panel ul {
+  margin: 0 0 8px;
+  line-height: 1.6;
+}
+.help-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
 .hud-row {
   display: flex;
   flex-wrap: wrap;
