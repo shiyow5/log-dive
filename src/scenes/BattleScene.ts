@@ -17,11 +17,22 @@ import { bugName, current, dispatch, legality, sceneFor, skillInfo } from "./run
 import type { Action, BattleState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 
+/**
+ * スキルボタンの「（CPU n）」を nowrap の子要素にまとめる（#142 の 844×390 で「（CPU」と「1）」が割れないように）。
+ * textContent は「名前（CPU n）」のままなので、ボタンの名前・テストの照合は変わらない。
+ */
+function withCpuTag(btn: HTMLButtonElement, name: string, cpu: number): HTMLButtonElement {
+  btn.replaceChildren(name, el("span", { class: "hud-cpu-tag" }, `（CPU ${cpu}）`));
+  return btn;
+}
+
 const BUG_X = BUG_POS.x;
 const BUG_Y = BUG_POS.y;
 const BAR_W = 48;
 // HP バーは虫の上。下に置くと PC 幅（1280×720）で HUD パネル（上端 ≒ y69）に隠れる。ボス 4 倍の頭（y12）との間に 4px 空ける。
-const BAR_Y = BUG_Y - 40;
+// #142: 敵 HP が画面上端ぎりぎり（y≈5）だったので、敵ごと 4 ドット（1280 幅で 16px）下げる。
+const ENEMY_DY = 4;
+const BAR_Y = BUG_Y + ENEMY_DY - 40;
 
 export class BattleScene extends Phaser.Scene {
   private fx?: FxDirector;
@@ -74,7 +85,7 @@ export class BattleScene extends Phaser.Scene {
     this.enemyKind = enemyKindFor(b.roomId, b.boss);
     const scale = b.boss ? 4 : 3;
     // ボス（64px）は PC 幅で下端が HUD パネル（上端 ≒ y69）に隠れるので 8px 上げる。HP バーは角の外側に収まる。
-    const cy = b.boss ? BUG_Y - 8 : BUG_Y;
+    const cy = (b.boss ? BUG_Y - 8 : BUG_Y) + ENEMY_DY;
     const img = this.add.image(BUG_X, cy, enemyTextureKey(this.enemyKind, "idle")).setScale(scale);
     this.enemyImg = img;
     this.lastHp = b.hp;
@@ -190,9 +201,11 @@ export class BattleScene extends Phaser.Scene {
       ...owned.map((id) => {
         const k = skillInfo(id);
         const a: Action = { t: "skill", id };
-        const btn = button(`${k.name}（CPU ${k.cpu}）`, () => this.act(a), {
-          disabled: !legal.can(a),
-        });
+        const btn = withCpuTag(
+          button(k.name, () => this.act(a), { disabled: !legal.can(a) }),
+          k.name,
+          k.cpu,
+        );
         return withReason(
           mark(btn, rec === "reproduce" && id === reproduceId),
           k.name,
@@ -202,13 +215,17 @@ export class BattleScene extends Phaser.Scene {
       hasPatch
         ? (() => {
             const k = skillInfo("patch");
-            const btn = button(
-              `${k.name}（CPU ${k.cpu}）`,
-              () => {
-                this.picking = true;
-                this.renderHud(current());
-              },
-              { disabled: !canPatch },
+            const btn = withCpuTag(
+              button(
+                k.name,
+                () => {
+                  this.picking = true;
+                  this.renderHud(current());
+                },
+                { disabled: !canPatch },
+              ),
+              k.name,
+              k.cpu,
             );
             // 候補ぜんぶ押せないときは先頭の候補の理由を出す（未再現なら not_reproduced が先に来る）
             const first = patchActions[0];
