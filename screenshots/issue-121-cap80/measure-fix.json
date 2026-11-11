@@ -1,0 +1,486 @@
+{
+ "390x844-floor1-start": {
+  "roomInfo": {
+   "floorRooms": 6,
+   "gridW": 4,
+   "gridH": 2,
+   "CELL": 70,
+   "ROOM_internal": 45,
+   "ROOM_screenPx": 54.84,
+   "CELL_screenPx": 85.31
+  },
+  "viewport": {
+   "w": 390,
+   "h": 844
+  },
+  "canvas": {
+   "cssW": 390,
+   "cssH": 472.875,
+   "top": 0,
+   "bottom": 472.875,
+   "internalW": 1280,
+   "internalH": 1552
+  },
+  "scale": 1.2188,
+  "panels": [
+   {
+    "x": 8,
+    "y": 480.9,
+    "w": 374,
+    "h": 354,
+    "bottom": 834.9
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 371,
+   "clientH": 371
+  },
+  "labels": [
+   {
+    "text": "main",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   }
+  ]
+ },
+ "390x844-floor3-late": {
+  "roomInfo": {
+   "floorRooms": 8,
+   "gridW": 3,
+   "gridH": 4,
+   "CELL": 80,
+   "ROOM_internal": 52,
+   "ROOM_screenPx": 63.38,
+   "CELL_screenPx": 97.5
+  },
+  "viewport": {
+   "w": 390,
+   "h": 844
+  },
+  "canvas": {
+   "cssW": 390,
+   "cssH": 521.625,
+   "top": 0,
+   "bottom": 521.625,
+   "internalW": 1280,
+   "internalH": 1712
+  },
+  "scale": 1.2188,
+  "panels": [
+   {
+    "x": 8,
+    "y": 529.6,
+    "w": 374,
+    "h": 306,
+    "bottom": 835.6
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 322,
+   "clientH": 322
+  },
+  "labels": [
+   {
+    "text": "main",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "decode",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "get",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "flush",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   }
+  ]
+ },
+ "390x844-floor3-allvisited": {
+  "roomInfo": {
+   "floorRooms": 8,
+   "gridW": 3,
+   "gridH": 4,
+   "CELL": 80,
+   "ROOM_internal": 52,
+   "ROOM_screenPx": 63.38,
+   "CELL_screenPx": 97.5
+  },
+  "viewport": {
+   "w": 390,
+   "h": 844
+  },
+  "canvas": {
+   "cssW": 390,
+   "cssH": 521.625,
+   "top": 0,
+   "bottom": 521.625,
+   "internalW": 1280,
+   "internalH": 1712
+  },
+  "scale": 1.2188,
+  "panels": [
+   {
+    "x": 8,
+    "y": 529.6,
+    "w": 374,
+    "h": 306,
+    "bottom": 835.6
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 322,
+   "clientH": 322
+  },
+  "labels": [
+   {
+    "text": "main",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "decode",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "parse",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "load",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "get",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "flush",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "query",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   },
+   {
+    "text": "read",
+    "fontPx": 12,
+    "screenFontPx": 14.63
+   }
+  ]
+ },
+ "844x390-floor1-start": {
+  "roomInfo": {
+   "floorRooms": 6,
+   "gridW": 4,
+   "gridH": 2,
+   "CELL": 24,
+   "ROOM_internal": 12,
+   "ROOM_screenPx": 26,
+   "CELL_screenPx": 52
+  },
+  "viewport": {
+   "w": 844,
+   "h": 390
+  },
+  "canvas": {
+   "cssW": 693.328125,
+   "cssH": 390,
+   "top": 0,
+   "bottom": 390,
+   "internalW": 1280,
+   "internalH": 720
+  },
+  "scale": 2.1667,
+  "panels": [
+   {
+    "x": 8,
+    "y": 122,
+    "w": 828,
+    "h": 264,
+    "bottom": 386
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 390,
+   "clientH": 390
+  },
+  "labels": [
+   {
+    "text": "ma…",
+    "fontPx": 10,
+    "screenFontPx": 21.67
+   }
+  ]
+ },
+ "844x390-floor3-late": {
+  "roomInfo": {
+   "floorRooms": 8,
+   "gridW": 3,
+   "gridH": 4,
+   "CELL": 24,
+   "ROOM_internal": 12,
+   "ROOM_screenPx": 26,
+   "CELL_screenPx": 52
+  },
+  "viewport": {
+   "w": 844,
+   "h": 390
+  },
+  "canvas": {
+   "cssW": 693.328125,
+   "cssH": 390,
+   "top": 0,
+   "bottom": 390,
+   "internalW": 1280,
+   "internalH": 720
+  },
+  "scale": 2.1667,
+  "panels": [
+   {
+    "x": 8,
+    "y": 122,
+    "w": 828,
+    "h": 264,
+    "bottom": 386
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 390,
+   "clientH": 390
+  },
+  "labels": []
+ },
+ "844x390-floor3-allvisited": {
+  "roomInfo": {
+   "floorRooms": 8,
+   "gridW": 3,
+   "gridH": 4,
+   "CELL": 24,
+   "ROOM_internal": 12,
+   "ROOM_screenPx": 26,
+   "CELL_screenPx": 52
+  },
+  "viewport": {
+   "w": 844,
+   "h": 390
+  },
+  "canvas": {
+   "cssW": 693.328125,
+   "cssH": 390,
+   "top": 0,
+   "bottom": 390,
+   "internalW": 1280,
+   "internalH": 720
+  },
+  "scale": 2.1667,
+  "panels": [
+   {
+    "x": 8,
+    "y": 122,
+    "w": 828,
+    "h": 264,
+    "bottom": 386
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 390,
+   "clientH": 390
+  },
+  "labels": []
+ },
+ "1280x720-floor1-start": {
+  "roomInfo": {
+   "floorRooms": 6,
+   "gridW": 4,
+   "gridH": 2,
+   "CELL": 24,
+   "ROOM_internal": 12,
+   "ROOM_screenPx": 48,
+   "CELL_screenPx": 96
+  },
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  },
+  "canvas": {
+   "cssW": 1280,
+   "cssH": 720,
+   "top": 0,
+   "bottom": 720,
+   "internalW": 1280,
+   "internalH": 720
+  },
+  "scale": 4,
+  "panels": [
+   {
+    "x": 160,
+    "y": 440,
+    "w": 960,
+    "h": 264,
+    "bottom": 704
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 720,
+   "clientH": 720
+  },
+  "labels": [
+   {
+    "text": "ma…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   }
+  ]
+ },
+ "1280x720-floor3-late": {
+  "roomInfo": {
+   "floorRooms": 8,
+   "gridW": 3,
+   "gridH": 4,
+   "CELL": 24,
+   "ROOM_internal": 12,
+   "ROOM_screenPx": 48,
+   "CELL_screenPx": 96
+  },
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  },
+  "canvas": {
+   "cssW": 1280,
+   "cssH": 720,
+   "top": 0,
+   "bottom": 720,
+   "internalW": 1280,
+   "internalH": 720
+  },
+  "scale": 4,
+  "panels": [
+   {
+    "x": 160,
+    "y": 440,
+    "w": 960,
+    "h": 264,
+    "bottom": 704
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 720,
+   "clientH": 720
+  },
+  "labels": [
+   {
+    "text": "ma…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "de…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "get",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "fl…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   }
+  ]
+ },
+ "1280x720-floor3-allvisited": {
+  "roomInfo": {
+   "floorRooms": 8,
+   "gridW": 3,
+   "gridH": 4,
+   "CELL": 24,
+   "ROOM_internal": 12,
+   "ROOM_screenPx": 48,
+   "CELL_screenPx": 96
+  },
+  "viewport": {
+   "w": 1280,
+   "h": 720
+  },
+  "canvas": {
+   "cssW": 1280,
+   "cssH": 720,
+   "top": 0,
+   "bottom": 720,
+   "internalW": 1280,
+   "internalH": 720
+  },
+  "scale": 4,
+  "panels": [
+   {
+    "x": 160,
+    "y": 440,
+    "w": 960,
+    "h": 264,
+    "bottom": 704
+   }
+  ],
+  "hudScroll": {
+   "scrollH": 720,
+   "clientH": 720
+  },
+  "labels": [
+   {
+    "text": "ma…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "de…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "pa…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "lo…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "get",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "fl…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "qu…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   },
+   {
+    "text": "re…",
+    "fontPx": 10,
+    "screenFontPx": 40
+   }
+  ]
+ }
+}
