@@ -67,32 +67,40 @@ function createHelpPanel(): HTMLElement {
     el(
       "div",
       { class: "hud-panel help-panel" },
-      el("h2", {}, "遊び方"),
-      el("h3", {}, "目的"),
       el(
-        "p",
-        {},
-        "3階の奥にいる根本原因（ボス）に修正パッチを当てて、障害の起きたサーバーを復旧しよう。稼働率（HP）が 0 になるとダウンして負け。",
+        "div",
+        { class: "help-body" },
+        el("h2", {}, "遊び方"),
+        el("h3", {}, "目的"),
+        el(
+          "p",
+          {},
+          "3階の奥にいる根本原因（ボス）に修正パッチを当てて、障害の起きたサーバーを復旧しよう。稼働率（HP）が 0 になるとダウンして負け。",
+        ),
+        el("h3", {}, "戦い方"),
+        el(
+          "p",
+          {},
+          "各部屋にはバグが潜んでいる。戦闘では症状（例:「配列の端で落ちる」→境界ずれ）とログから正体を絞り、修正パッチで直す。種類を外すとバグが悪化する。",
+        ),
+        el(
+          "p",
+          {},
+          `CPU は1ターンに使える行動力（毎ターン ${CPU_PER_TURN}）。${hotfix.name}は応急処置（CPU ${hotfix.cpu}・ダメージ ${hotfix.damage}）、${patch.name}は完全修正（CPU ${patch.cpu}・ダメージ ${patch.damage}。種類を当てる必要がある）。`,
+        ),
+        el("p", {}, `最初から${starters}を使える。宝箱を開けると${chestSkills}が増える。`),
+        el("h3", {}, "マップ記号"),
+        el(
+          "ul",
+          { class: "help-legend", "aria-label": "マップ記号" },
+          ...MAP_LEGEND.map((line) => el("li", {}, line)),
+        ),
       ),
-      el("h3", {}, "戦い方"),
       el(
-        "p",
-        {},
-        "各部屋にはバグが潜んでいる。戦闘では症状（例:「配列の端で落ちる」→境界ずれ）とログから正体を絞り、修正パッチで直す。種類を外すとバグが悪化する。",
+        "div",
+        { class: "help-footer" },
+        button("閉じる", () => closeHelp()),
       ),
-      el(
-        "p",
-        {},
-        `CPU は1ターンに使える行動力（毎ターン ${CPU_PER_TURN}）。${hotfix.name}は応急処置（CPU ${hotfix.cpu}・ダメージ ${hotfix.damage}）、${patch.name}は完全修正（CPU ${patch.cpu}・ダメージ ${patch.damage}。種類を当てる必要がある）。`,
-      ),
-      el("p", {}, `最初から${starters}を使える。宝箱を開けると${chestSkills}が増える。`),
-      el("h3", {}, "マップ記号"),
-      el(
-        "ul",
-        { class: "help-legend", "aria-label": "マップ記号" },
-        ...MAP_LEGEND.map((line) => el("li", {}, line)),
-      ),
-      button("閉じる", () => closeHelp()),
     ),
   );
 }

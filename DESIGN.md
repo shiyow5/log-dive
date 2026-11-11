@@ -138,6 +138,14 @@ Main UI panels have a dark navy background (#0D0D1A) with a subtle 1px border (#
 
 Individual room/area tiles use a slightly lighter background (#13132B) with the same border color.
 
+### Enemy sprites (Issue #103)
+
+- 16×16 px dot art, 2 frames each: idle and hit (hit shows for 250ms when HP drops). Defined in `src/art/enemy-sprites.ts`.
+- 3 normal kinds (bug / blob / ghost) + 1 boss. Normal kind is chosen from the room ID, never from the BugId (the identity must not leak).
+- Normal = 3× (48px), boss = 4× (64px), integer scale only, nearest-neighbor. Idle bob is 1px steps.
+- Boss sits 8px higher than normal enemies so its face is not hidden by the HUD panel at 1280×720.
+- HP bar is 48px wide, 4px high, with a numeric `hp/max` on its left.
+
 ### HUD Elements
 
 - Health bar: 8px high, mint fill (#95E1D3) on dark gray track
