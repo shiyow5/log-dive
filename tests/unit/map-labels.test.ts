@@ -10,6 +10,8 @@ import {
   CHAR_W,
   ID_FONT_PX,
   PORTRAIT_AVAIL_H,
+  PORTRAIT_CHAR_W,
+  PORTRAIT_ID_FONT_PX,
   UNKNOWN_H,
   UNKNOWN_W,
   calcMapLayout,
@@ -93,70 +95,156 @@ describe("部屋 ID・未踏「?」の配置（#88）", () => {
     const long = { ...named, label: "parseConfigLine()" };
     expect(label(long)!.length * CHAR_W).toBeLessThanOrEqual(layout.CELL - 2);
   });
+});
 
-  it("縦持ちはマップの高さが広がり、同じ階で CELL が小さくならない（#114）", () => {
-    for (let i = 0; i < 50; i++) {
+/** 画面幅 w の縦持ちで、HUD が hudH（画面px）のときの canvas 内部高さ。 */
+const canvasHFor = (w: number, h: number, hudH: number) => portraitCanvasH(w, h, hudH);
+
+describe("縦持ちの canvas 高さ（#121）: 画面高から HUD の実測高さを引いた全部", () => {
+  it("390×844 で HUD が 370px なら、canvas は残り 474px いっぱい（空白を残さない）", () => {
+    const h = canvasHFor(390, 844, 370);
+    expect(h).toBe(Math.floor((474 * 320) / 390));
+    const cssH = (h * 390) / 320;
+    expect(cssH).toBeLessThanOrEqual(474);
+    // 内部 px の切り捨て（最大 1 内部px ≒ 1.22 画面px）以上の空きは出ない
+    expect(474 - cssH).toBeLessThan(390 / 320);
+  });
+
+  it("HUD が低いほど canvas は高い（固定の比率・上限は使わない）", () => {
+    expect(canvasHFor(390, 844, 300)).toBeGreaterThan(canvasHFor(390, 844, 370));
+    expect(canvasHFor(320, 2000, 300)).toBeGreaterThan(360);
+  });
+
+  it("HUD が画面を埋めるほど高い・不正値は PORTRAIT_AVAIL_H（180）で止める", () => {
+    expect(canvasHFor(390, 844, 800)).toBe(PORTRAIT_AVAIL_H);
+    expect(canvasHFor(0, 0, 0)).toBe(PORTRAIT_AVAIL_H);
+    expect(canvasHFor(390, 200, 100)).toBe(PORTRAIT_AVAIL_H);
+  });
+});
+
+describe("縦持ちのマップ配置（#121）", () => {
+  // 幅 360（小さめの Android）・390（iPhone 14）・430（Pro Max）、高さは 640〜932、HUD は 300〜380px
+  const SCREENS: [number, number, number][] = [
+    [360, 800, 370],
+    [390, 844, 370],
+    [390, 844, 322],
+    [430, 932, 360],
+  ];
+  // 小さめの画面（高さ 640）。6 行の階は縦が足りず、箱は 28px 前後まで（32px は 390×844 級の画面で満たす）
+  const SMALL: [number, number, number] = [360, 640, 330];
+  const allVisited = (seed: string, n: number): RoomState[] =>
+    generateFloor(seed, n).rooms.map((r) => ({ ...r, visited: true }));
+
+  it("部屋の四角は画面上で 32px 以上、ラベルは画面上で 12px 以上（全階・全画面）", () => {
+    for (const [w, h, hud] of SCREENS) {
+      const k = w / 320;
+      const H = canvasHFor(w, h, hud);
+      for (let i = 0; i < 40; i++) {
+        for (let n = 1; n <= floorCount(); n++) {
+          const l = calcMapLayout(generateFloor(`seed-${i}`, n).rooms, { availH: H });
+          expect(l.ROOM * k, `${w}x${h} seed-${i} f${n}`).toBeGreaterThanOrEqual(32);
+        }
+      }
+      expect(PORTRAIT_ID_FONT_PX * k).toBeGreaterThanOrEqual(12);
+    }
+    const [w, h, hud] = SMALL;
+    for (let i = 0; i < 40; i++) {
       for (let n = 1; n <= floorCount(); n++) {
-        const rooms = generateFloor(`seed-${i}`, n).rooms;
-        const land = calcMapLayout(rooms);
-        const port = calcMapLayout(rooms, { availH: PORTRAIT_AVAIL_H });
-        expect(port.CELL).toBeGreaterThanOrEqual(land.CELL);
+        const l = calcMapLayout(generateFloor(`seed-${i}`, n).rooms, {
+          availH: canvasHFor(w, h, hud),
+        });
+        expect(l.ROOM * (w / 320), `small seed-${i} f${n}`).toBeGreaterThanOrEqual(28);
       }
     }
   });
 
-  it("縦持ちは最下段のラベル下端が canvas 全高（PORTRAIT_AVAIL_H）に収まる（Codex P2）", () => {
-    for (let i = 0; i < 100; i++) {
-      for (let n = 1; n <= floorCount(); n++) {
-        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
-        const l = calcMapLayout(rooms, { availH: PORTRAIT_AVAIL_H });
-        for (const r of rooms) {
-          const { id, box } = partRects(r, l, false);
-          const bottom = id ? id.y + id.h : box.y + box.h;
-          expect(bottom, `seed-${i} floor=${n} ${r.id}`).toBeLessThanOrEqual(PORTRAIT_AVAIL_H);
+  it("最上段の部屋は音ボタン（上 52 画面px）の下、最下段のラベルは canvas の内側", () => {
+    for (const [w, h, hud] of SCREENS) {
+      const k = w / 320;
+      const H = canvasHFor(w, h, hud);
+      for (let i = 0; i < 40; i++) {
+        for (let n = 1; n <= floorCount(); n++) {
+          const rooms = allVisited(`seed-${i}`, n);
+          const l = calcMapLayout(rooms, { availH: H });
+          for (const r of rooms) {
+            const { box, id } = partRects(r, l, false);
+            expect(box.y * k, `${w}x${h} seed-${i} f${n} ${r.id}`).toBeGreaterThanOrEqual(52);
+            expect(id!.y + id!.h).toBeLessThanOrEqual(H);
+            expect(box.x).toBeGreaterThanOrEqual(0);
+            expect(box.x + box.w).toBeLessThanOrEqual(320);
+          }
         }
       }
     }
   });
-});
 
-describe("縦持ちの canvas 高さ（#121）", () => {
-  it("390×844 では画面高の約45%（内部 312px）を canvas に割く", () => {
-    expect(portraitCanvasH(390, 844)).toBe(312);
+  it("最も密な 3 階（全部屋が探索済み・記号あり）でも部屋とラベルが重ならない", () => {
+    for (const [w, h, hud] of [...SCREENS, SMALL]) {
+      const H = canvasHFor(w, h, hud);
+      for (let i = 0; i < 100; i++) {
+        const rooms = allVisited(`seed-${i}`, 3);
+        const l = calcMapLayout(rooms, { availH: H });
+        expect(
+          partCollisions(rooms, l, () => true),
+          `${w}x${h} seed-${i}`,
+        ).toEqual([]);
+      }
+    }
   });
 
-  it("横持ち相当の小さい値・不正値は PORTRAIT_AVAIL_H（180）に戻る", () => {
-    expect(portraitCanvasH(0, 0)).toBe(PORTRAIT_AVAIL_H);
-    expect(portraitCanvasH(390, 200)).toBe(PORTRAIT_AVAIL_H);
-  });
-
-  it("極端に縦長の画面でも 360 で止める", () => {
-    expect(portraitCanvasH(320, 2000)).toBe(360);
-  });
-});
-
-describe("縦持ちの高さを canvas に広げたときの配置（#121）", () => {
-  it("canvas を伸ばした高さで、マップの下端は canvas の内側に収まる", () => {
-    for (let i = 0; i < 50; i++) {
-      for (let n = 1; n <= floorCount(); n++) {
-        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
-        const h = portraitCanvasH(390, 844);
-        const l = calcMapLayout(rooms, { availH: h });
-        for (const r of rooms) {
-          const { id, box } = partRects(r, l, false);
-          const bottom = id ? id.y + id.h : box.y + box.h;
-          expect(bottom, `seed-${i} floor=${n} ${r.id}`).toBeLessThanOrEqual(h);
+  it("部屋をひとつずつ現在地にしても（全部出す名前の幅で）隣・下の部屋と重ならない（#121 Codex P2）", () => {
+    for (const [w, h, hud] of [...SCREENS, SMALL]) {
+      const H = canvasHFor(w, h, hud);
+      for (let i = 0; i < 40; i++) {
+        for (let n = 1; n <= floorCount(); n++) {
+          const rooms = allVisited(`seed-${i}`, n);
+          const l = calcMapLayout(rooms, { availH: H });
+          for (const cur of rooms) {
+            expect(
+              partCollisions(rooms, l, () => true, cur.id),
+              `${w}x${h} seed-${i} f${n} here=${cur.id}`,
+            ).toEqual([]);
+          }
         }
       }
     }
+  });
+
+  it("現在地の名前は省略しない。ほかの部屋のラベルも 6 文字は収まる", () => {
+    const l = calcMapLayout(generateFloor("seed-1", 3).rooms, {
+      availH: canvasHFor(390, 844, 370),
+    });
+    const named = { ...room("r0", 0, 0, true), label: "scheduler.tick()" };
+    expect(roomLabelText(named, l, true)).toBe("tick");
+    expect(roomLabelText({ ...named, label: "json.decode()" }, l)).toBe("decode");
+    expect(roomLabelText({ ...named, label: "main()" }, l, true)).toBe("main");
+    // 箱の幅（CELL-2）に収まる現在地の名前は切らない。収まらないものは省略する（隣とのラベル重なり防止）
+    const long = roomLabelText({ ...named, label: "parseConfigLineLong()" }, l, true)!;
+    expect(long.length * CHAR_W).toBeLessThanOrEqual(l.CELL - 2);
+    expect(long.endsWith("…")).toBe(true);
+    // 360×640 の密な HUD（CELL≈33）では 6 文字の現在地も省略し、隣のラベルと重ならない幅に収める（#121 Codex P2）
+    const small = { ...at(33), charW: PORTRAIT_CHAR_W } as Parameters<typeof roomLabelText>[1];
+    const shortHere = roomLabelText({ ...named, label: "render()" }, small, true)!;
+    expect(shortHere.length * PORTRAIT_CHAR_W).toBeLessThanOrEqual(33 - 2);
   });
 
   it("canvas が高いほどマップは大きくなり（CELL は下がらない）、縦の中央に寄る", () => {
     const rooms = generateFloor("seed-4", 3).rooms;
     const short = calcMapLayout(rooms, { availH: PORTRAIT_AVAIL_H });
-    const tall = calcMapLayout(rooms, { availH: portraitCanvasH(390, 844) });
+    const tall = calcMapLayout(rooms, { availH: canvasHFor(390, 844, 330) });
     expect(tall.CELL).toBeGreaterThanOrEqual(short.CELL);
     expect(tall.ORIGIN_Y).toBeGreaterThanOrEqual(short.ORIGIN_Y);
+  });
+
+  it("縦持ちは同じ階で CELL が横持ちより小さくならない（#114）", () => {
+    for (let i = 0; i < 50; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms;
+        expect(
+          calcMapLayout(rooms, { availH: canvasHFor(390, 844, 370) }).CELL,
+        ).toBeGreaterThanOrEqual(calcMapLayout(rooms).CELL);
+      }
+    }
   });
 });
 
