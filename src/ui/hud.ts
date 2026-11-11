@@ -112,5 +112,6 @@ export function focusFirst(container: HTMLElement): void {
   const target = container.querySelector<HTMLElement>(
     "[data-autofocus], button:not([disabled]):not(.hud-abandon)",
   );
-  target?.focus();
+  // 初期フォーカスで中段が勝手にスクロールしないよう preventScroll（#87: scrollTop=0 を保つ）
+  target?.focus({ preventScroll: true });
 }
