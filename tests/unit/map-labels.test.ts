@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   DENSE_SYM_W,
+  MAP_AREA_H,
+  MAP_AREA_TOP,
+  MAP_SHAPE_COLORS,
+  COLORS,
+  MAX_CELL,
+  MIN_CELL,
   CHAR_W,
   ID_FONT_PX,
   PORTRAIT_AVAIL_H,
@@ -138,10 +144,68 @@ describe("partCollisions: 部屋ID・記号・四角の重なり（#66）", () =
 
   it("DENSE_SYM_W は 7px 送り幅（DotGothic16 の ◆▼♦▲★）より小さくならず、symbolFits と partRects が同じ値を使う", () => {
     expect(DENSE_SYM_W).toBeGreaterThanOrEqual(7 + 1);
-    // seed-2 の2階（CELL=15, ROOM=9: 隙間6px）は実測幅7pxの記号が入らないので出さない
-    const rooms = generateFloor("seed-2", 2).rooms.map((r) => ({ ...r, visited: true }));
-    const layout = calcMapLayout(rooms);
+    // 密な階（CELL=15, ROOM=9: 隙間6px）は実測幅7pxの記号が入らないので出さない
+    const layout = at(15, 9);
     expect(layout.CELL - layout.ROOM).toBeLessThan(DENSE_SYM_W + 1);
     expect(symbolFits(layout)).toBe(false);
+  });
+});
+
+/** WCAG 相対輝度によるコントラスト比。 */
+function contrast(a: string, b: string): number {
+  const lum = (hex: string): number => {
+    const c = [1, 3, 5].map((i) => {
+      const v = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi! + 0.05) / (lo! + 0.05);
+}
+
+describe("マップのコントラストと拡大（#89, minori 指定値）", () => {
+  it("接続線・未踏枠は背景比 3:1 以上、訪問済み枠は 7:1 前後（非文字 3:1 は枠線で満たす）", () => {
+    expect(contrast(MAP_SHAPE_COLORS.line, COLORS.bg)).toBeGreaterThanOrEqual(3);
+    expect(contrast(MAP_SHAPE_COLORS.visitedEdge, COLORS.bg)).toBeGreaterThanOrEqual(7);
+    // 塗りだけでは足りない（枠線が必要な理由）。指定値 1.86:1
+    expect(contrast(MAP_SHAPE_COLORS.visitedFill, COLORS.bg)).toBeCloseTo(1.86, 1);
+  });
+
+  it("全階で CELL は 12〜24、行数 5 以下（6〜8部屋の階のほぼ全て）で CELL>=20", () => {
+    for (let i = 0; i < 100; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms;
+        const l = calcMapLayout(rooms);
+        expect(l.CELL).toBeGreaterThanOrEqual(MIN_CELL);
+        expect(l.CELL).toBeLessThanOrEqual(MAX_CELL);
+        const rows = Math.max(...rooms.map((r) => r.y)) + 1;
+        if (rows <= 5) expect(l.CELL, `seed-${i} floor=${n}`).toBeGreaterThanOrEqual(20);
+      }
+    }
+  });
+
+  it("横持ちは部屋の塊がマップ領域内で水平・垂直とも中央寄せ（上偏りなし）", () => {
+    for (let i = 0; i < 100; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms;
+        const l = calcMapLayout(rooms);
+        const rects = rooms.map((r) => partRects({ ...r, visited: true }, l, false));
+        const top = Math.min(...rects.map((p) => p.box.y));
+        const bottom = Math.max(...rects.map((p) => (p.id ? p.id.y + p.id.h : p.box.y + p.box.h)));
+        const left = Math.min(...rects.map((p) => p.box.x));
+        const right = Math.max(...rects.map((p) => p.box.x + p.box.w));
+        const msg = `seed-${i} floor=${n}`;
+        expect(top, msg).toBeGreaterThanOrEqual(MAP_AREA_TOP);
+        // 領域が足りない密な階（CELL=12 で行数が多い）は上端詰めでよい
+        if (bottom <= MAP_AREA_TOP + MAP_AREA_H) {
+          expect(
+            Math.abs(top - MAP_AREA_TOP - (MAP_AREA_TOP + MAP_AREA_H - bottom)),
+            msg,
+          ).toBeLessThanOrEqual(1);
+        }
+        expect(Math.abs(left - (320 - right)), msg).toBeLessThanOrEqual(1);
+      }
+    }
   });
 });

@@ -22,6 +22,7 @@ import {
   stairsOpen,
   symbolColor,
   COLORS,
+  MAP_SHAPE_COLORS,
 } from "./map-symbols";
 
 /** "#rrggbb" → Phaser の数値色。 */
@@ -29,9 +30,13 @@ const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
 
 // 記号色は COLORS（map-symbols.ts）から作る。二重定義しない。
 const COLOR = {
-  line: 0x26393d,
-  unknown: 0x26393d,
-  visited: 0x1b2b2e,
+  // #89 minori 指定（背景 #0f1a1c 比）: 接続線・未踏枠 #5a7a80 = 3.82:1、訪問済み枠 #8fa9a3 = 7.07:1。
+  // 訪問済みの塗り #33494e は単体で 3:1 に届かないため、非文字 3:1 は枠線で満たす。
+  bg: num(COLORS.bg),
+  line: num(MAP_SHAPE_COLORS.line),
+  unknownEdge: num(MAP_SHAPE_COLORS.line),
+  visitedFill: num(MAP_SHAPE_COLORS.visitedFill),
+  visitedEdge: num(MAP_SHAPE_COLORS.visitedEdge),
   current: num(COLORS.hint),
   // 現在地の箱の塗り（暗い金）。宝箱の金枠と同じ枠でも、塗りで現在地と区別できるようにする
   currentFill: 0x4a3f1c,
@@ -138,7 +143,7 @@ export class MapScene extends Phaser.Scene {
     }
 
     const g = this.add.graphics();
-    g.lineStyle(2, COLOR.line, 1);
+    g.lineStyle(1, COLOR.line, 1);
     for (const r of visible) {
       for (const id of r.neighbors) {
         const o = visible.find((v) => v.id === id);
@@ -151,8 +156,12 @@ export class MapScene extends Phaser.Scene {
     for (const r of visible) {
       const { x, y } = center(r);
       const isHere = r.id === s.roomId;
-      g.fillStyle(isHere ? COLOR.currentFill : r.visited ? COLOR.visited : COLOR.unknown, 1);
+      // 未踏は塗りなし＋1px の #5a7a80 枠、訪問済みは #33494e 塗り＋1px の #8fa9a3 枠（#89）
+      // 未踏の内側は背景色で抜く（塗りなし扱い。接続線が箱の中の「?」に重ならないようにする）
+      g.fillStyle(isHere ? COLOR.currentFill : r.visited ? COLOR.visitedFill : COLOR.bg, 1);
       g.fillRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
+      g.lineStyle(1, r.visited || isHere ? COLOR.visitedEdge : COLOR.unknownEdge, 1);
+      g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       // バグ部屋は「警告色の枠＋記号」（色だけに頼らない）
       if (r.visited && r.content.kind === "bug") {
         g.lineStyle(2, COLOR.bug, 1);
