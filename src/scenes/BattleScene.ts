@@ -1,3 +1,4 @@
+import { STORY } from "./story-text";
 import Phaser from "phaser";
 import { setupView } from "./view";
 import { BUG_POS, FONT_FAMILY, RENDER_SCALE } from "../config";
@@ -276,7 +277,9 @@ export class BattleScene extends Phaser.Scene {
           el(
             "h2",
             {},
-            `${here?.label ?? ""} — 正体不明のバグ `,
+            b.boss
+              ? `${STORY.bossTitle(here?.label ?? "")} `
+              : `${here?.label ?? ""} — 正体不明のバグ `,
             el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
           ),
           // 危険操作はパネル右上（ターン終了から離す。#119）

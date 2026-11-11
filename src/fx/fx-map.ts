@@ -7,7 +7,6 @@ import * as collectBurst from "pixelfx/fx/pickups/collect-burst";
 import * as smallExplosion from "pixelfx/fx/explosions/small-explosion";
 import * as confetti from "pixelfx/fx/ui/confetti";
 import * as questComplete from "pixelfx/fx/ui/quest-complete";
-import * as levelUp from "pixelfx/fx/ui/level-up";
 import * as glitch from "pixelfx/fx/scifi/glitch";
 import * as hitFlash from "pixelfx/fx/impacts/hit-flash";
 import * as hitSpark from "pixelfx/fx/impacts/hit-spark";
@@ -78,10 +77,7 @@ export const FX_MAP: Readonly<Record<FxEventName, readonly FxSpec[]>> = {
     { mod: blinds, x: 0, y: 0, layer: "front" },
     { mod: pixelDissolve, x: 0, y: 0, layer: "front" },
   ],
-  result: [
-    { mod: questComplete, x: 160, y: 20, layer: "front" },
-    { mod: levelUp, x: 160, y: 118, layer: "front" },
-  ],
+  result: [{ mod: questComplete, x: 160, y: 20, layer: "front" }],
   mapAmbient: [
     { mod: campfire, x: 28, y: 138, layer: "back" },
     { mod: candle, x: 296, y: 138, layer: "back" },

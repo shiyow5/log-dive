@@ -1,3 +1,4 @@
+import { STORY } from "./story-text";
 import Phaser from "phaser";
 import { setupView } from "./view";
 import { createSceneFx } from "../fx/scene-fx";
@@ -38,6 +39,10 @@ export class ResultScene extends Phaser.Scene {
       "section",
       { class: "hud-panel", "aria-label": "リザルト" },
       el("h1", { class: s.phase === "won" ? "hud-ok" : "hud-danger" }, HEADLINE[s.phase]),
+      s.phase === "won" ? el("p", { class: "hud-ok" }, STORY.clearEpilogue) : null,
+      s.phase === "won"
+        ? el("h2", { class: "hud-stat" }, STORY.clearStatsHeading(s.stats.bugsClosed))
+        : null,
       el(
         "dl",
         { class: "hud-dl" },
