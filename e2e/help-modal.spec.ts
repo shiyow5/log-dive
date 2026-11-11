@@ -65,3 +65,25 @@ test("タイトル: シード入力はパネル配色で、『Log Dive』表記�
   const start = await page.getByRole("button", { name: "新しいラン" }).boundingBox();
   expect(start?.height).toBe(52);
 });
+
+for (const vp of [
+  { width: 1280, height: 720 },
+  { width: 844, height: 390 },
+  { width: 390, height: 844 },
+]) {
+  test(`遊び方: ${vp.width}x${vp.height} で閉じるが見えて押せる・44px以上・本文16px (#136)`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(vp);
+    await page.goto("/?fx=0");
+    await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+    await page.getByRole("button", { name: "遊び方" }).click();
+    const close = page.locator("#help-overlay").getByRole("button", { name: "閉じる" });
+    await expect(close).toBeInViewport({ ratio: 1 });
+    const box = await close.boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    await expect(page.locator("#help-overlay .help-body p").first()).toHaveCSS("font-size", "16px");
+    await close.click();
+    await expect(page.locator("#help-overlay")).toBeHidden();
+  });
+}
