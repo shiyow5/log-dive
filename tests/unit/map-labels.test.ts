@@ -10,6 +10,7 @@ import {
   CHAR_W,
   ID_FONT_PX,
   PORTRAIT_AVAIL_H,
+  PORTRAIT_CHAR_W,
   PORTRAIT_ID_FONT_PX,
   UNKNOWN_H,
   UNKNOWN_W,
@@ -191,6 +192,24 @@ describe("縦持ちのマップ配置（#121）", () => {
     }
   });
 
+  it("部屋をひとつずつ現在地にしても（全部出す名前の幅で）隣・下の部屋と重ならない（#121 Codex P2）", () => {
+    for (const [w, h, hud] of [...SCREENS, SMALL]) {
+      const H = canvasHFor(w, h, hud);
+      for (let i = 0; i < 40; i++) {
+        for (let n = 1; n <= floorCount(); n++) {
+          const rooms = allVisited(`seed-${i}`, n);
+          const l = calcMapLayout(rooms, { availH: H });
+          for (const cur of rooms) {
+            expect(
+              partCollisions(rooms, l, () => true, cur.id),
+              `${w}x${h} seed-${i} f${n} here=${cur.id}`,
+            ).toEqual([]);
+          }
+        }
+      }
+    }
+  });
+
   it("現在地の名前は省略しない。ほかの部屋のラベルも 6 文字は収まる", () => {
     const l = calcMapLayout(generateFloor("seed-1", 3).rooms, {
       availH: canvasHFor(390, 844, 370),
@@ -199,10 +218,14 @@ describe("縦持ちのマップ配置（#121）", () => {
     expect(roomLabelText(named, l, true)).toBe("tick");
     expect(roomLabelText({ ...named, label: "json.decode()" }, l)).toBe("decode");
     expect(roomLabelText({ ...named, label: "main()" }, l, true)).toBe("main");
-    // 長い名前でも現在地は切らない
-    expect(roomLabelText({ ...named, label: "parseConfigLineLong()" }, l, true)).toBe(
-      "parseConfigLineLong",
-    );
+    // 箱の幅（CELL-2）に収まる現在地の名前は切らない。収まらないものは省略する（隣とのラベル重なり防止）
+    const long = roomLabelText({ ...named, label: "parseConfigLineLong()" }, l, true)!;
+    expect(long.length * CHAR_W).toBeLessThanOrEqual(l.CELL - 2);
+    expect(long.endsWith("…")).toBe(true);
+    // 360×640 の密な HUD（CELL≈33）では 6 文字の現在地も省略し、隣のラベルと重ならない幅に収める（#121 Codex P2）
+    const small = { ...at(33), charW: PORTRAIT_CHAR_W } as Parameters<typeof roomLabelText>[1];
+    const shortHere = roomLabelText({ ...named, label: "render()" }, small, true)!;
+    expect(shortHere.length * PORTRAIT_CHAR_W).toBeLessThanOrEqual(33 - 2);
   });
 
   it("canvas が高いほどマップは大きくなり（CELL は下がらない）、縦の中央に寄る", () => {

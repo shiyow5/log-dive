@@ -249,8 +249,10 @@ export function roomLabelText(r: RoomState, layout: MapLayout, isHere = false): 
   if (!r.visited || isDense(layout)) return null;
   const name = r.label.replace(/\(\)$/, "").split(".").pop() ?? "";
   const max = Math.max(1, Math.floor((layout.CELL - 2) / (layout.charW ?? CHAR_W)));
-  // 縦持ち（charW 指定）の現在地は名前を省略しない（#121。名前は 6 文字以内で、CELL の幅に収まる）
-  if (isHere && layout.charW !== undefined) return name;
+  // 縦持ち（charW 指定）の現在地は名前を省略しない（#121）。ただし箱の幅（CELL-2）に収まるときだけ。
+  // 収まらない小さい画面では省略して、隣の部屋のラベルと重ならないようにする（Codex P2）
+  if (isHere && layout.charW !== undefined && name.length * layout.charW <= layout.CELL - 2)
+    return name;
   return name.length > max ? `${name.slice(0, max - 1)}…` : name;
 }
 
@@ -258,19 +260,22 @@ export function roomLabelText(r: RoomState, layout: MapLayout, isHere = false): 
  * 部屋の四角・ラベル・記号・未踏「?」が描かれる矩形（px、近似）。MapScene の配置と同じ式。
  * 密な階: ラベルなし、記号=箱の右隣（中央揃え縦）。
  * 疎な階: ラベル（探索済みのみ、関数名）=箱の真下に中央揃え（#114）、記号=箱の中央。
+ * isHere: 現在地の部屋か（縦持ちは名前を省略しないので、その幅で判定する）。
  * 未踏「?」（疎な階のみ）は箱の中央（箱が接続線を隠す）。
  */
 export function partRects(
   r: RoomState,
   layout: MapLayout,
   hasSymbolIn: boolean,
+  isHere = false,
 ): { box: Rect; id: Rect | null; symbol: Rect | null; unknown: Rect | null } {
   const cx = layout.ORIGIN_X + r.x * layout.CELL;
   const cy = layout.ORIGIN_Y + r.y * layout.CELL;
   const R = layout.ROOM;
   const hasSymbol = hasSymbolIn && symbolFits(layout);
   const box = { x: cx - R / 2, y: cy - R / 2, w: R, h: R };
-  const text = roomLabelText(r, layout);
+  // 描画（MapScene）と同じ引数で文字列を決める。現在地は全部出すので、その幅で重なりを判定する
+  const text = roomLabelText(r, layout, isHere);
   const idW = (text?.length ?? 0) * (layout.charW ?? CHAR_W);
   // 密な階は上の段の ID と干渉するので「?」は出さない（未踏は暗い箱＋弱い色の ID で区別）
   const unknown =
@@ -303,9 +308,13 @@ export function partCollisions(
   rooms: readonly RoomState[],
   layout: MapLayout,
   hasSymbol: (r: RoomState) => boolean,
+  currentId?: string,
 ): string[] {
   const hits: string[] = [];
-  const parts = rooms.map((r) => ({ rid: r.id, ...partRects(r, layout, hasSymbol(r)) }));
+  const parts = rooms.map((r) => ({
+    rid: r.id,
+    ...partRects(r, layout, hasSymbol(r), r.id === currentId),
+  }));
   for (const a of parts) {
     for (const b of parts) {
       if (a === b) continue;
