@@ -76,3 +76,30 @@ test("戦闘HUD: 2階の戦闘で『ターン終了』が画面内・敵名とHP
     await expect(page.locator(".hud-cands li")).toHaveCount(5);
   }
 });
+
+test("戦闘HUD(#93): CPUが丸で出る・推奨枠は1つだけ・スキル2×2で高さ44px", async ({ page }) => {
+  await page.goto(`/?fx=0&qa=1&seed=${encodeURIComponent(plan.seed)}`);
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  const firstBattle = plan.steps.findIndex((s) => s.scene === "battle");
+  for (const step of plan.steps.slice(0, firstBattle + 1)) {
+    await press(page, step.press);
+    await expect(page.locator("body")).toHaveAttribute("data-scene", step.scene);
+    await page.evaluate(() => window.__qa!.waitForIdle());
+  }
+  const dots = page.locator(".cpu-dot");
+  expect(await dots.count()).toBeGreaterThan(0);
+  await expect(page.locator(".cpu-dot.is-on")).not.toHaveCount(0);
+  // 推奨枠（スキル＋ターン終了の合計）は常に 1 つ
+  await expect(page.locator("#hud [data-recommended]")).toHaveCount(1);
+  // 未再現の最初は「再現手順」が推奨
+  await expect(page.locator(".hud-skills [data-recommended]")).toContainText("再現手順");
+  const boxes = await page.locator(".hud-skills .hud-btn").evaluateAll((els) =>
+    els.map((e) => {
+      const r = e.getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y), h: Math.round(r.height) };
+    }),
+  );
+  for (const b of boxes) expect(b.h).toBe(44);
+  expect(new Set(boxes.map((b) => b.x)).size).toBeLessThanOrEqual(2);
+});

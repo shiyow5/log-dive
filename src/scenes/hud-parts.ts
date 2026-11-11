@@ -3,17 +3,37 @@ import { lastLogLine } from "./run-port";
 import type { RunState } from "./run-port";
 
 /** 稼働率・CPU・ターンの行。 */
-export function statsRow(s: RunState): HTMLElement {
+export function statsRow(s: RunState, opts: { cpu?: boolean } = {}): HTMLElement {
   const p = s.player;
   return el(
     "p",
     { class: "hud-row", "aria-label": "ステータス" },
     el("span", { class: "hud-stat" }, "稼働率 ", el("strong", {}, `${p.hp}/${p.maxHp}`)),
-    el("span", { class: "hud-stat" }, "CPU ", el("strong", {}, `${p.cpu}/${p.cpuMax}`)),
+    opts.cpu === false
+      ? null
+      : el("span", { class: "hud-stat" }, "CPU ", el("strong", {}, `${p.cpu}/${p.cpuMax}`)),
     s.battle
       ? el("span", { class: "hud-stat" }, "ターン ", el("strong", {}, String(s.battle.turn)))
       : null,
     el("span", { class: "hud-stat" }, "階 ", el("strong", {}, String(s.floor.number))),
+  );
+}
+
+/**
+ * CPU を丸で表示（#93）。使用中=塗り、空き=枠のみ（色+形で区別）、数字も併記。
+ * 例: CPU ●●○ 2/3
+ */
+export function cpuDots(s: RunState): HTMLElement {
+  const { cpu, cpuMax } = s.player;
+  const dots = Array.from({ length: cpuMax }, (_, i) =>
+    el("span", { class: i < cpu ? "cpu-dot is-on" : "cpu-dot", "aria-hidden": "true" }),
+  );
+  return el(
+    "p",
+    { class: "hud-cpu", role: "group", "aria-label": `CPU ${cpu}/${cpuMax}` },
+    el("span", { class: "hud-cpu-label" }, "CPU"),
+    el("span", { class: "cpu-dots" }, ...dots),
+    el("strong", {}, `${cpu}/${cpuMax}`),
   );
 }
 
