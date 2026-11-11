@@ -83,6 +83,20 @@
   color: var(--ld-text-weak);
 }
 
+.help-panel p,
+.help-panel ul {
+  margin: 0 0 8px;
+  line-height: 1.6;
+}
+.help-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
 .hud-row {
   display: flex;
   flex-wrap: wrap;
@@ -143,21 +157,56 @@
 
 .hud-field {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 4px;
 }
-.hud-field input {
+.hud-field label {
+  font-size: 12px;
+  color: #a9c2bc;
+}
+#seed-input {
   font: inherit;
-  color: var(--ld-text);
-  background: var(--ld-bg);
-  border: 2px solid var(--ld-text-weak);
-  padding: 4px 8px;
-  min-height: 32px;
-  width: 12ch;
+  font-size: 16px;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 12px;
+  width: 16ch;
+  color: #e4f1ec;
+  background: #0f1a1c;
+  border: 2px solid #8fa9a3;
+  border-radius: 0;
 }
-.hud-field input:focus-visible {
-  outline: 2px solid var(--ld-hint);
-  outline-offset: 2px;
+#seed-input::placeholder {
+  color: #a9c2bc;
+}
+#seed-input:focus,
+#seed-input:focus-visible {
+  border-color: #e8c468;
+  outline: none;
+}
+.title-lead {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #a9c2bc;
+}
+.title-seed-row {
+  align-items: flex-end;
+}
+.title-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0 8px;
+}
+.title-actions .hud-btn {
+  width: 100%;
+  min-height: 40px;
+}
+.title-actions .hud-btn--primary {
+  min-height: 52px;
+  background: #e8c468;
+  border-color: #e8c468;
+  color: #0f1a1c;
 }
 
 .hud-stat {
