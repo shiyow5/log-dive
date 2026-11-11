@@ -30,7 +30,7 @@ import {
 /** 横持ちでマップの下端と HUD パネルの上端を空ける余白（内部px）。 */
 const HUD_GAP = 4;
 /** 宝箱の中心の上限は「部屋中心 + 部屋の半分 - この値」。箱(16px)の下端がラベル上端(部屋下端-2px)より1px上に来る値。ラベルが箱に重なる小さい部屋だけ上にずれる。 */
-const CHEST_LIFT_PX = 11;
+const CHEST_LIFT_PX = 13;
 
 /** "#rrggbb" → Phaser の数値色。 */
 const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
@@ -100,7 +100,6 @@ export class MapScene extends Phaser.Scene {
 
   create(): void {
     setupView(this);
-    this.applyView();
     fadeIn(this);
     const s = current();
     const fx = createSceneFx(this, "fx-map");
@@ -109,6 +108,8 @@ export class MapScene extends Phaser.Scene {
     fx.emitRunEvents(s.events);
     // HUD を先に描く（マップの下端は HUD パネルの実測位置で決まるため）
     this.renderHud(s);
+    // 縦持ちは HUD の実測高さから canvas の高さを決める（HUD を描いた後でないと測れない）
+    this.applyView();
     this.drawMap(s);
     // 端末を回したとき・画面サイズが変わったとき（マップの大きさや HUD の高さが変わる）に描き直す
     const mq = window.matchMedia("(max-aspect-ratio: 1/1)");
@@ -135,13 +136,32 @@ export class MapScene extends Phaser.Scene {
       this.resetView();
       return;
     }
-    const h = portraitCanvasH(window.innerWidth, window.innerHeight);
+    const h = portraitCanvasH(window.innerWidth, window.innerHeight, this.hudNeedH());
     if (this.scale.gameSize.height !== h * RENDER_SCALE) {
       this.scale.setGameSize(GAME_WIDTH * RENDER_SCALE, h * RENDER_SCALE);
       this.cameras.main.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, h / 2);
     }
     const cssH = this.game.canvas.getBoundingClientRect().height;
     document.documentElement.style.setProperty("--ld-canvas-h", `${cssH}px`);
+  }
+
+  /**
+   * 縦持ちで HUD（パネル）が必要とする高さ（画面 px）。#hud の上下 padding とパネル間の gap を含む。
+   * パネルは overflow:auto で縮められるので、見えている高さと中身の高さ（scrollHeight）の大きい方を使う。
+   */
+  private hudNeedH(): number {
+    const hud = document.getElementById("hud");
+    if (!hud) return 0;
+    const cs = getComputedStyle(hud);
+    const panels = [...hud.children].filter((c): c is HTMLElement => c instanceof HTMLElement);
+    const sum = panels.reduce((acc, p) => {
+      const rect = p.getBoundingClientRect().height;
+      const content = p.scrollHeight + (p.offsetHeight - p.clientHeight);
+      return acc + Math.max(rect, content);
+    }, 0);
+    const gap = parseFloat(cs.rowGap) || 0;
+    const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    return Math.ceil(sum + gap * Math.max(0, panels.length - 1) + pad);
   }
 
   /** 横持ち・マップを離れるときは canvas を 320×180 に戻し、HUD の位置も元に戻す。 */
@@ -188,8 +208,10 @@ export class MapScene extends Phaser.Scene {
     }
     this.fx?.emitRunEvents(next.events);
     const redraw = (): void => {
-      this.clearMapObjects();
+      // HUD の高さが変わると canvas の高さも変わる（RESIZE で描き直されることがあるので、消してから描く）
       this.renderHud(next);
+      this.applyView();
+      this.clearMapObjects();
       this.drawMap(next);
     };
     if (next.events.some((e) => e.t === "descended") && fxEnabled()) {
@@ -223,7 +245,7 @@ export class MapScene extends Phaser.Scene {
     const layout = calcMapLayout(
       rooms,
       portrait
-        ? { availH: portraitCanvasH(window.innerWidth, window.innerHeight) }
+        ? { availH: this.scale.gameSize.height / RENDER_SCALE }
         : { mapBottom: this.hudTopInCanvas() - HUD_GAP },
     );
     const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
@@ -309,15 +331,15 @@ export class MapScene extends Phaser.Scene {
           .setResolution(RENDER_SCALE);
       }
       // 探索済みの部屋は関数名を箱の真下に（#114）。部屋 ID はキャンバスに出さない。未踏は上の「?」。
-      const label = roomLabelText(r, layout);
+      const label = roomLabelText(r, layout, isHere);
       if (label) {
         this.add
-          .text(x, y + ROOM / 2 - 2, label, {
+          .text(x, y + ROOM / 2 + (portrait ? 2 : -2), label, {
             fontFamily: FONT_FAMILY,
             fontSize: `${portrait ? PORTRAIT_ID_FONT_PX : ID_FONT_PX}px`,
             color: isHere ? COLOR.text : COLOR.weak,
             stroke: "#0f1a1c",
-            strokeThickness: 1,
+            strokeThickness: portrait ? 4 : 1,
           })
           .setOrigin(0.5, 0)
           .setResolution(RENDER_SCALE);
