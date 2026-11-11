@@ -10,6 +10,7 @@ export function goTo(scene: Phaser.Scene, key: string, data?: object): void {
   }
   if (!fxEnabled()) {
     clearHud();
+    setHudBusy(false); // 呼び出し側が演出待ちで busy にしていても、?fx=0 の即時遷移後は入力を戻す
     scene.scene.start(key, data);
     return;
   }
