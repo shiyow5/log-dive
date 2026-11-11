@@ -547,6 +547,16 @@
   }
 }
 
+/*
+ * #126: 横持ちスマホでは 50vh（=195px）上限だとマップ/リザルトのパネルが内部スクロールになり、
+ * 「ランを放棄」やリザルトのボタンが下端で欠ける。画面高 - HUD 余白まで広げ、超える分だけ内部スクロール。
+ */
+@media (orientation: landscape) and (max-height: 480px) {
+  .hud-panel:not(.hud-panel--battle) {
+    max-height: calc(100vh - 8px);
+  }
+}
+
 /* ---- ランを放棄（#119）: 危険操作はゴースト＋主操作から離す ---- */
 .hud-btn--ghost {
   background: transparent;
