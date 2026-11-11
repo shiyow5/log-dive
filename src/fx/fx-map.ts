@@ -63,12 +63,14 @@ export const FX_MAP: Readonly<Record<FxEventName, readonly FxSpec[]>> = {
     { mod: hitSpark, x: 160, y: 150, layer: "front" },
   ],
   bugDefeated: [
-    { mod: smallExplosion, x: 160, y: 100, options: { size: 0.5 }, layer: "front" },
-    { mod: confetti, x: 160, y: 120, layer: "front" },
+    // #115: マップ中央（現在地・部屋名が並ぶ所）に炎を置かない。上端の帯(y=14)に寄せる
+    { mod: smallExplosion, x: 160, y: 14, options: { size: 0.4 }, layer: "front" },
+    { mod: confetti, x: 160, y: 8, layer: "front" },
   ],
   chestOpen: [{ mod: collectBurst, x: 160, y: 90, layer: "front" }],
   // 階段は暗転フェード（MapScene）が主役。全画面系(blinds/dissolve)は重ねず、小さな光だけ添える
-  stairs: [{ mod: collectBurst, x: 160, y: 90, layer: "front" }],
+  // #115: マップ中央ではなく上端の帯に出す（現在地・部屋名を覆わない）
+  stairs: [{ mod: collectBurst, x: 160, y: 14, layer: "front" }],
   // 英語バナー文字は出さない（「復旧完了」と重複・#128 fumino v1.0）。リボンと封印の演出は維持
   result: [{ mod: questComplete, x: 160, y: 20, options: { text: "" }, layer: "front" }],
   mapAmbient: [
