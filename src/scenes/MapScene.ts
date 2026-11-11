@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { setupView } from "./view";
-import { FONT_FAMILY, GAME_HEIGHT, RENDER_SCALE } from "../config";
+import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
 import { button, el, renderHud } from "../ui/hud";
@@ -13,8 +13,8 @@ import {
   isDense,
   symbolFits,
   roomLabelText,
-  PORTRAIT_AVAIL_H,
   PORTRAIT_ID_FONT_PX,
+  portraitCanvasH,
   isShownOnMap,
   ID_FONT_PX,
   UNKNOWN_H,
@@ -92,6 +92,7 @@ export class MapScene extends Phaser.Scene {
 
   create(): void {
     setupView(this);
+    this.applyView();
     fadeIn(this);
     const s = current();
     const fx = createSceneFx(this, "fx-map");
@@ -103,13 +104,44 @@ export class MapScene extends Phaser.Scene {
     this.drawMap(s);
     // 端末を回したとき・画面サイズが変わったとき（マップの大きさや HUD の高さが変わる）に描き直す
     const mq = window.matchMedia("(max-aspect-ratio: 1/1)");
-    const onTurn = (): void => this.redrawMap();
+    const onTurn = (): void => {
+      this.applyView();
+      this.redrawMap();
+    };
     mq.addEventListener("change", onTurn);
     this.scale.on(Phaser.Scale.Events.RESIZE, onTurn);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       mq.removeEventListener("change", onTurn);
       this.scale.off(Phaser.Scale.Events.RESIZE, onTurn);
+      this.resetView();
     });
+  }
+
+  /**
+   * 縦持ちのとき canvas を縦に伸ばし、HUD をその下に置く（#121）。
+   * 横持ちは 320×180 のまま。canvas の内部高さが変わったときだけ作り直す（RESIZE から呼ばれても止まる）。
+   */
+  private applyView(): void {
+    const portrait = window.matchMedia("(max-aspect-ratio: 1/1)").matches;
+    if (!portrait) {
+      this.resetView();
+      return;
+    }
+    const h = portraitCanvasH(window.innerWidth, window.innerHeight);
+    if (this.scale.gameSize.height !== h * RENDER_SCALE) {
+      this.scale.setGameSize(GAME_WIDTH * RENDER_SCALE, h * RENDER_SCALE);
+      this.cameras.main.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, h / 2);
+    }
+    const cssH = this.game.canvas.getBoundingClientRect().height;
+    document.documentElement.style.setProperty("--ld-canvas-h", `${cssH}px`);
+  }
+
+  /** 横持ち・マップを離れるときは canvas を 320×180 に戻し、HUD の位置も元に戻す。 */
+  private resetView(): void {
+    document.documentElement.style.removeProperty("--ld-canvas-h");
+    if (this.scale.gameSize.height === GAME_HEIGHT * RENDER_SCALE) return;
+    this.scale.setGameSize(GAME_WIDTH * RENDER_SCALE, GAME_HEIGHT * RENDER_SCALE);
+    this.cameras?.main?.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
   }
 
   /**
@@ -155,12 +187,14 @@ export class MapScene extends Phaser.Scene {
   private drawMap(s: RunState): void {
     const rooms = s.floor.rooms;
     const visible = rooms.filter((r) => isShownOnMap(r, s));
-    // 縦持ち（aspect<1）は HUD が canvas の下なので、マップに全高を使う（#114）
+    // 縦持ち（aspect<1）は HUD が canvas の下なので、マップに canvas の全高を使う（#114、#121 で canvas 自体を伸ばした）
     const portrait = window.matchMedia("(max-aspect-ratio: 1/1)").matches;
     // 横持ちは HUD パネルの上端より上（余白 HUD_GAP を空けて）に収める（#89 の差し戻し）
     const layout = calcMapLayout(
       rooms,
-      portrait ? { availH: PORTRAIT_AVAIL_H } : { mapBottom: this.hudTopInCanvas() - HUD_GAP },
+      portrait
+        ? { availH: portraitCanvasH(window.innerWidth, window.innerHeight) }
+        : { mapBottom: this.hudTopInCanvas() - HUD_GAP },
     );
     const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
     const dense = isDense(layout);

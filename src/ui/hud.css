@@ -259,7 +259,7 @@
 /* 縦長（スマホ縦持ちなど）: HUD はキャンバスの下から。キャンバスと重ねない */
 @media (max-aspect-ratio: 1/1) {
   #hud {
-    top: calc(100vw * 9 / 16);
+    top: var(--ld-canvas-h, calc(100vw * 9 / 16));
     justify-content: flex-start;
     overflow-y: auto;
   }
