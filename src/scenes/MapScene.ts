@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { setupView } from "./view";
-import { FONT_FAMILY, RENDER_SCALE } from "../config";
+import { FONT_FAMILY, GAME_HEIGHT, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
 import { button, el, renderHud } from "../ui/hud";
@@ -22,16 +22,24 @@ import {
   stairsOpen,
   symbolColor,
   COLORS,
+  MAP_SHAPE_COLORS,
 } from "./map-symbols";
+
+/** 横持ちでマップの下端と HUD パネルの上端を空ける余白（内部px）。 */
+const HUD_GAP = 4;
 
 /** "#rrggbb" → Phaser の数値色。 */
 const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
 
 // 記号色は COLORS（map-symbols.ts）から作る。二重定義しない。
 const COLOR = {
-  line: 0x26393d,
-  unknown: 0x26393d,
-  visited: 0x1b2b2e,
+  // #89 minori 指定（背景 #0f1a1c 比）: 接続線・未踏枠 #5a7a80 = 3.82:1、訪問済み枠 #8fa9a3 = 7.07:1。
+  // 訪問済みの塗り #33494e は単体で 3:1 に届かないため、非文字 3:1 は枠線で満たす。
+  bg: num(COLORS.bg),
+  line: num(MAP_SHAPE_COLORS.line),
+  unknownEdge: num(MAP_SHAPE_COLORS.line),
+  visitedFill: num(MAP_SHAPE_COLORS.visitedFill),
+  visitedEdge: num(MAP_SHAPE_COLORS.visitedEdge),
   current: num(COLORS.hint),
   // 現在地の箱の塗り（暗い金）。宝箱の金枠と同じ枠でも、塗りで現在地と区別できるようにする
   currentFill: 0x4a3f1c,
@@ -90,13 +98,33 @@ export class MapScene extends Phaser.Scene {
     this.fx = fx;
     fx.emit("mapAmbient");
     fx.emitRunEvents(s.events);
-    this.drawMap(s);
+    // HUD を先に描く（マップの下端は HUD パネルの実測位置で決まるため）
     this.renderHud(s);
-    // 端末を回したとき（縦横でマップの大きさが変わる）に描き直す
+    this.drawMap(s);
+    // 端末を回したとき・画面サイズが変わったとき（マップの大きさや HUD の高さが変わる）に描き直す
     const mq = window.matchMedia("(max-aspect-ratio: 1/1)");
     const onTurn = (): void => this.redrawMap();
     mq.addEventListener("change", onTurn);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => mq.removeEventListener("change", onTurn));
+    this.scale.on(Phaser.Scale.Events.RESIZE, onTurn);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      mq.removeEventListener("change", onTurn);
+      this.scale.off(Phaser.Scale.Events.RESIZE, onTurn);
+    });
+  }
+
+  /**
+   * 横持ちで HUD パネルの上端（canvas の内部 px）。パネルの高さは内容と画面の高さで変わるので、
+   * 描くたびに実測する。パネルが無ければ canvas の全高。
+   */
+  private hudTopInCanvas(): number {
+    const canvasRect = this.game.canvas.getBoundingClientRect();
+    if (canvasRect.height === 0) return GAME_HEIGHT;
+    const tops = [...document.querySelectorAll<HTMLElement>("#hud .hud-panel")]
+      .map((p) => p.getBoundingClientRect())
+      .filter((r) => r.height > 0)
+      .map((r) => r.top);
+    if (tops.length === 0) return GAME_HEIGHT;
+    return ((Math.min(...tops) - canvasRect.top) / canvasRect.height) * GAME_HEIGHT;
   }
 
   private redrawMap(): void {
@@ -120,8 +148,8 @@ export class MapScene extends Phaser.Scene {
     }
     this.fx?.emitRunEvents(next.events);
     this.clearMapObjects();
-    this.drawMap(next);
     this.renderHud(next);
+    this.drawMap(next);
   }
 
   private drawMap(s: RunState): void {
@@ -129,7 +157,11 @@ export class MapScene extends Phaser.Scene {
     const visible = rooms.filter((r) => isShownOnMap(r, s));
     // 縦持ち（aspect<1）は HUD が canvas の下なので、マップに全高を使う（#114）
     const portrait = window.matchMedia("(max-aspect-ratio: 1/1)").matches;
-    const layout = calcMapLayout(rooms, portrait ? { availH: PORTRAIT_AVAIL_H } : undefined);
+    // 横持ちは HUD パネルの上端より上（余白 HUD_GAP を空けて）に収める（#89 の差し戻し）
+    const layout = calcMapLayout(
+      rooms,
+      portrait ? { availH: PORTRAIT_AVAIL_H } : { mapBottom: this.hudTopInCanvas() - HUD_GAP },
+    );
     const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
     const dense = isDense(layout);
 
@@ -138,7 +170,7 @@ export class MapScene extends Phaser.Scene {
     }
 
     const g = this.add.graphics();
-    g.lineStyle(2, COLOR.line, 1);
+    g.lineStyle(1, COLOR.line, 1);
     for (const r of visible) {
       for (const id of r.neighbors) {
         const o = visible.find((v) => v.id === id);
@@ -151,8 +183,12 @@ export class MapScene extends Phaser.Scene {
     for (const r of visible) {
       const { x, y } = center(r);
       const isHere = r.id === s.roomId;
-      g.fillStyle(isHere ? COLOR.currentFill : r.visited ? COLOR.visited : COLOR.unknown, 1);
+      // 未踏は塗りなし＋1px の #5a7a80 枠、訪問済みは #33494e 塗り＋1px の #8fa9a3 枠（#89）
+      // 未踏の内側は背景色で抜く（塗りなし扱い。接続線が箱の中の「?」に重ならないようにする）
+      g.fillStyle(isHere ? COLOR.currentFill : r.visited ? COLOR.visitedFill : COLOR.bg, 1);
       g.fillRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
+      g.lineStyle(1, r.visited || isHere ? COLOR.visitedEdge : COLOR.unknownEdge, 1);
+      g.strokeRect(x - ROOM / 2, y - ROOM / 2, ROOM, ROOM);
       // バグ部屋は「警告色の枠＋記号」（色だけに頼らない）
       if (r.visited && r.content.kind === "bug") {
         g.lineStyle(2, COLOR.bug, 1);

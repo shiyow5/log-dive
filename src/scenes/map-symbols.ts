@@ -75,6 +75,16 @@ export const COLORS = {
   bg: "#0f1a1c",
 } as const;
 
+/** マップ図形の色（#89 minori 指定。背景 COLORS.bg 比は tests/unit/map-labels.test.ts で検証）。 */
+export const MAP_SHAPE_COLORS = {
+  /** 接続線・未踏部屋の枠（1px）。3.82:1 */
+  line: "#5a7a80",
+  /** 訪問済み部屋の塗り。単体では 3:1 に届かない（1.86:1）ので枠線と併用する */
+  visitedFill: "#33494e",
+  /** 訪問済み部屋の枠（1px）。7.07:1 */
+  visitedEdge: "#8fa9a3",
+} as const;
+
 /** 記号の色。 */
 export function symbolColor(r: RoomState): string {
   const c = r.content;
@@ -94,9 +104,18 @@ export const ID_H = 8;
 export const UNKNOWN_W = 6;
 export const UNKNOWN_H = 10;
 
-const MIN_CELL = 8;
-/** 部屋の原点Y（上マージン）。 */
+/** CELL の下限（全階で維持。密な階は #66 の ID 規則）と上限（minori 指定 #89: 疎な階は最大 24px）。 */
+export const MIN_CELL = 12;
+export const MAX_CELL = 24;
+/** 縦持ちの部屋の原点Y（上マージン）。 */
 const MAP_ORIGIN_Y = 20;
+/**
+ * 横持ちのマップ領域の既定値（内部 px、minori 指定 #89）。下端は既定で y=106 だが、
+ * 実際の下端は MapScene が HUD パネルの実測位置から求めて `mapBottom` で渡す（HUD の高さは画面サイズで変わるため）。
+ * 部屋の塊はこの領域の水平・垂直とも中央に置く（上偏りをなくす）。
+ */
+export const MAP_AREA_TOP = 6;
+export const MAP_AREA_H = 100;
 const BASE_ROOM_RATIO = 20 / 32;
 /** 疎な階（CELL>=DENSE_CELL）の箱の比率。箱の下に 10px の ID を置く隙間（CELL-ROOM >= 10）を空けるため小さめ。 */
 const SPARSE_ROOM_RATIO = 1 / 2;
@@ -104,6 +123,11 @@ const SPARSE_ROOM_RATIO = 1 / 2;
 export interface MapLayoutOptions {
   /** マップに使える高さ（内部px）。省略時は横長の既定値（60px）。指定時は canvas 全高（縦持ちは PORTRAIT_AVAIL_H）。 */
   readonly availH?: number;
+  /**
+   * 横持ちでマップを置いてよい下端（内部px）。HUD パネルの上端より上に収めるため MapScene が実測して渡す。
+   * 省略時は既定の下端（MAP_AREA_TOP + MAP_AREA_H）。
+   */
+  readonly mapBottom?: number;
 }
 /** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
 export const PORTRAIT_AVAIL_H = 180;
@@ -128,13 +152,23 @@ export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptio
   const mapW = Math.max(...rooms.map((r) => r.x)) + 1;
   const mapH = Math.max(...rooms.map((r) => r.y)) + 1;
   const availW = width - 40; // 左右マージン20px
-  // 上部マージン20 + HUD下部100px。縦持ちは HUD が canvas の外（下）なので全高を使える（#114）
-  // availH 指定時は canvas 全高。上マージン(ORIGIN_Y)と最下段の ID ラベル(ID_H)を引いて部屋が収まる高さにする
-  const availH = opts?.availH !== undefined ? opts.availH - MAP_ORIGIN_Y - ID_H : 180 - 20 - 100;
-  const CELL = Math.max(MIN_CELL, Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH)));
+  const portraitH = opts?.availH;
+  // 縦持ち: HUD が canvas の外（下）なので、上マージン(ORIGIN_Y)と最下段の ID ラベル(ID_H)を引いた全高を使う（#114）
+  // 横持ち: マップ領域 MAP_AREA_H に収める（#89）
+  // 横持ちの領域: 上端 MAP_AREA_TOP、下端 mapBottom（HUD の上端を避けた値）。
+  const areaH = (opts?.mapBottom ?? MAP_AREA_TOP + MAP_AREA_H) - MAP_AREA_TOP;
+  const availH = portraitH !== undefined ? portraitH - MAP_ORIGIN_Y - ID_H : areaH;
+  const raw = Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH));
+  // 領域が足りない短い画面でも CELL は MIN_CELL で止める（それ以上縮めると判読できない）
+  const CELL = Math.max(MIN_CELL, Math.min(MAX_CELL, raw));
   const ratio = CELL >= DENSE_CELL ? SPARSE_ROOM_RATIO : BASE_ROOM_RATIO;
   const ROOM = Math.max(4, Math.floor(CELL * ratio));
-  return { CELL, ROOM, ORIGIN_X: Math.floor((width - mapW * CELL) / 2), ORIGIN_Y: MAP_ORIGIN_Y };
+  const ORIGIN_X = Math.floor((width - (mapW - 1) * CELL - ROOM) / 2) + Math.floor(ROOM / 2);
+  if (portraitH !== undefined) return { CELL, ROOM, ORIGIN_X, ORIGIN_Y: MAP_ORIGIN_Y };
+  // 横持ち: 箱の上端〜最下段のラベル下端（疎な階のみ。ROOM の下に ID_H）を領域内で垂直中央に置く
+  const extent = (mapH - 1) * CELL + ROOM + (CELL >= DENSE_CELL ? ID_H : 0);
+  const top = MAP_AREA_TOP + Math.max(0, Math.floor((areaH - extent) / 2));
+  return { CELL, ROOM, ORIGIN_X, ORIGIN_Y: top + Math.floor(ROOM / 2) };
 }
 
 /** これより CELL が小さい階は「密」。ID を箱の中、記号を箱の右隣に置く（上下に余白がないため）。 */
