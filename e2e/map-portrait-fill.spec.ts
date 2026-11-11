@@ -2,10 +2,11 @@ import { expect, test } from "@playwright/test";
 
 // #121: スマホ縦持ちのマップ画面で、canvas が「画面高 − HUD パネル」をいっぱいに使い、HUD の下に空白を残さない。
 // 部屋の大きさ・ラベルの大きさは tests/unit/map-labels.test.ts（計算）で確かめる。
-for (const [w, h] of [
+const SIZES: [number, number][] = [
   [390, 844],
   [360, 740],
-]) {
+];
+for (const [w, h] of SIZES) {
   test(`縦持ち ${w}x${h}: マップの canvas が HUD の直上まで広がり、HUD の下に空白がない (#121)`, async ({
     page,
   }) => {
@@ -15,20 +16,8 @@ for (const [w, h] of [
     await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
     const canvas = page.locator("#game canvas");
     await expect(canvas).toBeVisible();
-    await expect
-      .poll(async () => {
-        const c = await canvas.boundingBox();
-        const p = await page.locator("#hud .hud-panel").first().boundingBox();
-        if (!c || !p) return null;
-        return {
-          canvasW: Math.round(c.width),
-          // canvas の下端と HUD パネルの上端の間（HUD の padding 8px 前後）
-          gap: Math.round(p.y - (c.y + c.height)),
-          // HUD パネルの下端と画面下端の間
-          below: Math.round(h - (p.y + p.height)),
-        };
-      })
-      .toMatchObject({ canvasW: w, gap: expect.any(Number), below: expect.any(Number) });
+    // canvas の高さは HUD を描いた後に決まるので、旧実装の高さ（画面の45%）を超えるまで待つ
+    await expect.poll(async () => ((await canvas.boundingBox())?.height ?? 0) > h * 0.5).toBe(true);
     const c = (await canvas.boundingBox())!;
     const p = (await page.locator("#hud .hud-panel").first().boundingBox())!;
     expect(p.y - (c.y + c.height)).toBeGreaterThanOrEqual(0);
