@@ -3,7 +3,9 @@ import { setupView } from "./view";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
-import { button, el, renderHud } from "../ui/hud";
+import { button, el, renderHud, setHudBusy } from "../ui/hud";
+import { fxEnabled, markFade } from "../ui/flags";
+import { IMPACT, chestOpenFx } from "../fx/impact-fx";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
@@ -85,6 +87,8 @@ export function moveLabel(r: RoomState, s: RunState): string {
 
 export class MapScene extends Phaser.Scene {
   private fx?: FxDirector;
+  /** 直近に描いたマップの部屋中心（宝箱演出の位置）。 */
+  private roomCenters = new Map<string, { x: number; y: number }>();
 
   constructor() {
     super("map");
@@ -179,9 +183,30 @@ export class MapScene extends Phaser.Scene {
       return;
     }
     this.fx?.emitRunEvents(next.events);
-    this.clearMapObjects();
-    this.renderHud(next);
-    this.drawMap(next);
+    const redraw = (): void => {
+      this.clearMapObjects();
+      this.renderHud(next);
+      this.drawMap(next);
+    };
+    if (next.events.some((e) => e.t === "descended") && fxEnabled()) {
+      // 階段: 暗転 out 200ms → 描き直し → in 200ms（Issue #104）
+      setHudBusy(true);
+      markFade(IMPACT.stairsOutMs + IMPACT.stairsInMs);
+      const { r, g, b } = IMPACT.stairsFade;
+      const cam = this.cameras.main;
+      cam.fadeOut(IMPACT.stairsOutMs, r, g, b);
+      cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        redraw();
+        setHudBusy(false);
+        cam.fadeIn(IMPACT.stairsInMs, r, g, b);
+      });
+      return;
+    }
+    redraw();
+    if (next.events.some((e) => e.t === "looted")) {
+      const c = this.roomCenters.get(next.roomId);
+      if (c) chestOpenFx(this, c.x, c.y);
+    }
   }
 
   private drawMap(s: RunState): void {
@@ -203,6 +228,8 @@ export class MapScene extends Phaser.Scene {
       return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
     }
 
+    this.roomCenters.clear();
+    for (const r of rooms) this.roomCenters.set(r.id, center(r));
     const g = this.add.graphics();
     g.lineStyle(1, COLOR.line, 1);
     for (const r of visible) {

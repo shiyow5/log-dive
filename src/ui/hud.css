@@ -741,3 +741,16 @@
 #hud[data-scene="result"] .hud-btn {
   min-height: 44px;
 }
+
+/* 推理で候補が絞れたとき、ログ行を 800ms だけ強調（#104）。背景色だけ。文字色は変えない */
+.hud-log-flash {
+  animation: ld-log-flash 800ms steps(1, end);
+}
+@keyframes ld-log-flash {
+  0% {
+    background: rgb(78 205 196 / 20%);
+  }
+  100% {
+    background: transparent;
+  }
+}
