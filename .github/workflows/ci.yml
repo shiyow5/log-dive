@@ -86,11 +86,11 @@ jobs:
         timeout-minutes: 10
         run: |
           for delay in 10 30; do
-            timeout 180 npx playwright install --with-deps chromium && exit 0
+            timeout 180 npx playwright install chromium && exit 0
             echo "playwright install failed; retrying in ${delay}s"
             sleep "$delay"
           done
-          timeout 180 npx playwright install --with-deps chromium
+          timeout 180 npx playwright install chromium
       - run: npm run build
       - run: npm run test:e2e
       - name: Upload Playwright report
