@@ -112,7 +112,9 @@ test("戦闘HUD: 2階の戦闘で『ターン終了』が画面内・敵名とHP
   }
 });
 
-test("戦闘HUD(#93): CPUが丸で出る・推奨枠は1つだけ・スキル2×2で高さ44px", async ({ page }) => {
+test("戦闘HUD(#93): CPUが丸で出る・推奨枠は1つだけ・スキルは列を揃えて高さ44px", async ({
+  page,
+}) => {
   await page.goto(`/?fx=0&qa=1&seed=${encodeURIComponent(plan.seed)}`);
   await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
   await page.getByRole("button", { name: "新しいラン" }).click();
@@ -136,5 +138,51 @@ test("戦闘HUD(#93): CPUが丸で出る・推奨枠は1つだけ・スキル2×
     }),
   );
   for (const b of boxes) expect(b.h).toBe(44);
-  expect(new Set(boxes.map((b) => b.x)).size).toBeLessThanOrEqual(2);
+  expect(new Set(boxes.map((b) => b.x)).size).toBeLessThanOrEqual(3); // #142: 広い画面は 3 列
+});
+
+/**
+ * #142: 5 スキル（＋修正パッチ）が全部、中段の表示領域とターン終了ボタンの上に収まり、互いに重ならない。
+ * 1280×720 / 844×390 / 390×844 のどれでも。ボタンは h>=44。
+ */
+test("戦闘HUD(#142): スキルが全部見える・ターン終了と重ならない・h>=44", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto(`/?fx=0&qa=1&seed=${encodeURIComponent(plan.seed)}`);
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  const firstBattle = plan.steps.findIndex((s) => s.scene === "battle");
+  for (const step of plan.steps.slice(0, firstBattle + 1)) {
+    await press(page, step.press);
+    await expect(page.locator("body")).toHaveAttribute("data-scene", step.scene);
+    await page.evaluate(() => window.__qa!.waitForIdle());
+  }
+  for (const vp of [...SIZES, { width: 390, height: 844 }]) {
+    await page.setViewportSize(vp);
+    const tag = `${vp.width}x${vp.height}`;
+    const skills = await page
+      .locator(".hud-skills .hud-btn")
+      .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
+    const end = (await page
+      .getByRole("button", { name: "ターン終了", exact: true })
+      .boundingBox())!;
+    const foot = await page
+      .locator(".hud-battle-foot")
+      .evaluate((e) => e.getBoundingClientRect().top);
+    expect(skills.length, tag).toBeGreaterThanOrEqual(5);
+    for (const r of skills) {
+      expect(r.height, `${tag} h`).toBeGreaterThanOrEqual(44);
+      expect(r.top, `${tag} top`).toBeGreaterThanOrEqual(0);
+      // 下段（ターン終了）の上端より上に全体が収まる = 中段で切れない・ターン終了と重ならない
+      expect(r.bottom, `${tag} bottom <= foot`).toBeLessThanOrEqual(foot + 0.5);
+      expect(r.bottom, `${tag} bottom <= end`).toBeLessThanOrEqual(end.y);
+    }
+    for (let i = 0; i < skills.length; i++)
+      for (let j = i + 1; j < skills.length; j++) {
+        const a = skills[i]!;
+        const b = skills[j]!;
+        const overlap =
+          a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        expect(overlap, `${tag} skill ${i}/${j} overlap`).toBe(false);
+      }
+  }
 });

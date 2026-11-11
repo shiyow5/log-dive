@@ -79,3 +79,13 @@ for (const vp of [
     expect(await redBarPixels(page)).toBe(0);
   });
 }
+
+// #126 残P2: 「タイトルへ」は h>=44 で、横持ちスマホ(844×390)でも下端が画面内に収まる。
+test("リザルト: タイトルへが h>=44 で 844x390 の画面内に収まる", async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await reachResult(page);
+  const box = await page.getByRole("button", { name: "タイトルへ" }).boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(390);
+});

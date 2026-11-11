@@ -446,6 +446,37 @@
   background: #e8c468;
   clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
+/* #142: 広い画面ではスキル・候補を 3 列にして、5 スキルが中段にスクロールなしで収まる高さにする */
+@media (min-width: 641px) and (min-height: 481px) {
+  .hud-panel--battle {
+    max-height: 58vh;
+  }
+  .hud-battle-body .hud-skills,
+  .hud-battle-body .hud-cands {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .hud-battle-body .hud-cols {
+    grid-template-columns: 3fr 2fr;
+  }
+  .hud-battle-body {
+    padding: 6px 12px;
+  }
+  /* 上段は「予告 / CPU / ステータス」を 1 行に並べて高さを節約（タイトル行は全幅のまま） */
+  .hud-battle-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 20px;
+    padding: 6px 12px;
+  }
+  .hud-battle-head .hud-battle-title {
+    flex: 1 1 100%;
+  }
+  .hud-battle-head .hud-cpu {
+    margin: 0;
+  }
+}
 .hud-battle-foot .hud-btn--primary {
   flex: 1 1 100%;
   min-height: 44px;
@@ -480,7 +511,7 @@
     padding: 4px 8px;
   }
   .hud-panel--battle {
-    height: 45vh;
+    height: 55vh;
     max-height: none;
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
@@ -534,6 +565,16 @@
     min-height: 32px;
     padding: 2px 8px;
     font-size: 13px;
+  }
+  /* #142: 5 スキルを 3 列（2 段）にして右列に収める。高さは 44px のまま（文字は 2 行まで折り返す） */
+  .hud-skills {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+  .hud-skills .hud-btn {
+    padding: 2px 4px;
+    font-size: 12px;
+    line-height: 1.25;
   }
   .hud-battle-foot {
     grid-area: foot;
@@ -671,4 +712,9 @@
     width: 100%;
     flex: none;
   }
+}
+
+/* #126 残P2: リザルトの「タイトルへ」も 44px 以上（タップ対象） */
+#hud[data-scene="result"] .hud-btn {
+  min-height: 44px;
 }
