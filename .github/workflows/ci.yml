@@ -82,7 +82,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - name: Install Playwright browsers (retry)
+        timeout-minutes: 10
+        run: |
+          for delay in 10 30; do
+            npx playwright install --with-deps chromium && exit 0
+            echo "playwright install failed; retrying in ${delay}s"
+            sleep "$delay"
+          done
+          npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
       - name: Upload Playwright report
