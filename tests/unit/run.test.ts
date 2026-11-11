@@ -253,7 +253,7 @@ describe("battle: スキルとバグ", () => {
       { t: "skill", id: "hotfix" },
     ]);
     expect(s.battle!.hp).toBe(12);
-    expect(s.events).toEqual([{ t: "bugDamaged", amount: 3 }]);
+    expect(s.events).toEqual([{ t: "bugDamaged", amount: 3, by: "hotfix" }]);
   });
 
   it("off-by-one は予告より1多いダメージ", () => {

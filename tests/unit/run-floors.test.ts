@@ -4,6 +4,8 @@
 import { describe, expect, it } from "vitest";
 import { bossDef, loadGameData, type SkillId } from "../../src/core/data";
 import { floorCount, generateFloor } from "../../src/core/floor";
+import { describeEvents } from "../../src/scenes/run-port";
+import { STORY } from "../../src/scenes/story-text";
 import {
   apply,
   initRun,
@@ -146,6 +148,43 @@ describe("3階のボス", () => {
     s = apply(s, { t: "skill", id: "patch", arg: s.battle!.bug });
     expect(s.phase).toBe("won");
     expect(s.events.at(-1)).toEqual({ t: "runEnd", phase: "won" });
+  });
+
+  it("ボスに hotfix を使っても bossPatched は出ず、通常のダメージ文になる", () => {
+    let s = atBoss("boss-hotfix");
+    s = { ...s, player: { ...s.player, cpu: 99 } };
+    s = apply(s, { t: "skill", id: "hotfix" });
+    expect(s.events[0]).toMatchObject({ t: "bugDamaged", by: "hotfix" });
+    const text = describeEvents(s, s.events);
+    expect(text).toMatch(/^バグに \d+ ダメージ/);
+    expect(text).not.toContain("根が残っている");
+  });
+
+  it("ボスへの1回目の正しい patch だけ bossPatched を出す", () => {
+    let s = atBoss("boss-first-patch");
+    s = apply(s, { t: "skill", id: "reproduce" });
+    s = apply(s, { t: "skill", id: "patch", arg: s.battle!.bug });
+    expect(s.events[0]).toMatchObject({ t: "bugDamaged", by: "patch", patchNo: 1 });
+    expect(describeEvents(s, s.events)).toContain(STORY.bossPatched(s.battle!.hp, s.battle!.maxHp));
+  });
+
+  it("ボスへの2回目以降の patch では bossPatched を出さない（必要回数が3でも）", () => {
+    let s = atBoss("boss-second-patch");
+    s = {
+      ...s,
+      battle: { ...s.battle!, hp: 100, maxHp: 100, patchesLeft: 3, patchesTotal: 3 },
+      player: { ...s.player, cpu: 99 },
+    };
+    s = apply(s, { t: "skill", id: "reproduce" });
+    s = apply(s, { t: "skill", id: "patch", arg: s.battle!.bug });
+    expect(describeEvents(s, s.events)).toContain("根が残っている");
+    s = apply(s, { t: "endTurn" });
+    s = apply(s, { t: "skill", id: "patch", arg: s.battle!.bug });
+    expect(s.events[0]).toMatchObject({ t: "bugDamaged", by: "patch", patchNo: 2 });
+    expect(s.battle!.patchesLeft).toBe(1);
+    const text = describeEvents(s, s.events);
+    expect(text).toMatch(/^バグに \d+ ダメージ/);
+    expect(text).not.toContain("根が残っている");
   });
 
   it("HP を 0 にしても、パッチが足りないうちは倒れない", () => {

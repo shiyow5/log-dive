@@ -152,7 +152,7 @@ describe("breakpoint: 次のバグ行動を1回止める＋症状を1つ公開",
     const fixed = apply(rep, { t: "skill", id: "patch", arg: "off-by-one" });
     expect(fixed.lastError).toBeNull();
     // patch は 20 ダメージ。残り HP 15 で頭打ちになり、バグが閉じる
-    expect(fixed.events).toContainEqual({ t: "bugDamaged", amount: 15 });
+    expect(fixed.events).toContainEqual({ t: "bugDamaged", amount: 15, by: "patch", patchNo: 1 });
     expect(fixed.events).toContainEqual({ t: "bugClosed", bug: "off-by-one" });
   });
 

@@ -4,6 +4,7 @@
  * 画面はここ経由でしか RunState に触らない。ルールの判断（できる/できない・理由）は
  * すべて core の apply() / legalActions() に任せ、画面側では数値や条件を持たない。
  */
+import { STORY } from "./story-text";
 import { bugDef, loadGameData, skillDef, type BugId, type SkillId } from "../core/data";
 import {
   apply,
@@ -111,15 +112,21 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
       case "moved":
         return `${roomLabel(e.room)} に移動した`;
       case "battleStart":
-        return "バグが出た";
+        return s.battle?.boss ? STORY.bossAppear : "バグが出た";
       case "symptom":
         return `再現した。症状「${e.text}」`;
       case "reproduced":
         return "再現できた（新しい症状はない）";
       case "candidateRemoved":
         return `ログから「${bugName(e.bug)}」ではないとわかった`;
-      case "bugDamaged":
+      case "bugDamaged": {
+        const b = s.battle;
+        // ボスは1回目の正しいパッチでは倒れない。根が残っていることを一言添える（#128）。
+        // hotfix や2回目以降のパッチでは出さず、実ダメージを表示する
+        if (e.by === "patch" && e.patchNo === 1 && b?.boss && b.hp > 0 && b.patchesLeft > 0)
+          return STORY.bossPatched(b.hp, b.maxHp);
         return `バグに ${e.amount} ダメージ`;
+      }
       case "degrade":
         return "デグレ！ 種類が違った。バグが回復した";
       case "halted":

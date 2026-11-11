@@ -118,6 +118,7 @@ export function startBattle(a: StartBattleArgs): BattleState {
       hp: hp,
       maxHp: hp,
       patchesLeft: boss.patchesRequired,
+      patchesTotal: boss.patchesRequired,
       candidates: [...candidates],
       symptoms: [],
       hiddenSymptoms: order,
@@ -138,6 +139,7 @@ export function startBattle(a: StartBattleArgs): BattleState {
     hp: def.hp,
     maxHp: def.hp,
     patchesLeft: 1,
+    patchesTotal: 1,
     candidates: [...candidates],
     symptoms: [],
     hiddenSymptoms: order,
@@ -232,7 +234,7 @@ function resolveSkill(
       return {
         battle: { ...battle, hp: battle.hp - amount },
         player: paid,
-        events: [{ t: "bugDamaged", amount }],
+        events: [{ t: "bugDamaged", amount, by: "hotfix" }],
         degraded: false,
       };
     }
@@ -253,7 +255,14 @@ function resolveSkill(
             patchesLeft: Math.max(0, battle.patchesLeft - 1),
           },
           player: paid,
-          events: [{ t: "bugDamaged", amount }],
+          events: [
+            {
+              t: "bugDamaged",
+              amount,
+              by: "patch",
+              patchNo: battle.patchesTotal - battle.patchesLeft + 1,
+            },
+          ],
           degraded: false,
         };
       }

@@ -70,15 +70,41 @@ test("通し: 1階→2階→3階→ボス撃破→リザルト（毎手 stateHas
   await waitIdle(page);
   expect(await hashNow(page)).toBe(plan.initialHash);
 
+  // #128: ボス戦の見出し・登場ログ・1回目パッチ後の一言（SHOTS=dir で証跡のスクショも撮る）
+  const shot = async (name: string): Promise<void> => {
+    if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` });
+  };
+  let bossHeading = false;
+  let bossAppear = false;
+  let bossPatched = false;
   for (const [i, step] of plan.steps.entries()) {
     const where = `#${i} ${JSON.stringify(step.action)}`;
     await press(page, step.press);
     await expect(page.locator("body"), where).toHaveAttribute("data-scene", step.scene);
     await waitIdle(page);
     expect(await hashNow(page), where).toBe(step.hash);
+    if (step.scene === "battle") {
+      const title = await page.locator(".hud-battle-title h2").textContent();
+      if (title?.includes("根本原因 #BUG-000 — ")) {
+        const log = (await page.locator(".hud-log").textContent()) ?? "";
+        if (!bossHeading) await shot("boss-start");
+        bossHeading = true;
+        if (log.includes("ここが、すべての障害の出どころだ")) bossAppear = true;
+        if (log.includes("効いた。でも根が残っている（HP ")) {
+          if (!bossPatched) await shot("boss-patched");
+          bossPatched = true;
+        }
+      } else {
+        expect(title, where).toContain("正体不明のバグ");
+      }
+    }
   }
+  expect([bossHeading, bossAppear, bossPatched]).toEqual([true, true, true]);
 
   await expect(page.getByRole("heading", { name: "復旧完了" })).toBeVisible();
+  await expect(page.getByText("障害の根本原因を閉じた。サーバーは静かになった")).toBeVisible();
+  await expect(page.getByText(/^全バグ票 \d+ 件クローズ$/)).toBeVisible();
   await expect(page.getByTestId("result-閉じたバグ票")).not.toHaveText("0");
+  await shot("clear");
   expect(errors).toEqual([]);
 });
