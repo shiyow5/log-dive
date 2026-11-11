@@ -1,8 +1,5 @@
-import * as blinds from "pixelfx/fx/transitions/blinds";
-import * as pixelDissolve from "pixelfx/fx/transitions/pixel-dissolve";
 import * as campfire from "pixelfx/fx/fire/campfire";
 import * as candle from "pixelfx/fx/fire/candle";
-import * as chestOpen from "pixelfx/fx/pickups/chest-open";
 import * as collectBurst from "pixelfx/fx/pickups/collect-burst";
 import * as smallExplosion from "pixelfx/fx/explosions/small-explosion";
 import * as confetti from "pixelfx/fx/ui/confetti";
@@ -70,14 +67,9 @@ export const FX_MAP: Readonly<Record<FxEventName, readonly FxSpec[]>> = {
     { mod: smallExplosion, x: 160, y: 100, options: { size: 0.5 }, layer: "front" },
     { mod: confetti, x: 160, y: 120, layer: "front" },
   ],
-  chestOpen: [
-    { mod: chestOpen, x: 160, y: 110, layer: "front" },
-    { mod: collectBurst, x: 160, y: 90, layer: "front" },
-  ],
-  stairs: [
-    { mod: blinds, x: 0, y: 0, layer: "front" },
-    { mod: pixelDissolve, x: 0, y: 0, layer: "front" },
-  ],
+  chestOpen: [{ mod: collectBurst, x: 160, y: 90, layer: "front" }],
+  // 階段は暗転フェード（MapScene）が主役。全画面系(blinds/dissolve)は重ねず、小さな光だけ添える
+  stairs: [{ mod: collectBurst, x: 160, y: 90, layer: "front" }],
   result: [
     { mod: questComplete, x: 160, y: 20, layer: "front" },
     { mod: levelUp, x: 160, y: 118, layer: "front" },

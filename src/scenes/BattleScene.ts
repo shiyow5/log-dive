@@ -16,6 +16,8 @@ import { recommend } from "./battle-hint";
 import { bugName, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, BattleState, RunState } from "./run-port";
 import { fadeIn, goTo } from "./transition";
+import { IMPACT, damagePop, edgeFlash, shakeX } from "../fx/impact-fx";
+import { flashLogLine } from "../ui/hud-flash";
 
 /**
  * スキルボタンの「（CPU n）」を nowrap の子要素にまとめる（#142 の 844×390 で「（CPU」と「1）」が割れないように）。
@@ -33,6 +35,12 @@ const BAR_W = 48;
 // #142: 敵 HP が画面上端ぎりぎり（y≈5）だったので、敵ごと 4 ドット（1280 幅で 16px）下げる。
 const ENEMY_DY = 4;
 const BAR_Y = BUG_Y + ENEMY_DY - 40;
+
+/** ダメージ数字の位置。敵の右上（HP バー・敵名・『?』に重ねない）／稼働率は画面左下の余白。 */
+const PLAYER_POP = { x: 24, y: 40 } as const;
+function enemyPopPos(scale: number): { x: number; y: number } {
+  return { x: BUG_X + 8 * scale + 20, y: BUG_Y + ENEMY_DY };
+}
 
 export class BattleScene extends Phaser.Scene {
   private fx?: FxDirector;
@@ -68,13 +76,31 @@ export class BattleScene extends Phaser.Scene {
     this.picking = false;
     const next = dispatch(a);
     const to = sceneFor(next);
-    if (to !== "battle") {
-      goTo(this, to);
-      return;
-    }
     this.fx?.emitRunEvents(next.events);
+    this.impact(next.events);
     this.drawHp(next.battle);
     this.renderHud(next);
+    if (next.events.some((e) => e.t === "candidateRemoved")) flashLogLine();
+    if (to !== "battle") {
+      // 終局の一撃・致死被弾も、ダメージ数字と被弾演出を見せてから遷移する（PR #147 review）
+      setHudBusy(true);
+      this.time.delayedCall(IMPACT.finalHoldMs, () => goTo(this, to));
+    }
+  }
+
+  /** 被弾シェイク・縁フラッシュ・ダメージ数字（Issue #104）。座標は敵・稼働率の位置から決める。 */
+  private impact(events: RunState["events"]): void {
+    for (const e of events) {
+      if (e.t === "playerDamaged") {
+        shakeX(this);
+        edgeFlash(this);
+        damagePop(this, PLAYER_POP.x, PLAYER_POP.y, `-${e.amount}`, IMPACT.playerColor);
+      } else if (e.t === "bugDamaged") {
+        const scale = current().battle?.boss ? 4 : 3;
+        const pos = enemyPopPos(scale);
+        damagePop(this, pos.x, pos.y, `${e.amount}`, IMPACT.bugColor);
+      }
+    }
   }
 
   private drawBug(s: RunState): void {

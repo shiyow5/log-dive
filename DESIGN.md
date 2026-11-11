@@ -146,6 +146,23 @@ Individual room/area tiles use a slightly lighter background (#13132B) with the 
 - Boss sits 8px higher than normal enemies so its face is not hidden by the HUD panel at 1280×720.
 - HP bar is 48px wide, 4px high, with a numeric `hp/max` on its left.
 
+### Impact FX (Issue #104)
+
+Phaser tweens only (no new canvas). Values live in `IMPACT` in `src/fx/impact-fx.ts`; keep both in sync. Nothing covers text: HUD, log, enemy name and HP bar are never overlapped.
+
+| Event            | Effect                                                                  | Time          | Color                    |
+| ---------------- | ----------------------------------------------------------------------- | ------------- | ------------------------ |
+| playerDamaged    | camera shake 4px, horizontal only, decaying (overwrites, never adds)    | 120ms         | -                        |
+| playerDamaged    | 3px edge-only flash                                                     | 120ms         | #FF6B6B @ 40%            |
+| playerDamaged    | "-N" pop at left of canvas, rises 8px, fades in the last 200ms          | 600ms         | #FF6B6B, outline #0D0D1A |
+| bugDamaged       | "N" pop at the enemy's upper right, same motion                         | 600ms         | #FFE66D, outline #0D0D1A |
+| looted           | 16x16 chest, closed 100ms then open + glow 300ms, stays open until 1.2s | 1.2s          | #FFE66D                  |
+| descended        | fade out then in                                                        | 200ms + 200ms | #0D0D1A                  |
+| candidateRemoved | log line background highlight (text color unchanged)                    | 800ms         | #4ECDC4 @ 20%            |
+
+- Max 3 pops at once. Pop coordinates are rounded to integer px (no blur).
+- `prefers-reduced-motion` / `?fx=0`: no shake, flash, rise, fade or glow. Numbers appear fixed and vanish after 600ms; the chest shows open for 1.2s; the log highlight stays (background only).
+
 ### HUD Elements
 
 - Health bar: 8px high, mint fill (#95E1D3) on dark gray track

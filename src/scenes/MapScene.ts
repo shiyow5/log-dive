@@ -3,7 +3,9 @@ import { setupView } from "./view";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
-import { button, el, renderHud } from "../ui/hud";
+import { button, el, renderHud, setHudBusy } from "../ui/hud";
+import { fxEnabled, markFade } from "../ui/flags";
+import { IMPACT, chestOpenFx } from "../fx/impact-fx";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
@@ -27,6 +29,8 @@ import {
 
 /** 横持ちでマップの下端と HUD パネルの上端を空ける余白（内部px）。 */
 const HUD_GAP = 4;
+/** 宝箱の中心の上限は「部屋中心 + 部屋の半分 - この値」。箱(16px)の下端がラベル上端(部屋下端-2px)より1px上に来る値。ラベルが箱に重なる小さい部屋だけ上にずれる。 */
+const CHEST_LIFT_PX = 13;
 
 /** "#rrggbb" → Phaser の数値色。 */
 const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
@@ -85,6 +89,10 @@ export function moveLabel(r: RoomState, s: RunState): string {
 
 export class MapScene extends Phaser.Scene {
   private fx?: FxDirector;
+  /** 直近に描いたマップの部屋中心（宝箱演出の位置）。 */
+  private roomCenters = new Map<string, { x: number; y: number }>();
+  /** 部屋の一辺(px)。宝箱の演出位置をラベルの逆側に寄せるために使う（drawMap で更新）。 */
+  private roomPx = 0;
 
   constructor() {
     super("map");
@@ -199,11 +207,33 @@ export class MapScene extends Phaser.Scene {
       return;
     }
     this.fx?.emitRunEvents(next.events);
-    this.renderHud(next);
-    // HUD の高さが変わると canvas の高さも変わる（RESIZE で描き直されることがあるので、消してから描く）
-    this.applyView();
-    this.clearMapObjects();
-    this.drawMap(next);
+    const redraw = (): void => {
+      // HUD の高さが変わると canvas の高さも変わる（RESIZE で描き直されることがあるので、消してから描く）
+      this.renderHud(next);
+      this.applyView();
+      this.clearMapObjects();
+      this.drawMap(next);
+    };
+    if (next.events.some((e) => e.t === "descended") && fxEnabled()) {
+      // 階段: 暗転 out 200ms → 描き直し → in 200ms（Issue #104）
+      setHudBusy(true);
+      markFade(IMPACT.stairsOutMs + IMPACT.stairsInMs);
+      const { r, g, b } = IMPACT.stairsFade;
+      const cam = this.cameras.main;
+      cam.fadeOut(IMPACT.stairsOutMs, r, g, b);
+      cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        redraw();
+        setHudBusy(false);
+        cam.fadeIn(IMPACT.stairsInMs, r, g, b);
+      });
+      return;
+    }
+    redraw();
+    if (next.events.some((e) => e.t === "looted")) {
+      const c = this.roomCenters.get(next.roomId);
+      // 箱（16px）を部屋ラベル（箱の下端付近）と逆側＝上にずらし、ラベルに重ならないようにする（P2 #147）
+      if (c) chestOpenFx(this, c.x, Math.min(c.y, c.y + this.roomPx / 2 - CHEST_LIFT_PX));
+    }
   }
 
   private drawMap(s: RunState): void {
@@ -219,12 +249,15 @@ export class MapScene extends Phaser.Scene {
         : { mapBottom: this.hudTopInCanvas() - HUD_GAP },
     );
     const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
+    this.roomPx = ROOM;
     const dense = isDense(layout);
 
     function center(r: RoomState): { x: number; y: number } {
       return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
     }
 
+    this.roomCenters.clear();
+    for (const r of rooms) this.roomCenters.set(r.id, center(r));
     const g = this.add.graphics();
     g.lineStyle(1, COLOR.line, 1);
     for (const r of visible) {
