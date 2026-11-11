@@ -75,6 +75,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: test
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -82,15 +85,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install Playwright browsers (retry)
-        timeout-minutes: 10
-        run: |
-          for delay in 10 30; do
-            timeout 180 npx playwright install --with-deps chromium && exit 0
-            echo "playwright install failed; retrying in ${delay}s"
-            sleep "$delay"
-          done
-          timeout 180 npx playwright install --with-deps chromium
       - run: npm run build
       - run: npm run test:e2e
       - name: Upload Playwright report
