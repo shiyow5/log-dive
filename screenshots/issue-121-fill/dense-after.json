@@ -1,0 +1,74 @@
+{
+ "seed-92-390x844": {
+  "grid": "6x3",
+  "rooms": 8,
+  "canvasCss": {
+   "w": 390,
+   "h": 521.63
+  },
+  "CELL": 46,
+  "ROOM_internal": 29,
+  "ROOM_screenPx": 35.34,
+  "panels": [
+   {
+    "top": 529.6,
+    "bottom": 835.6
+   }
+  ],
+  "collisions": []
+ },
+ "seed-92-844x390": {
+  "grid": "6x3",
+  "rooms": 8,
+  "canvasCss": {
+   "w": 693.328125,
+   "h": 390
+  },
+  "CELL": 15,
+  "ROOM_internal": 9,
+  "ROOM_screenPx": 19.5,
+  "panels": [
+   {
+    "top": 122,
+    "bottom": 386
+   }
+  ],
+  "collisions": []
+ },
+ "seed-217-390x844": {
+  "grid": "2x7",
+  "rooms": 8,
+  "canvasCss": {
+   "w": 390,
+   "h": 472.88
+  },
+  "CELL": 46,
+  "ROOM_internal": 29,
+  "ROOM_screenPx": 35.34,
+  "panels": [
+   {
+    "top": 480.9,
+    "bottom": 834.9
+   }
+  ],
+  "collisions": []
+ },
+ "seed-217-844x390": {
+  "grid": "2x7",
+  "rooms": 8,
+  "canvasCss": {
+   "w": 693.328125,
+   "h": 390
+  },
+  "CELL": 12,
+  "ROOM_internal": 7,
+  "ROOM_screenPx": 15.17,
+  "panels": [
+   {
+    "top": 122,
+    "bottom": 386
+   }
+  ],
+  "collisions": []
+ }
+}
