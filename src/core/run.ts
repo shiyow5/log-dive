@@ -83,6 +83,8 @@ export interface BattleState {
   readonly maxHp: number;
   /** ボスはあと何回正解パッチが要るか（通常バグは 1）。 */
   readonly patchesLeft: number;
+  /** 倒すのに必要な正しいパッチの総数（通常戦闘は1）。 */
+  readonly patchesTotal: number;
   /** 残っている候補（read-log / bisect で減る。patch で選べるのはこの中だけ）。 */
   readonly candidates: readonly BugId[];
   /** 公開済みの症状（文）。公開順はシードで決まる。 */
@@ -137,7 +139,13 @@ export type RunEvent =
   /** 症状が残っていない状態で再現だけ済ませた（新しい症状はない）。 */
   | { readonly t: "reproduced" }
   | { readonly t: "candidateRemoved"; readonly bug: BugId }
-  | { readonly t: "bugDamaged"; readonly amount: number }
+  | {
+      readonly t: "bugDamaged";
+      readonly amount: number;
+      /** ダメージの由来。patch のときだけ patchNo（何回目の正しいパッチか、1始まり）が付く。 */
+      readonly by: "patch" | "hotfix";
+      readonly patchNo?: number;
+    }
   | { readonly t: "degrade" }
   /** breakpoint を張った（次のバグ行動を止める）。 */
   | { readonly t: "halted" }

@@ -121,8 +121,10 @@ export function describeEvents(s: RunState, events: readonly RunEvent[]): string
         return `ログから「${bugName(e.bug)}」ではないとわかった`;
       case "bugDamaged": {
         const b = s.battle;
-        // ボスは1回目のパッチでは倒れない。根が残っていることを一言添える（#128）
-        if (b?.boss && b.hp > 0 && b.patchesLeft > 0) return STORY.bossPatched(b.hp, b.maxHp);
+        // ボスは1回目の正しいパッチでは倒れない。根が残っていることを一言添える（#128）。
+        // hotfix や2回目以降のパッチでは出さず、実ダメージを表示する
+        if (e.by === "patch" && e.patchNo === 1 && b?.boss && b.hp > 0 && b.patchesLeft > 0)
+          return STORY.bossPatched(b.hp, b.maxHp);
         return `バグに ${e.amount} ダメージ`;
       }
       case "degrade":

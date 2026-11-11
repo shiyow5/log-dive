@@ -15,7 +15,7 @@ const ALL_EVENTS: RunEvent[] = [
   { t: "battleStart", room: "r1" },
   { t: "symptom", text: "x" },
   { t: "candidateRemoved", bug: "off-by-one" },
-  { t: "bugDamaged", amount: 1 },
+  { t: "bugDamaged", amount: 1, by: "hotfix" },
   { t: "degrade" },
   { t: "halted" },
   { t: "bugHaltedTurn" },
@@ -45,7 +45,7 @@ describe("sfxForRun", () => {
 
   it("同時に起きたら優先度の高い1つ（バグを閉じた > ダメージ）", () => {
     const events: RunEvent[] = [
-      { t: "bugDamaged", amount: 3 },
+      { t: "bugDamaged", amount: 3, by: "hotfix" },
       { t: "bugClosed", bug: "off-by-one" },
     ];
     expect(sfxForRun({ lastError: null, events })).toBe("bugClosed");

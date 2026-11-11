@@ -22,7 +22,7 @@ describe("fx-map（イベント名 → エフェクト）", () => {
 
   it("RunEvent を演出名に対応づける", () => {
     expect(fxNameFor({ t: "playerDamaged", amount: 3 })).toBe("playerHit");
-    expect(fxNameFor({ t: "bugDamaged", amount: 3 })).toBe("bugHit");
+    expect(fxNameFor({ t: "bugDamaged", amount: 3, by: "hotfix" })).toBe("bugHit");
     expect(fxNameFor({ t: "bugClosed", bug: "off-by-one" as never })).toBe("bugDefeated");
     expect(fxNameFor({ t: "looted", skill: "hotfix" as never })).toBe("chestOpen");
     expect(fxNameFor({ t: "descended", floor: 2 })).toBe("stairs");
