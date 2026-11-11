@@ -4,7 +4,12 @@ import { BUG_POS, FONT_FAMILY, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
 import { Rng } from "../core/rng";
-import { ensureBugTexture } from "../art/bug-sprite";
+import {
+  enemyKindFor,
+  enemyTextureKey,
+  ensureEnemyTextures,
+  type EnemyKind,
+} from "../art/enemy-sprites";
 import { button, el, renderHud, setHudBusy } from "../ui/hud";
 import { abandonButton, cpuDots, logLine, statsRow } from "./hud-parts";
 import { recommend } from "./battle-hint";
@@ -17,12 +22,14 @@ const BUG_Y = BUG_POS.y;
 const BAR_W = 48;
 // HP バーは虫の上。下に置くと PC 幅（1280×720）で HUD パネル（上端 ≒ y69）に隠れる。ボス 4 倍の頭（y12）との間に 4px 空ける。
 const BAR_Y = BUG_Y - 40;
-const BUG_TEX = "bug-sprite";
 
 export class BattleScene extends Phaser.Scene {
   private fx?: FxDirector;
   private hpBar?: Phaser.GameObjects.Graphics;
   private hpText?: Phaser.GameObjects.Text;
+  private enemyImg?: Phaser.GameObjects.Image;
+  private enemyKind: EnemyKind = "bug";
+  private lastHp = 0;
   /** patch の種類を選んでいる途中か */
   private picking = false;
 
@@ -62,14 +69,27 @@ export class BattleScene extends Phaser.Scene {
   private drawBug(s: RunState): void {
     const b = s.battle;
     if (!b) return;
-    // 16x16 ドット絵（全バグ共通の「正体不明の虫」）。3 倍=48px。ボスは 4 倍。
-    ensureBugTexture(this.textures, BUG_TEX);
+    // 16x16 ドット絵（通常 3 種は部屋 ID で決める＝BugId のヒントにしない）。3 倍=48px。ボスは 4 倍。
+    ensureEnemyTextures(this.textures);
+    this.enemyKind = enemyKindFor(b.roomId, b.boss);
     const scale = b.boss ? 4 : 3;
-    const img = this.add.image(BUG_X, BUG_Y, BUG_TEX).setScale(scale);
-    img.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    // ボス（64px）は PC 幅で下端が HUD パネル（上端 ≒ y69）に隠れるので 8px 上げる。HP バーは角の外側に収まる。
+    const cy = b.boss ? BUG_Y - 8 : BUG_Y;
+    const img = this.add.image(BUG_X, cy, enemyTextureKey(this.enemyKind, "idle")).setScale(scale);
+    this.enemyImg = img;
+    this.lastHp = b.hp;
+    // 待機: 2 フレーム目の代わりに 1px 単位でゆっくり上下（ぼやけないよう整数ピクセル）
+    this.tweens.add({
+      targets: img,
+      y: cy + 1,
+      duration: 600,
+      yoyo: true,
+      repeat: -1,
+      ease: "Stepped",
+    });
     // 正体未特定の印。『?』を虫の右上に重ねる
     this.add
-      .text(BUG_X + 8 * scale, BUG_Y - 8 * scale, "?", {
+      .text(BUG_X + 8 * scale, Math.max(cy - 8 * scale, 9), "?", {
         fontFamily: FONT_FAMILY,
         fontSize: "16px",
         color: "#ffd166",
@@ -99,6 +119,15 @@ export class BattleScene extends Phaser.Scene {
     g.fillRect(x, BAR_Y, Math.round((BAR_W * b.hp) / b.maxHp), 4);
     // 数値はバーの左に（右上の『?』と重ねない）（色だけに頼らない）
     this.hpText?.setText(`${b.hp}/${b.maxHp}`);
+    // 被弾フレーム（HP が減ったとき 250ms だけ）
+    if (b.hp < this.lastHp && this.enemyImg) {
+      const img = this.enemyImg;
+      img.setTexture(enemyTextureKey(this.enemyKind, "hit"));
+      this.time.delayedCall(250, () => {
+        if (img.active) img.setTexture(enemyTextureKey(this.enemyKind, "idle"));
+      });
+    }
+    this.lastHp = b.hp;
   }
 
   private renderHud(s: RunState): void {
