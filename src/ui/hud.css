@@ -431,6 +431,10 @@
   border: 1px solid #8fa9a3;
   position: relative;
 }
+/* 「（CPU n）」は途中で折り返さない（#142 差し戻し: 844×390 で「（CPU」と「1）」が割れていた） */
+.hud-cpu-tag {
+  white-space: nowrap;
+}
 .hud-skills .hud-btn[data-recommended] {
   border: 2px solid #e8c468;
   padding-left: 22px;
@@ -535,6 +539,15 @@
     margin: 2px 0 0;
     gap: 4px 8px;
   }
+  /* 上段の行間を詰めて、中段（候補・症状）の高さを確保する（#142 差し戻し） */
+  .hud-battle-head p,
+  .hud-battle-head .hud-stat {
+    font-size: 14px;
+  }
+  .hud-battle-head .hud-cpu {
+    margin: 0;
+    font-size: 13px;
+  }
   .hud-battle-body {
     display: contents;
   }
@@ -547,8 +560,18 @@
     font-size: 13px;
     line-height: 1.35;
   }
+  /* 候補 5 件を 3 列（2 段）にして、初期表示で「症状」の見出しと先頭が中段に入るようにする（#142 差し戻し） */
+  .hud-battle-body .hud-cols {
+    gap: 4px 16px;
+  }
+  .hud-battle-body .hud-cands {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
   .hud-cands li {
-    min-height: 30px;
+    min-height: 28px;
+    padding: 0 6px;
+    white-space: nowrap;
   }
   .hud-battle-actions {
     grid-area: act;

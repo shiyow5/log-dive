@@ -108,6 +108,14 @@ test("戦闘HUD: 2階の戦闘で『ターン終了』が画面内・敵名とHP
     expect(await page.locator(".hud-battle-body").evaluate((e) => e.scrollTop)).toBe(0);
     // 候補は5件
     await expect(page.locator(".hud-cands li")).toHaveCount(5);
+    // 中段の初期表示で「症状」の見出しが画面内に入る（#142 差し戻し: 844×390 で見切れていた）
+    const symH = await page
+      .getByRole("region", { name: "症状" })
+      .getByRole("heading", { level: 3 })
+      .boundingBox();
+    expect(symH, `${vp.width}x${vp.height} 症状の見出し`).not.toBeNull();
+    expect(symH!.y).toBeGreaterThanOrEqual(0);
+    expect(symH!.y + symH!.height).toBeLessThanOrEqual(vp.height);
     if (vp.width === 1280) await expectEnemyHpBarAbovePanel(page, panel);
   }
 });
@@ -159,6 +167,12 @@ test("戦闘HUD(#142): スキルが全部見える・ターン終了と重なら
   for (const vp of [...SIZES, { width: 390, height: 844 }]) {
     await page.setViewportSize(vp);
     const tag = `${vp.width}x${vp.height}`;
+    // 「（CPU n）」は1行に収まる（#142 差し戻し: 「（CPU」と「1）」の間で割れない）
+    const cpuLines = await page
+      .locator(".hud-cpu-tag")
+      .evaluateAll((els) => els.map((e) => e.getClientRects().length));
+    expect(cpuLines.length, `${tag} CPU tag`).toBeGreaterThan(0);
+    for (const n of cpuLines) expect(n, `${tag} CPU tag は1行`).toBe(1);
     const skills = await page
       .locator(".hud-skills .hud-btn")
       .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON()));
