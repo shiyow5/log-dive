@@ -29,6 +29,8 @@ import {
 
 /** 横持ちでマップの下端と HUD パネルの上端を空ける余白（内部px）。 */
 const HUD_GAP = 4;
+/** 宝箱の中心の上限は「部屋中心 + 部屋の半分 - この値」。箱(16px)の下端がラベル上端(部屋下端-2px)より1px上に来る値。ラベルが箱に重なる小さい部屋だけ上にずれる。 */
+const CHEST_LIFT_PX = 11;
 
 /** "#rrggbb" → Phaser の数値色。 */
 const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
@@ -89,6 +91,8 @@ export class MapScene extends Phaser.Scene {
   private fx?: FxDirector;
   /** 直近に描いたマップの部屋中心（宝箱演出の位置）。 */
   private roomCenters = new Map<string, { x: number; y: number }>();
+  /** 部屋の一辺(px)。宝箱の演出位置をラベルの逆側に寄せるために使う（drawMap で更新）。 */
+  private roomPx = 0;
 
   constructor() {
     super("map");
@@ -205,7 +209,8 @@ export class MapScene extends Phaser.Scene {
     redraw();
     if (next.events.some((e) => e.t === "looted")) {
       const c = this.roomCenters.get(next.roomId);
-      if (c) chestOpenFx(this, c.x, c.y);
+      // 箱（16px）を部屋ラベル（箱の下端付近）と逆側＝上にずらし、ラベルに重ならないようにする（P2 #147）
+      if (c) chestOpenFx(this, c.x, Math.min(c.y, c.y + this.roomPx / 2 - CHEST_LIFT_PX));
     }
   }
 
@@ -222,6 +227,7 @@ export class MapScene extends Phaser.Scene {
         : { mapBottom: this.hudTopInCanvas() - HUD_GAP },
     );
     const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
+    this.roomPx = ROOM;
     const dense = isDense(layout);
 
     function center(r: RoomState): { x: number; y: number } {
