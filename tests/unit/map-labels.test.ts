@@ -119,6 +119,40 @@ describe("部屋 ID・未踏「?」の配置（#88）", () => {
   });
 });
 
+describe("横持ちの下端（HUD の上端を避ける）", () => {
+  it("mapBottom より下に部屋・ラベルを出さない（seed-4 floor2 は HUD 上端 86px の例）", () => {
+    const rooms = generateFloor("seed-4", 2).rooms;
+    for (const visited of [true, false]) {
+      const shaped = rooms.map((r) => ({ ...r, visited }));
+      const bottomLimit = 80; // HUD 上端 86px の手前に余白 6px
+      const l = calcMapLayout(shaped, { mapBottom: bottomLimit });
+      for (const r of shaped) {
+        const { id, box } = partRects(r, l, false);
+        const bottom = id ? id.y + id.h : box.y + box.h;
+        expect(bottom, `visited=${visited} ${r.id} CELL=${l.CELL}`).toBeLessThanOrEqual(
+          bottomLimit,
+        );
+      }
+    }
+  });
+
+  it("mapBottom を省略した横持ちは従来どおり y=6〜106 の領域に収まる", () => {
+    for (let i = 0; i < 50; i++) {
+      for (let n = 1; n <= floorCount(); n++) {
+        const rooms = generateFloor(`seed-${i}`, n).rooms.map((r) => ({ ...r, visited: true }));
+        const l = calcMapLayout(rooms);
+        for (const r of rooms) {
+          const { id, box } = partRects(r, l, false);
+          const bottom = id ? id.y + id.h : box.y + box.h;
+          expect(bottom, `seed-${i} floor=${n} ${r.id}`).toBeLessThanOrEqual(
+            MAP_AREA_TOP + MAP_AREA_H,
+          );
+        }
+      }
+    }
+  });
+});
+
 describe("partCollisions: 部屋ID・記号・四角の重なり（#66）", () => {
   it("300 seed × 全階（全部屋に記号あり）で ID・記号が隣や下の部屋と重ならない", () => {
     for (let i = 0; i < 300; i++) {

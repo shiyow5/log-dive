@@ -122,6 +122,11 @@ const SPARSE_ROOM_RATIO = 1 / 2;
 export interface MapLayoutOptions {
   /** マップに使える高さ（内部px）。省略時は横長の既定値（60px）。指定時は canvas 全高（縦持ちは PORTRAIT_AVAIL_H）。 */
   readonly availH?: number;
+  /**
+   * 横持ちでマップを置いてよい下端（内部px）。HUD パネルの上端より上に収めるため MapScene が実測して渡す。
+   * 省略時は既定の下端（MAP_AREA_TOP + MAP_AREA_H）。
+   */
+  readonly mapBottom?: number;
 }
 /** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
 export const PORTRAIT_AVAIL_H = 180;
@@ -149,8 +154,11 @@ export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptio
   const portraitH = opts?.availH;
   // 縦持ち: HUD が canvas の外（下）なので、上マージン(ORIGIN_Y)と最下段の ID ラベル(ID_H)を引いた全高を使う（#114）
   // 横持ち: マップ領域 MAP_AREA_H に収める（#89）
-  const availH = portraitH !== undefined ? portraitH - MAP_ORIGIN_Y - ID_H : MAP_AREA_H;
+  // 横持ちの領域: 上端 MAP_AREA_TOP、下端 mapBottom（HUD の上端を避けた値）。
+  const areaH = (opts?.mapBottom ?? MAP_AREA_TOP + MAP_AREA_H) - MAP_AREA_TOP;
+  const availH = portraitH !== undefined ? portraitH - MAP_ORIGIN_Y - ID_H : areaH;
   const raw = Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH));
+  // 領域が足りない短い画面でも CELL は MIN_CELL で止める（それ以上縮めると判読できない）
   const CELL = Math.max(MIN_CELL, Math.min(MAX_CELL, raw));
   const ratio = CELL >= DENSE_CELL ? SPARSE_ROOM_RATIO : BASE_ROOM_RATIO;
   const ROOM = Math.max(4, Math.floor(CELL * ratio));
@@ -158,7 +166,7 @@ export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptio
   if (portraitH !== undefined) return { CELL, ROOM, ORIGIN_X, ORIGIN_Y: MAP_ORIGIN_Y };
   // 横持ち: 箱の上端〜最下段のラベル下端（疎な階のみ。ROOM の下に ID_H）を領域内で垂直中央に置く
   const extent = (mapH - 1) * CELL + ROOM + (CELL >= DENSE_CELL ? ID_H : 0);
-  const top = MAP_AREA_TOP + Math.max(0, Math.floor((MAP_AREA_H - extent) / 2));
+  const top = MAP_AREA_TOP + Math.max(0, Math.floor((areaH - extent) / 2));
   return { CELL, ROOM, ORIGIN_X, ORIGIN_Y: top + Math.floor(ROOM / 2) };
 }
 
