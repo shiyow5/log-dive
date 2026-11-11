@@ -69,7 +69,8 @@ export const FX_MAP: Readonly<Record<FxEventName, readonly FxSpec[]>> = {
   chestOpen: [{ mod: collectBurst, x: 160, y: 90, layer: "front" }],
   // 階段は暗転フェード（MapScene）が主役。全画面系(blinds/dissolve)は重ねず、小さな光だけ添える
   stairs: [{ mod: collectBurst, x: 160, y: 90, layer: "front" }],
-  result: [{ mod: questComplete, x: 160, y: 20, layer: "front" }],
+  // 英語バナー文字は出さない（「復旧完了」と重複・#128 fumino v1.0）。リボンと封印の演出は維持
+  result: [{ mod: questComplete, x: 160, y: 20, options: { text: "" }, layer: "front" }],
   mapAmbient: [
     { mod: campfire, x: 28, y: 138, layer: "back" },
     { mod: candle, x: 296, y: 138, layer: "back" },

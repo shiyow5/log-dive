@@ -165,7 +165,20 @@ describe("3階のボス", () => {
     s = apply(s, { t: "skill", id: "reproduce" });
     s = apply(s, { t: "skill", id: "patch", arg: s.battle!.bug });
     expect(s.events[0]).toMatchObject({ t: "bugDamaged", by: "patch", patchNo: 1 });
-    expect(describeEvents(s, s.events)).toContain(STORY.bossPatched(s.battle!.hp, s.battle!.maxHp));
+    expect(describeEvents(s, s.events)).toContain(STORY.bossPatched);
+  });
+
+  it("ボスのデグレは「外した…(HP +5)」＋ヒント行。上限(35)で増えないときは HP 表記なし", () => {
+    let s = atBoss("boss-degrade");
+    const wrong = s.battle!.candidates.find((c) => c !== s.battle!.bug)!;
+    s = apply(s, { t: "skill", id: "reproduce" });
+    const before = s.battle!.maxHp;
+    const next = apply(s, { t: "skill", id: "patch", arg: wrong });
+    expect(next.events[0]).toMatchObject({ t: "degrade" });
+    expect(describeEvents(next, next.events, before)).toBe(
+      `デグレ！ ${STORY.bossDegrade(5)}\n${STORY.bossStuckHint}`,
+    );
+    expect(describeEvents(next, next.events, next.battle!.maxHp)).not.toContain("(HP +");
   });
 
   it("ボスへの2回目以降の patch では bossPatched を出さない（必要回数が3でも）", () => {
