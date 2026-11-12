@@ -409,11 +409,24 @@
 .hud-battle-head .hud-row {
   margin: 4px 0 0;
 }
+/*
+ * #166: 中段のうち「候補・症状」（.hud-cols）は固定、スクロールするのは操作列（.hud-battle-actions）だけにする。
+ * ボス登場文を見せる自動スクロール（#158）が効いても、見出しが領域の外へ出ない。
+ */
 .hud-battle-body {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   padding: 8px 12px;
+}
+.hud-battle-body .hud-cols {
+  flex: none;
+}
+.hud-battle-body .hud-battle-actions {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 .hud-battle-foot {
   flex: none;
@@ -507,6 +520,11 @@
 }
 /* 縦持ち（2列）: 全文（最長16字）を中央寄せにすると画面の左右で切れるので、左列は左端・右列は右端に揃える */
 @media (max-width: 640px) {
+  /* #166: 操作列がスクロール枠になったので、1段目（2列）のツールチップは上に出すと枠で切れる。下に出す */
+  .hud-skills > .hud-btn--why:nth-child(-n + 2):hover::after {
+    top: calc(100% + 4px);
+    bottom: auto;
+  }
   .hud-skills > .hud-btn--why:nth-child(odd):hover::after {
     left: 0;
     transform: none;
@@ -545,6 +563,11 @@
   .hud-battle-body .hud-cands {
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
+  }
+  /* #166: 操作列がスクロール枠なので、1段目（3列）のツールチップは下に出す */
+  .hud-skills > .hud-btn--why:nth-child(-n + 3):hover::after {
+    top: calc(100% + 4px);
+    bottom: auto;
   }
   .hud-battle-body .hud-cols {
     grid-template-columns: 3fr 2fr;
@@ -625,6 +648,26 @@
     margin: 2px 0 0;
     gap: 4px 8px;
   }
+  /* #166: 予告 / CPU / 稼働率 を折り返しながら横に並べ、行数を減らして「症状」の1行目まで中段に収める */
+  .hud-battle-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 14px;
+  }
+  .hud-battle-head .hud-battle-title {
+    flex: 1 1 100%;
+  }
+  .hud-battle-head .hud-cpu {
+    margin: 0;
+  }
+  /* 放棄ボタンは 44→36px（誤タップ防止の距離は右上配置のまま。WCAG 2.2 の最小 24px は満たす） */
+  .hud-battle-head .hud-battle-title .hud-btn--ghost {
+    min-height: 36px;
+  }
+  .hud-battle-body .hud-cols h3 {
+    margin-bottom: 2px;
+  }
   /* 上段の行間を詰めて、中段（候補・症状）の高さを確保する（#142 差し戻し） */
   .hud-battle-head p,
   .hud-battle-head .hud-stat {
@@ -648,14 +691,14 @@
   }
   /* 候補 5 件を 3 列（2 段）にして、初期表示で「症状」の見出しと先頭が中段に入るようにする（#142 差し戻し） */
   .hud-battle-body .hud-cols {
-    gap: 4px 16px;
+    gap: 2px 16px;
   }
   .hud-battle-body .hud-cands {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
   }
   .hud-cands li {
-    min-height: 28px;
+    min-height: 24px;
     padding: 0 6px;
     white-space: nowrap;
   }
