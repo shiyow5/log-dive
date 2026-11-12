@@ -331,3 +331,50 @@ test("戦闘HUD(#94): ツールチップがスクロール枠と画面で切れ�
     }
   }
 });
+
+/**
+ * #160: スマホ縦 390×844 の戦闘で、候補バグ名（「? 無限ループ」等）が縦に割れず1行で読める。
+ * 各候補の文字の高さが1行分（行の高さ×1.5 未満）で、横にあふれず viewport 内に収まっていること。
+ */
+test("戦闘HUD(#160): 縦持ち390×844で候補名が1行・viewport内に収まる", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/?fx=0&qa=1&seed=${encodeURIComponent(plan.seed)}`);
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
+  const firstBattle = plan.steps.findIndex((s) => s.scene === "battle");
+  for (const step of plan.steps.slice(0, firstBattle + 1)) {
+    await press(page, step.press);
+    await expect(page.locator("body")).toHaveAttribute("data-scene", step.scene);
+    await page.evaluate(() => window.__qa!.waitForIdle());
+  }
+  const items = page.locator(".hud-cands li");
+  const n = await items.count();
+  expect(n).toBeGreaterThanOrEqual(2);
+  for (let i = 0; i < n; i++) {
+    const li = items.nth(i);
+    const m = await li.evaluate((e) => {
+      const r = document.createRange();
+      r.selectNodeContents(e);
+      const t = r.getBoundingClientRect();
+      const lh =
+        parseFloat(getComputedStyle(e).lineHeight) ||
+        parseFloat(getComputedStyle(e).fontSize) * 1.4;
+      const b = e.getBoundingClientRect();
+      return {
+        textH: t.height,
+        lh,
+        right: b.right,
+        left: b.left,
+        scrollW: e.scrollWidth,
+        clientW: e.clientWidth,
+      };
+    });
+    const label = `候補${i} ${await li.textContent()}`;
+    expect(m.textH, `${label} は1行`).toBeLessThan(m.lh * 1.5);
+    expect(m.right, `${label} 右端が viewport 内`).toBeLessThanOrEqual(390);
+    expect(m.left).toBeGreaterThanOrEqual(0);
+    expect(m.scrollW, `${label} 文字が枠からあふれない`).toBeLessThanOrEqual(m.clientW + 1);
+  }
+});
