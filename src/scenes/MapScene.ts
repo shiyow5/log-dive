@@ -333,7 +333,10 @@ export class MapScene extends Phaser.Scene {
       // 探索済みの部屋は関数名を箱の真下に（#114）。部屋 ID はキャンバスに出さない。未踏は上の「?」。
       const label = roomLabelText(r, layout, isHere);
       if (label) {
-        this.add
+        // ラベルの下地: 縦の接続線がラベルの文字を貫通して読みにくくなるのを防ぐ（#120）。
+        // 線は描いたまま、文字の背後だけ背景色で抜く（lines → 下地 → 文字 の順）
+        const plate = this.add.graphics();
+        const text = this.add
           .text(x, y + ROOM / 2 + (portrait ? 2 : -2), label, {
             fontFamily: FONT_FAMILY,
             fontSize: `${portrait ? PORTRAIT_ID_FONT_PX : ID_FONT_PX}px`,
@@ -343,6 +346,12 @@ export class MapScene extends Phaser.Scene {
           })
           .setOrigin(0.5, 0)
           .setResolution(RENDER_SCALE);
+        const tb = text.getBounds();
+        // 箱の枠（下端）は削らない: 下地の上端は箱の下端より下にそろえる
+        const top = Math.max(tb.y, y + ROOM / 2 + 1);
+        plate.fillStyle(COLOR.bg, 1).fillRect(tb.x - 1, top, tb.width + 2, tb.bottom - top);
+        plate.setDepth(text.depth);
+        text.setDepth(text.depth + 0.1);
       }
     }
   }
