@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isShownOnMap, roomSymbol, stairsOpen, symbolColor } from "../../src/scenes/map-symbols";
 import { generateFloor } from "../../src/core/floor";
-import type { RoomState, RunState } from "../../src/core/run";
+import { RULES_VERSION, type RoomState, type RunState } from "../../src/core/run";
 
 function room(
   id: string,
@@ -24,7 +24,7 @@ function room(
 
 function baseRun(): Partial<RunState> {
   return {
-    version: 4,
+    version: RULES_VERSION,
     seed: "test",
     phase: "map",
     roomId: "r0",
