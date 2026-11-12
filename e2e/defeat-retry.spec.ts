@@ -4,6 +4,10 @@ import { expect, test, type Page } from "@playwright/test";
 async function loseRun(page: Page): Promise<void> {
   await page.goto("/?fx=0&qa=1&seed=e2e-7");
   await page.getByRole("button", { name: "新しいラン" }).click();
+  await endTurnsUntilResult(page);
+}
+
+async function endTurnsUntilResult(page: Page): Promise<void> {
   await page.getByRole("button", { name: /r1へ移動/ }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "battle");
   // 何もせずターンを終え続けると稼働率が尽きる
@@ -31,6 +35,27 @@ test("敗北: 最後のバグ・誤パッチ回数が出て、同じシードで
   });
   await page.getByRole("button", { name: "同じシードでもう一度" }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
+  // 同じシードで始まっている: もう一度負けるとリザルトのシードが同じ
+  await endTurnsUntilResult(page);
+  await expect(page.getByTestId("result-シード")).toHaveText("e2e-7");
+});
+
+test("戦闘中に「症状の読み方」を開いて閉じられる (#118)", async ({ page }) => {
+  await page.goto("/?fx=0&qa=1&seed=e2e-7");
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  await page.getByRole("button", { name: /r1へ移動/ }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "battle");
+  await page.getByRole("button", { name: /症状の読み方/ }).click();
+  const o = page.locator("#symptom-overlay");
+  await expect(o).toBeVisible();
+  await expect(o).toContainText("「応答が遅い」はメモリリークと無限ループの2種だけ");
+  await page.screenshot({
+    path: process.env.SHOT_DIR
+      ? `${process.env.SHOT_DIR}/battle-guide.png`
+      : "test-results/battle-guide.png",
+  });
+  await page.keyboard.press("Escape");
+  await expect(o).toBeHidden();
 });
 
 test("遊び方: 症状の読み方に「応答が遅い」はリークと無限ループの2種だけと出る", async ({

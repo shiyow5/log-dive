@@ -20,6 +20,14 @@ import { shortReason } from "./battle-reason";
 import { fadeIn, goTo } from "./transition";
 import { IMPACT, damagePop, edgeFlash, shakeX } from "../fx/impact-fx";
 import { flashLogLine } from "../ui/hud-flash";
+import { openSymptomOverlay } from "./symptom-overlay";
+
+/** 戦闘中に症状の読み方を開くボタン（#118）。 */
+function guideButton(): HTMLButtonElement {
+  const b = button("症状の読み方", () => openSymptomOverlay(b), { label: "症状の読み方を開く" });
+  b.classList.add("hud-guide");
+  return b;
+}
 
 /**
  * スキルボタンの「（CPU n）」を nowrap の子要素にまとめる（#142 の 844×390 で「（CPU」と「1）」が割れないように）。
@@ -235,7 +243,7 @@ export class BattleScene extends Phaser.Scene {
     const symptoms = el(
       "section",
       { "aria-label": "症状" },
-      el("h3", {}, "症状"),
+      el("div", { class: "hud-sym-head" }, el("h3", {}, "症状"), guideButton()),
       b.symptoms.length
         ? el(
             "ul",

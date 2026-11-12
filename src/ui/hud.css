@@ -877,6 +877,24 @@
   padding: 2px 10px;
   font-size: 13px;
 }
+/* 症状の見出し行: 「症状の読み方」を開く小さなボタン（#118）。行の高さを増やさないよう上下の余白を相殺 */
+.hud-sym-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hud-sym-head h3 {
+  margin: 0;
+}
+.hud-sym-head .hud-guide {
+  flex: none;
+  min-height: 28px;
+  min-width: 28px;
+  margin: -4px 0;
+  padding: 0 8px;
+  font-size: 13px;
+}
 /* マップ: 移動ボタン列との間は 24px 以上 */
 .hud-row--danger {
   justify-content: flex-end;
