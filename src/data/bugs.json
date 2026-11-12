@@ -18,7 +18,7 @@
       "name": "ヌル参照",
       "hp": 15,
       "symptoms": ["たまに即死級", "中身が空の箱", "未設定の値で落ちる"],
-      "behavior": { "kind": "null-ref", "damage": 1, "bigDamage": 8, "period": 3 }
+      "behavior": { "kind": "null-ref", "damage": 1, "bigDamage": 6, "period": 3 }
     },
     {
       "id": "race",
