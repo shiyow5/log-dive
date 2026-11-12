@@ -402,7 +402,7 @@ export class MapScene extends Phaser.Scene {
     if (dy === 0) return;
     const reduced =
       typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) return;
+    if (reduced || !fxEnabled()) return;
     const base = objs.map((o) => o.y);
     const place = (k: number): void => {
       objs.forEach((o, i) => {
