@@ -41,6 +41,10 @@ const HIT_NUM_COLOR = "#e8c468";
 // #142: 敵 HP が画面上端ぎりぎり（y≈5）だったので、敵ごと 4 ドット（1280 幅で 16px）下げる。
 const ENEMY_DY = 4;
 const BAR_Y = BUG_Y + ENEMY_DY - 40;
+// #166: ボス（64px・4倍）は上に HP バーを置く余白がなく、バーが頭（角）に接していた。
+// ボスだけ、バーと数値を虫の左に置き、『?』は右に置く。どちらも虫の枠（x 128〜192）から 4px 以上離す。
+const BOSS_HALF = 32;
+const BOSS_GAP = 4;
 
 /** ダメージ数字の位置。敵の右上（HP バー・敵名・『?』に重ねない）／稼働率は画面左下の余白。 */
 const PLAYER_POP = { x: 24, y: 40 } as const;
@@ -52,6 +56,8 @@ export class BattleScene extends Phaser.Scene {
   private fx?: FxDirector;
   private hpBar?: Phaser.GameObjects.Graphics;
   private hpText?: Phaser.GameObjects.Text;
+  /** HP バー左端の x（通常は虫の真上の中央、ボスは虫の左） */
+  private barX = BUG_X - BAR_W / 2;
   private enemyImg?: Phaser.GameObjects.Image;
   private enemyKind: EnemyKind = "bug";
   private lastHp = 0;
@@ -133,8 +139,10 @@ export class BattleScene extends Phaser.Scene {
       ease: "Stepped",
     });
     // 正体未特定の印。『?』を虫の右上に重ねる
+    this.barX = b.boss ? BUG_X - BOSS_HALF - BOSS_GAP - BAR_W : BUG_X - BAR_W / 2;
+    const qX = b.boss ? BUG_X + BOSS_HALF + BOSS_GAP + 8 : BUG_X + 8 * scale;
     this.add
-      .text(BUG_X + 8 * scale, Math.max(cy - 8 * scale, 9), "?", {
+      .text(qX, Math.max(cy - 8 * scale, 9), "?", {
         fontFamily: FONT_FAMILY,
         fontSize: "16px",
         color: "#ffd166",
@@ -143,7 +151,7 @@ export class BattleScene extends Phaser.Scene {
       .setResolution(RENDER_SCALE);
     this.hpBar = this.add.graphics();
     this.hpText = this.add
-      .text(BUG_X - BAR_W / 2 - 4, BAR_Y + 2, "", {
+      .text(this.barX - 4, BAR_Y + 2, "", {
         fontFamily: FONT_FAMILY,
         fontSize: "12px",
         color: "#e4f1ec",
@@ -157,7 +165,7 @@ export class BattleScene extends Phaser.Scene {
     const g = this.hpBar;
     if (!g || !b) return;
     g.clear();
-    const x = BUG_X - BAR_W / 2;
+    const x = this.barX;
     g.fillStyle(0x1b2b2e, 1);
     g.fillRect(x, BAR_Y, BAR_W, 4);
     g.fillStyle(0xff6b5e, 1);
