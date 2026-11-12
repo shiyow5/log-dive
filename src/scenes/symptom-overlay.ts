@@ -4,6 +4,30 @@ import { symptomGuide } from "./symptom-guide";
 
 const OVERLAY_ID = "symptom-overlay";
 
+const FOCUSABLE = "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])";
+
+/** Tab / Shift+Tab のフォーカスをダイアログ内の要素だけで循環させる（Codex P2 / #118）。 */
+function trapTab(e: KeyboardEvent, dialog: HTMLElement | null): void {
+  if (!dialog) return;
+  const items = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
+  if (items.length === 0) {
+    e.preventDefault();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (!first || !last) return;
+  const active = document.activeElement;
+  const inside = active instanceof HTMLElement && dialog.contains(active);
+  if (e.shiftKey && (!inside || active === first)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (!inside || active === last)) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 /** 戦闘中に「症状の読み方」だけを開く小さなパネル（#118）。遊び方と同じ symptomGuide を使う。 */
 export function openSymptomOverlay(opener?: HTMLElement): void {
   if (document.getElementById(OVERLAY_ID)) return;
@@ -15,6 +39,8 @@ export function openSymptomOverlay(opener?: HTMLElement): void {
   };
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") close();
+    // ダイアログが開いている間は Tab で背後の戦闘ボタンへ抜けないよう、ダイアログ内で循環させる
+    if (e.key === "Tab") trapTab(e, document.getElementById(OVERLAY_ID));
   };
   const overlay = el(
     "div",

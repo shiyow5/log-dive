@@ -58,6 +58,26 @@ test("戦闘中に「症状の読み方」を開いて閉じられる (#118)", a
   await expect(o).toBeHidden();
 });
 
+test("症状の読み方を開いている間は Tab で戦闘ボタンへ抜けない (#118)", async ({ page }) => {
+  await page.goto("/?fx=0&qa=1&seed=e2e-7");
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  await page.getByRole("button", { name: /r1へ移動/ }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "battle");
+  await page.getByRole("button", { name: /症状の読み方/ }).click();
+  const o = page.locator("#symptom-overlay");
+  await expect(o).toBeVisible();
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press("Tab");
+    expect(await o.evaluate((d) => d.contains(document.activeElement))).toBe(true);
+  }
+  for (let i = 0; i < 2; i++) {
+    await page.keyboard.press("Shift+Tab");
+    expect(await o.evaluate((d) => d.contains(document.activeElement))).toBe(true);
+  }
+  await page.keyboard.press("Escape");
+  await expect(o).toBeHidden();
+});
+
 test("遊び方: 症状の読み方に「応答が遅い」はリークと無限ループの2種だけと出る", async ({
   page,
 }) => {
