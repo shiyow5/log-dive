@@ -10,6 +10,7 @@ import {
   CHAR_W,
   ID_FONT_PX,
   PORTRAIT_AVAIL_H,
+  PORTRAIT_STRETCH_PAD,
   PORTRAIT_CHAR_W,
   PORTRAIT_ID_FONT_PX,
   UNKNOWN_H,
@@ -370,5 +371,96 @@ describe("マップのコントラストと拡大（#89, minori 指定値）", (
         expect(Math.abs(left - (320 - right)), msg).toBeLessThanOrEqual(1);
       }
     }
+  });
+
+  // #121 残件: 幅で CELL が決まる階は縦の間隔（CELL_Y）を広げ、部屋群が縦に availH を使い切る
+  describe("縦持ちの縦の間隔 CELL_Y (#121)", () => {
+    const H = canvasHFor(390, 844, 330);
+    const availPH = H - 44 - 14 - 8; // 上マージン・最下段ラベル・下マージン
+    it("幅で決まる階（4 列×3 行）: 縦の広がり + 上下マージン ≒ availPH、CELL・ROOM は従来どおり", () => {
+      const rooms = [room("a", 0, 0), room("b", 3, 0), room("c", 1, 1), room("d", 2, 2)];
+      const l = calcMapLayout(rooms, { availH: H });
+      expect(l.CELL).toBe(70); // availW 280 / 4 列
+      expect(l.ROOM).toBe(45);
+      expect(l.CELL_Y!).toBeGreaterThan(l.CELL);
+      const extent = 2 * l.CELL_Y! + l.ROOM;
+      const top = l.ORIGIN_Y - Math.floor(l.ROOM / 2) - 44;
+      expect(extent + 2 * top).toBeGreaterThanOrEqual(availPH - 2);
+      expect(extent + 2 * top).toBeLessThanOrEqual(availPH);
+      expect(extent).toBeGreaterThanOrEqual(availPH - 2 * PORTRAIT_STRETCH_PAD - 2);
+      expect(top).toBeGreaterThanOrEqual(PORTRAIT_STRETCH_PAD); // 最上段は音ボタンの下
+    });
+    it("高さで決まる階は CELL 不変、横持ち・PC は CELL_Y なし（変わらない）", () => {
+      const tall = Array.from({ length: 12 }, (_, y) => room(`t${y}`, 0, y));
+      const l = calcMapLayout(tall, { availH: H });
+      expect(l.CELL).toBe(Math.floor(availPH / 12)); // 高さで決まる
+      expect(l.CELL_Y!).toBeGreaterThanOrEqual(l.CELL);
+      expect(11 * l.CELL_Y! + l.ROOM).toBeLessThanOrEqual(availPH);
+      expect(calcMapLayout(generateFloor("seed-1", 2).rooms).CELL_Y).toBeUndefined();
+      expect(
+        calcMapLayout(generateFloor("seed-1", 2).rooms, { mapBottom: 80 }).CELL_Y,
+      ).toBeUndefined();
+    });
+    it("全階・全シードでラベル衝突なし、CELL_Y >= CELL、部屋群は availPH を超えない", () => {
+      for (let i = 0; i < 20; i++) {
+        for (let n = 1; n <= floorCount(); n++) {
+          const rooms = generateFloor(`seed-${i}`, n).rooms;
+          const l = calcMapLayout(rooms, { availH: H });
+          const mapH = Math.max(...rooms.map((r) => r.y)) + 1;
+          expect(l.CELL_Y!).toBeGreaterThanOrEqual(l.CELL);
+          expect((mapH - 1) * l.CELL_Y! + l.ROOM).toBeLessThanOrEqual(availPH);
+          expect(partCollisions(rooms, l, () => true)).toEqual([]);
+        }
+      }
+    });
+  });
+
+  // #121 A: 縦は「描く部屋の行範囲（bbox）」で決める。横の格子は全部屋のまま
+  describe("縦持ちの bbox（#121 A）", () => {
+    const H = canvasHFor(390, 844, 330);
+    const availPH = H - 44 - 14 - 8;
+    it("隠れている行は縦の場所を取らず、横の格子（CELL・ROOM・ORIGIN_X）は全部屋のままになる", () => {
+      for (let i = 0; i < 20; i++) {
+        for (let n = 1; n <= floorCount(); n++) {
+          const rooms = generateFloor(`seed-${i}`, n).rooms;
+          const shown = rooms.filter((r) => r.y >= 1);
+          if (shown.length === 0) continue;
+          const all = calcMapLayout(rooms, { availH: H });
+          const l = calcMapLayout(rooms, { availH: H, shown });
+          expect(l.CELL).toBe(all.CELL);
+          expect(l.ROOM).toBe(all.ROOM);
+          expect(l.ORIGIN_X).toBe(all.ORIGIN_X);
+          expect(partCollisions(shown, l, () => true)).toEqual([]);
+        }
+      }
+    });
+    it("描く部屋の行範囲が availPH を使い切り、最上行は音ボタンの下・最下段はラベル分の上に収まる", () => {
+      const rooms = [
+        room("a", 0, 0),
+        room("b", 1, 0),
+        room("c", 0, 1),
+        room("d", 0, 2),
+        room("e", 1, 2),
+      ];
+      // 行 0 は隠れている（描かない）。描く行は 1〜2 の 2 行
+      const shown = rooms.filter((r) => r.y >= 1);
+      const l = calcMapLayout(rooms, { availH: H, shown });
+      const spanH = 2;
+      expect(l.CELL_Y!).toBeGreaterThan(l.CELL);
+      // 描く最上行（行1）の箱の上端は、音ボタンより下（上マージン 44 + 余白 PAD）
+      const topEdge = l.ORIGIN_Y + 1 * l.CELL_Y! - Math.floor(l.ROOM / 2);
+      expect(topEdge).toBeGreaterThanOrEqual(44 + PORTRAIT_STRETCH_PAD - 1);
+      // 描く最下行の箱の下端 + 下のラベル（14）+ 下マージン（8）が canvas 全高に収まる
+      const bottomEdge = topEdge + (spanH - 1) * l.CELL_Y! + l.ROOM;
+      expect(bottomEdge + 14 + 8).toBeLessThanOrEqual(H);
+      expect(bottomEdge + 14 + 8 + topEdge - 44).toBeGreaterThanOrEqual(availPH - 2);
+    });
+    it("隠れ行を除くと縦の間隔（CELL_Y）が広がる（全行基準より大きいか同じ）", () => {
+      const rooms = Array.from({ length: 4 }, (_, y) => room(`r${y}`, 0, y));
+      const shown = rooms.slice(1);
+      const all = calcMapLayout(rooms, { availH: H });
+      const l = calcMapLayout(rooms, { availH: H, shown });
+      expect(l.CELL_Y!).toBeGreaterThanOrEqual(all.CELL_Y ?? all.CELL);
+    });
   });
 });
