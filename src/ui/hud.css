@@ -457,7 +457,12 @@
 }
 .hud-battle-body .hud-battle-actions {
   flex: 1 1 auto;
-  min-height: 0;
+  /* 症状が4つ並んでも操作列が高さ0まで潰れない（スキル2行分＋余白。#166 Codex P2: 800×481） */
+  min-height: 104px;
+  overflow-y: auto;
+}
+/* 最低高さの合計が中段を超える低い画面でも、中段全体をスクロールして操作列へ届く（安全網） */
+.hud-battle-body {
   overflow-y: auto;
 }
 .hud-battle-foot {
@@ -636,6 +641,12 @@
   }
   .hud-battle-head .hud-cpu {
     margin: 0;
+  }
+}
+/* 800×481 など「横長だが横持ちスマホ扱いにならない低い画面」: パネルを少し高くして、候補・症状と操作列を両方収める */
+@media (min-width: 641px) and (min-height: 481px) and (max-height: 600px) {
+  .hud-panel--battle {
+    max-height: 80vh;
   }
 }
 .hud-battle-foot .hud-btn--primary {

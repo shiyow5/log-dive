@@ -33,6 +33,7 @@ const VIEWPORTS = [
   { width: 1280, height: 720 },
   { width: 390, height: 844 },
   { width: 844, height: 390 },
+  { width: 800, height: 481 },
 ] as const;
 
 interface Box {
@@ -104,6 +105,17 @@ for (const vp of VIEWPORTS) {
       return { h: h.bottom, t: t.top };
     });
     expect(order.t, "症状の本文が見出しの下に潜っていない").toBeGreaterThanOrEqual(order.h - 0.5);
+
+    // 操作列（スキル/パッチ）が高さ0に潰れず、スキルボタンに届く（Codex P2: 800×481）
+    const act = await page.evaluate(() => {
+      const a = document.querySelector(".hud-battle-actions")!;
+      const b = a.querySelector("button")!;
+      const ar = a.getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      return { h: ar.height, bTop: br.top, bBottom: br.bottom, vh: window.innerHeight };
+    });
+    expect(act.h, "操作列の高さ").toBeGreaterThanOrEqual(100);
+    expect(act.bBottom, "最初の操作ボタンが画面内").toBeLessThanOrEqual(act.vh);
 
     // HP バー・数値・『?』がドット絵の箱から 4px（ゲーム座標）以上離れ、重ならない
     const boxes = await page.evaluate(() => {
