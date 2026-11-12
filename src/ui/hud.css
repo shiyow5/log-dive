@@ -785,3 +785,18 @@
     background: transparent;
   }
 }
+
+/* 症状の読み方（遊び方）。1列で折り返す */
+.help-symptoms {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.help-symptoms li {
+  margin-bottom: 4px;
+}
+
+/* 敗北リザルトの「最後のバグ・誤パッチ」 */
+.result-defeat p {
+  margin: 0 0 4px;
+}
