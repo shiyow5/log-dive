@@ -13,7 +13,7 @@
       "number": 2,
       "rooms": 7,
       "bugs": 3,
-      "pool": ["off-by-one", "null-ref", "race", "leak", "infinite-loop"],
+      "pool": ["off-by-one", "null-ref", "race", "infinite-loop"],
       "chest": "bisect",
       "boss": false
     },

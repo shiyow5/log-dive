@@ -211,7 +211,7 @@
       },
       "scene": "map",
       "floor": 2,
-      "hash": "fddc674f"
+      "hash": "c99778af"
     },
     {
       "action": {
@@ -224,7 +224,7 @@
       },
       "scene": "map",
       "floor": 2,
-      "hash": "c8188342"
+      "hash": "682d4896"
     },
     {
       "action": {
@@ -237,7 +237,7 @@
       },
       "scene": "map",
       "floor": 2,
-      "hash": "7c42beb6"
+      "hash": "0893f156"
     },
     {
       "action": {
@@ -250,7 +250,7 @@
       },
       "scene": "map",
       "floor": 2,
-      "hash": "b92a97a9"
+      "hash": "84f58371"
     },
     {
       "action": {
@@ -263,7 +263,7 @@
       },
       "scene": "battle",
       "floor": 2,
-      "hash": "82d68775"
+      "hash": "28d0d576"
     },
     {
       "action": {
@@ -276,21 +276,21 @@
       },
       "scene": "battle",
       "floor": 2,
-      "hash": "5d55362b"
+      "hash": "b25a3582"
     },
     {
       "action": {
         "t": "skill",
         "id": "patch",
-        "arg": "leak"
+        "arg": "infinite-loop"
       },
       "press": {
         "kind": "button",
-        "names": ["修正パッチ（CPU 2）", "パッチを当てる: メモリリーク"]
+        "names": ["修正パッチ（CPU 2）", "パッチを当てる: 無限ループ"]
       },
       "scene": "map",
       "floor": 2,
-      "hash": "debba2c0"
+      "hash": "3691f440"
     },
     {
       "action": {
@@ -303,7 +303,7 @@
       },
       "scene": "map",
       "floor": 2,
-      "hash": "d927059f"
+      "hash": "1a234ff5"
     },
     {
       "action": {
@@ -316,7 +316,7 @@
       },
       "scene": "map",
       "floor": 2,
-      "hash": "95226339"
+      "hash": "195e8387"
     },
     {
       "action": {
@@ -329,7 +329,7 @@
       },
       "scene": "battle",
       "floor": 2,
-      "hash": "e468d9f6"
+      "hash": "40f9bb36"
     },
     {
       "action": {
@@ -342,7 +342,86 @@
       },
       "scene": "battle",
       "floor": 2,
-      "hash": "4b61fdda"
+      "hash": "34a2df66"
+    },
+    {
+      "action": {
+        "t": "skill",
+        "id": "patch",
+        "arg": "null-ref"
+      },
+      "press": {
+        "kind": "button",
+        "names": ["修正パッチ（CPU 2）", "パッチを当てる: ヌル参照"]
+      },
+      "scene": "map",
+      "floor": 2,
+      "hash": "0ebaf505"
+    },
+    {
+      "action": {
+        "t": "move",
+        "room": "r1"
+      },
+      "press": {
+        "kind": "move",
+        "name": "r1へ移動"
+      },
+      "scene": "map",
+      "floor": 2,
+      "hash": "fd4a9179"
+    },
+    {
+      "action": {
+        "t": "move",
+        "room": "r0"
+      },
+      "press": {
+        "kind": "move",
+        "name": "r0へ移動"
+      },
+      "scene": "map",
+      "floor": 2,
+      "hash": "21768fdd"
+    },
+    {
+      "action": {
+        "t": "move",
+        "room": "r2"
+      },
+      "press": {
+        "kind": "move",
+        "name": "r2へ移動"
+      },
+      "scene": "map",
+      "floor": 2,
+      "hash": "8e7748ad"
+    },
+    {
+      "action": {
+        "t": "move",
+        "room": "r6"
+      },
+      "press": {
+        "kind": "move",
+        "name": "r6へ移動"
+      },
+      "scene": "battle",
+      "floor": 2,
+      "hash": "bc3601a4"
+    },
+    {
+      "action": {
+        "t": "skill",
+        "id": "reproduce"
+      },
+      "press": {
+        "kind": "button",
+        "names": ["再現手順（CPU 1）"]
+      },
+      "scene": "battle",
+      "floor": 2,
+      "hash": "8ed4fb2b"
     },
     {
       "action": {
@@ -356,86 +435,7 @@
       },
       "scene": "map",
       "floor": 2,
-      "hash": "2f2ad7ff"
-    },
-    {
-      "action": {
-        "t": "move",
-        "room": "r1"
-      },
-      "press": {
-        "kind": "move",
-        "name": "r1へ移動"
-      },
-      "scene": "map",
-      "floor": 2,
-      "hash": "b868a2ab"
-    },
-    {
-      "action": {
-        "t": "move",
-        "room": "r0"
-      },
-      "press": {
-        "kind": "move",
-        "name": "r0へ移動"
-      },
-      "scene": "map",
-      "floor": 2,
-      "hash": "b4be7c3f"
-    },
-    {
-      "action": {
-        "t": "move",
-        "room": "r2"
-      },
-      "press": {
-        "kind": "move",
-        "name": "r2へ移動"
-      },
-      "scene": "map",
-      "floor": 2,
-      "hash": "bae501d7"
-    },
-    {
-      "action": {
-        "t": "move",
-        "room": "r6"
-      },
-      "press": {
-        "kind": "move",
-        "name": "r6へ移動"
-      },
-      "scene": "battle",
-      "floor": 2,
-      "hash": "7953b441"
-    },
-    {
-      "action": {
-        "t": "skill",
-        "id": "reproduce"
-      },
-      "press": {
-        "kind": "button",
-        "names": ["再現手順（CPU 1）"]
-      },
-      "scene": "battle",
-      "floor": 2,
-      "hash": "711fc17e"
-    },
-    {
-      "action": {
-        "t": "skill",
-        "id": "patch",
-        "arg": "leak"
-      },
-      "press": {
-        "kind": "button",
-        "names": ["修正パッチ（CPU 2）", "パッチを当てる: メモリリーク"]
-      },
-      "scene": "map",
-      "floor": 2,
-      "hash": "f148923d"
+      "hash": "41fa590f"
     },
     {
       "action": {

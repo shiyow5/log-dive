@@ -32,7 +32,7 @@
       "name": "メモリリーク",
       "hp": 15,
       "symptoms": ["だんだん重くなる", "再起動すると直る", "応答が遅い"],
-      "behavior": { "kind": "leak", "damage": 1, "growth": 1 }
+      "behavior": { "kind": "leak", "damage": 1, "growth": 1, "cap": 5 }
     },
     {
       "id": "infinite-loop",

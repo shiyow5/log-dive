@@ -41,9 +41,9 @@ describe("floors.json", () => {
     ]);
   });
 
-  it("候補は1階が2種、2階以降は全5種（v0.2 決定3）", () => {
+  it("候補は1階が2種、2階は leak を除く4種（#118 論点1=1-B）、3階は全5種", () => {
     expect(candidatesForFloor(1)).toEqual(["off-by-one", "null-ref"]);
-    expect([...candidatesForFloor(2)].sort()).toEqual([...BUG_IDS].sort());
+    expect([...candidatesForFloor(2)].sort()).toEqual(BUG_IDS.filter((id) => id !== "leak").sort());
     expect([...candidatesForFloor(3)].sort()).toEqual([...BUG_IDS].sort());
   });
 
