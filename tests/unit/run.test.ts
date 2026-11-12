@@ -262,23 +262,27 @@ describe("battle: スキルとバグ", () => {
     expect(apply(s, { t: "endTurn" }).player.hp).toBe(30 - 4);
   });
 
-  it("外れの patch はデグレ: バグ HP 全回復・デグレ数+1・増援は最大2", () => {
+  it("外れの patch はデグレ: バグ HP 全回復・デグレ数+1・増援+1・その候補は外れる", () => {
     let s = play("d", [
       { t: "move", room: "r1" },
       { t: "skill", id: "reproduce" },
       { t: "skill", id: "hotfix" },
     ]);
     expect(s.battle!.hp).toBe(12);
-    for (let i = 1; i <= 3; i++) {
-      s = apply(s, { t: "endTurn" });
-      s = apply(s, { t: "skill", id: "patch", arg: "null-ref" });
-      expect(s.lastError).toBeNull();
-      expect(s.events).toEqual([{ t: "degrade" }]);
-      expect(s.battle!.hp).toBe(15);
-      expect(s.phase).toBe("battle");
-      expect(s.stats.degrades).toBe(i);
-      expect(s.reinforcements).toBe(Math.min(i, 2));
-    }
+    s = apply(s, { t: "endTurn" });
+    s = apply(s, { t: "skill", id: "patch", arg: "null-ref" });
+    expect(s.lastError).toBeNull();
+    expect(s.events).toEqual([{ t: "degrade" }]);
+    expect(s.battle!.hp).toBe(15);
+    expect(s.phase).toBe("battle");
+    expect(s.stats.degrades).toBe(1);
+    expect(s.reinforcements).toBe(1);
+    expect(s.battle!.candidates).not.toContain("null-ref");
+    // 同じ候補はもう選べない（#154 案A）
+    s = apply(s, { t: "endTurn" });
+    s = apply(s, { t: "skill", id: "patch", arg: "null-ref" });
+    expect(s.lastError?.code).toBe("not_a_candidate");
+    expect(s.stats.degrades).toBe(1);
   });
 
   it("HP が 0 になると負け。その後の操作は run_over", () => {
