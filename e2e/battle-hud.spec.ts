@@ -100,7 +100,11 @@ test("戦闘HUD: 2階の戦闘で『ターン終了』が画面内・敵名とHP
     // 敵名（部屋名 — 正体不明のバグ）と HP が上段に見える
     const head = panel.getByRole("heading", { level: 2 });
     await expect(head).toContainText("正体不明のバグ");
-    await expect(head).toContainText(/HP \d+\/\d+/);
+    // #92: HP の数字は敵のバー横（canvas）に1か所だけ。見出しには画面外の読み上げ用だけ残す
+    const hpSr = head.locator(".visually-hidden");
+    await expect(hpSr).toHaveText(/敵の HP \d+\/\d+/);
+    const sr = await hpSr.boundingBox();
+    expect(sr!.width, "見出しの HP は視覚的に出さない").toBeLessThanOrEqual(1);
     const hb = await head.boundingBox();
     expect(hb!.y).toBeGreaterThanOrEqual(0);
     expect(hb!.y + hb!.height).toBeLessThanOrEqual(vp.height);
