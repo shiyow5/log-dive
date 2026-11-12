@@ -134,8 +134,11 @@ export const PORTRAIT_AVAIL_H = 180;
  * 最上段の部屋が重ならない高さ（44 × 390/320 ≒ 54 画面px）。
  */
 const PORTRAIT_MAP_TOP = 44;
-/** 縦持ちの CELL の上限（内部 px）。疎な序盤の階でも部屋が間延びしないように止める。 */
-export const PORTRAIT_MAX_CELL = 56;
+/**
+ * 縦持ちの CELL の上限（内部 px）。疎な階（3×2 など）で canvas の上下が黒く空くのを防ぐため 80 にする。
+ * 幅・高さのどちらかが埋まった時点で止まるので、横幅いっぱいの階が間延びすることはない（#121 残件）。
+ */
+export const PORTRAIT_MAX_CELL = 80;
 /**
  * 縦持ちの部屋の比率。ROOM = CELL × 0.65。CELL=46（6 列の階）で ROOM=29 内部px
  * ＝ 幅 360〜430 の画面で約 32〜39 画面px（#121: 32px 以上）。箱の下の隙間はラベル（12px）が入る高さ。

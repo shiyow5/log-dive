@@ -1,0 +1,23 @@
+import { readFileSync } from "node:fs";
+const { chromium } = await import("/root/work/ld115-kirara/node_modules/playwright/index.mjs");
+const [planPath, outDir, tag, w, h, fx, delay] = process.argv.slice(2);
+const plan = JSON.parse(readFileSync(planPath, "utf8"));
+const base = process.env.BASE ?? "http://localhost:5215";
+const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const b = await chromium.launch();
+const page = await b.newPage({ viewport: { width: +w, height: +h } });
+await page.goto(`${base}/?qa=1${fx === "0" ? "&fx=0" : ""}&seed=${encodeURIComponent(plan.seed)}`);
+await page.getByRole("button", { name: "新しいラン" }).click();
+const marks = { 5: "defeat", 9: "stairs" };
+const after = { 5: "map-after-defeat" };
+for (const [i, { press }] of plan.steps.entries()) {
+  if (i > 9) break;
+  await page.evaluate(() => window.__qa.waitForIdle());
+  const m = marks[i];
+  if (press.kind === "move") await page.getByRole("navigation", { name: "隣の部屋" }).getByRole("button", { name: new RegExp(`^${esc(press.name)}`) }).click();
+  else for (const n of press.names) await page.getByRole("button", { name: n, exact: true }).click();
+  if (m) { await page.waitForTimeout(+delay); await page.screenshot({ path: `${outDir}/${tag}-${m}.png` }); }
+  if (after[i]) { await page.waitForTimeout(+delay + 250); await page.screenshot({ path: `${outDir}/${tag}-${after[i]}.png` }); }
+  await page.waitForTimeout(150);
+}
+await b.close();

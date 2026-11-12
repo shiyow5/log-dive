@@ -266,9 +266,14 @@ function resolveSkill(
           degraded: false,
         };
       }
-      // デグレ: バグの HP を全回復（v0.2 決定1）。増援は run 側で数える
+      // デグレ: バグの HP を全回復（v0.2 決定1）。増援は run 側で数える。
+      // 外れた候補は候補から外す（再選択不可。#154 案A）
       return {
-        battle: { ...battle, hp: battle.maxHp },
+        battle: {
+          ...battle,
+          hp: battle.maxHp,
+          candidates: battle.candidates.filter((c) => c !== arg),
+        },
         player: paid,
         events: [{ t: "degrade" }],
         degraded: true,
