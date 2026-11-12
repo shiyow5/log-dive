@@ -352,6 +352,10 @@ export class BattleScene extends Phaser.Scene {
       ),
     );
     renderHud("battle", panel);
+    // #158: 新しい行（ボス登場文など）がスクロール領域の下に隠れないよう、ログ行を見える位置まで送る。
+    // 画面幅ごとにスクロールする要素が違う（中段・右列・HUD全体）ので、祖先すべてに効く scrollIntoView を使う。
+    // 既に見えているときは何もしない（block: "nearest"）。
+    panel.querySelector(".hud-log")?.scrollIntoView({ block: "nearest" });
   }
 }
 

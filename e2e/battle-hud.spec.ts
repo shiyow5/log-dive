@@ -104,8 +104,8 @@ test("戦闘HUD: 2階の戦闘で『ターン終了』が画面内・敵名とHP
     const hb = await head.boundingBox();
     expect(hb!.y).toBeGreaterThanOrEqual(0);
     expect(hb!.y + hb!.height).toBeLessThanOrEqual(vp.height);
-    // 中段は先頭から（下端始まりにしない）
-    expect(await page.locator(".hud-battle-body").evaluate((e) => e.scrollTop)).toBe(0);
+    // 中段は先頭から（下端始まりにしない）。#158 でログ行を見せるための送りは1行未満（余白ぶん）だけ許す
+    expect(await page.locator(".hud-battle-body").evaluate((e) => e.scrollTop)).toBeLessThan(24);
     // 候補は4件（2階は leak を除く。#118 論点1=1-B）
     await expect(page.locator(".hud-cands li")).toHaveCount(4);
     // 中段の初期表示で「症状」の見出しが画面内に入る（#142 差し戻し: 844×390 で見切れていた）
