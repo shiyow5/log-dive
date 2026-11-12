@@ -1009,3 +1009,38 @@
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * #169: ボス戦は候補が5つあり、縦持ちスマホ(390×844)・1280×720 で操作列の上段が内部スクロールの外へ隠れていた。
+ * 候補は読むだけの表示（ボタンではない）なので、ボス戦に限り高さと余白を詰めて操作列に高さを回す。
+ * 操作ボタン（44px 以上）は詰めない。横持ちスマホ（高さ480px以下）は別レイアウトで、もともと収まるので対象外。
+ */
+@media (min-height: 481px) {
+  .hud-panel--boss .hud-cands {
+    gap: 4px;
+  }
+  .hud-panel--boss .hud-cands li {
+    min-height: 36px;
+  }
+  .hud-panel--boss .hud-battle-body {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+}
+
+/* 縦持ちスマホ: 見出し行と予告行の余白、ステータスの行間も詰める（#169） */
+@media (max-width: 640px) and (min-height: 481px) {
+  .hud-panel--boss .hud-battle-head {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .hud-panel--boss .hud-battle-head .hud-cpu {
+    margin: 2px 0;
+  }
+  .hud-panel--boss .hud-battle-body .hud-cols h3 {
+    margin-bottom: 2px;
+  }
+  .hud-panel--boss .hud-cands li {
+    min-height: 30px;
+  }
+}
