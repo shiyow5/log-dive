@@ -126,6 +126,11 @@ export interface MapLayoutOptions {
    * 省略時は既定の下端（MAP_AREA_TOP + MAP_AREA_H）。
    */
   readonly mapBottom?: number;
+  /**
+   * 縦持ちで実際に描く部屋（未踏で隠れている行は含めない）。縦の間隔と配置は、この部屋群の行範囲（bbox）を基準にする（#121 A）。
+   * 横の格子（CELL・ROOM・ORIGIN_X）は省略時と同じく全部屋で決める。省略時は rooms 全体。
+   */
+  readonly shown?: readonly RoomState[];
 }
 /** 縦持ち（aspect<1）の canvas 内部高さの下限（横持ちと同じ 180）。HUD が極端に高い画面でもここで止める（HUD 側がスクロール）。 */
 export const PORTRAIT_AVAIL_H = 180;
@@ -152,6 +157,8 @@ export const PORTRAIT_CHAR_W = 7;
 export const PORTRAIT_ID_H = 14;
 /** 縦持ちの下マージン（内部 px）。 */
 const PORTRAIT_BOTTOM_GAP = 8;
+/** 縦の間隔を広げた階で、部屋群の上下に必ず残す余白（内部 px）。最上段を音ボタン（上 52 画面px）より下に保つ。 */
+export const PORTRAIT_STRETCH_PAD = 8;
 
 /**
  * 縦持ちのマップ画面で canvas の内部高さ（px。幅は 320 固定）を決める（#121）。
@@ -166,8 +173,13 @@ export function portraitCanvasH(viewW: number, viewH: number, hudH: number): num
 }
 
 export interface MapLayout {
-  /** 1マスの間隔（px）。 */
+  /** 1マスの横の間隔（px。CELL_X）。ROOM の大きさ・ラベル幅の基準。 */
   readonly CELL: number;
+  /**
+   * 1マスの縦の間隔（px。CELL_Y）。省略時は CELL（横持ち・PC は縦横同じ）。
+   * 縦持ちで列数が多い階は CELL が幅で決まり高さが余るので、余りを縦の間隔に回す（#121 残件）。
+   */
+  readonly CELL_Y?: number;
   /** 部屋の四角の一辺（px）。 */
   readonly ROOM: number;
   readonly ORIGIN_X: number;
@@ -200,13 +212,25 @@ export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptio
       Math.min(Math.floor(CELL * PORTRAIT_ROOM_RATIO), CELL - PORTRAIT_ID_H),
     );
     const ORIGIN_X = Math.floor((width - (mapW - 1) * CELL - ROOM) / 2) + Math.floor(ROOM / 2);
-    // 余った高さは上下に振り分けて、マップを領域の縦の中央に置く
-    const free = Math.max(0, availPH - ((mapH - 1) * CELL + ROOM));
+    // 縦は「描く部屋の行範囲（bbox）」で決める。隠れている行は場所を取らない（横は上の固定格子のまま）。
+    // 幅で CELL が決まり高さが余る階は、縦の間隔（CELL_Y）を広げて bbox が availPH を使い切るようにする。
+    // CELL_Y は CELL を下回らない（高さで決まる階・MIN_CELL で止まる階は従来どおり）。
+    const shown = opts?.shown ?? rooms;
+    const rowMin = Math.min(...shown.map((r) => r.y));
+    const spanH = Math.max(...shown.map((r) => r.y)) - rowMin + 1;
+    const CELL_Y =
+      spanH > 1
+        ? Math.max(CELL, Math.floor((availPH - ROOM - 2 * PORTRAIT_STRETCH_PAD) / (spanH - 1)))
+        : CELL;
+    // 残りの端数は上下に振り分けて、bbox を領域の縦の中央に置く
+    const free = Math.max(0, availPH - ((spanH - 1) * CELL_Y + ROOM));
     return {
       CELL,
+      CELL_Y,
       ROOM,
       ORIGIN_X,
-      ORIGIN_Y: PORTRAIT_MAP_TOP + Math.floor(free / 2) + Math.floor(ROOM / 2),
+      // 描く部屋の最上行（rowMin）が領域の上端（free の半分の位置）に来るよう原点をずらす
+      ORIGIN_Y: PORTRAIT_MAP_TOP + Math.floor(free / 2) + Math.floor(ROOM / 2) - rowMin * CELL_Y,
       charW: PORTRAIT_CHAR_W,
       idH: PORTRAIT_ID_H,
     };
@@ -273,7 +297,7 @@ export function partRects(
   isHere = false,
 ): { box: Rect; id: Rect | null; symbol: Rect | null; unknown: Rect | null } {
   const cx = layout.ORIGIN_X + r.x * layout.CELL;
-  const cy = layout.ORIGIN_Y + r.y * layout.CELL;
+  const cy = layout.ORIGIN_Y + r.y * (layout.CELL_Y ?? layout.CELL);
   const R = layout.ROOM;
   const hasSymbol = hasSymbolIn && symbolFits(layout);
   const box = { x: cx - R / 2, y: cy - R / 2, w: R, h: R };
