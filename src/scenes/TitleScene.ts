@@ -9,6 +9,7 @@ import { button, el, renderHud } from "../ui/hud";
 import { sceneFor, skillInfo, startRun } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 import { TITLE } from "./BootScene";
+import { symptomGuide } from "./symptom-guide";
 
 // ---- 遊び方モーダル ----
 
@@ -16,6 +17,7 @@ let helpOpen = false;
 
 // 説明の数値・名前はデータから引く（直書きするとデータ変更で嘘になる）
 const data = loadGameData();
+const guide = symptomGuide(data);
 const CPU_PER_TURN = data.player.cpuPerTurn;
 /** スキル名・CPU・ダメージ（skills.json）。 */
 function skillText(id: "hotfix" | "patch"): { name: string; cpu: number; damage: number } {
@@ -89,6 +91,20 @@ function createHelpPanel(): HTMLElement {
           `CPU は1ターンに使える行動力（毎ターン ${CPU_PER_TURN}）。${hotfix.name}は応急処置（CPU ${hotfix.cpu}・ダメージ ${hotfix.damage}）、${patch.name}は完全修正（CPU ${patch.cpu}・ダメージ ${patch.damage}。種類を当てる必要がある）。`,
         ),
         el("p", {}, `最初から${starters}を使える。宝箱を開けると${chestSkills}が増える。`),
+        el("h3", {}, "症状の読み方"),
+        el("p", {}, "症状は種類ごとに決まっている。ただし同じ症状が複数の種類に出ることもある。"),
+        el(
+          "ul",
+          { class: "help-symptoms", "aria-label": "症状の読み方" },
+          ...guide.rows.map((r) => el("li", {}, `${r.name}: ${r.symptoms.join(" / ")}`)),
+        ),
+        ...guide.shared.map((x) =>
+          el(
+            "p",
+            { class: "hud-hint" },
+            `「${x.symptom}」は${x.bugNames.join("と")}の${x.bugNames.length}種だけ。`,
+          ),
+        ),
         el("h3", {}, "マップ記号"),
         el(
           "ul",
