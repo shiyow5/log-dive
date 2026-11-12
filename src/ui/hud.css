@@ -195,10 +195,45 @@
   outline: 2px solid var(--ld-hint);
   outline-offset: 2px;
 }
+/* #94 minori 指定: 無効は文字 #a9c2bc（地 #26393d で 6.41:1）・枠 2px 破線 #8fa9a3。opacity で薄くしない */
 .hud-btn:disabled {
-  color: var(--ld-text-weak);
-  border-style: dashed;
+  color: #a9c2bc;
+  border: 2px dashed var(--ld-text-weak);
   cursor: not-allowed;
+}
+/* 理由つきの無効ボタン: 1行目=ボタン名 16px / 2行目=理由 12px。高さ 44→52px */
+.hud-btn--why {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  line-height: 16px;
+}
+.hud-why {
+  display: block;
+  font-size: 12px;
+  line-height: 14px;
+  color: #a9c2bc;
+  white-space: nowrap;
+}
+/* ホバーで全文を補足（地 #0f1a1c・枠 1px #8fa9a3・16px）。disabled はフォーカスできないので読み上げは aria-describedby */
+.hud-btn--why:hover::after {
+  content: attr(data-why);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 4px 8px;
+  font-size: 16px;
+  line-height: 20px;
+  white-space: nowrap;
+  color: var(--ld-text);
+  background: var(--ld-bg);
+  border: 1px solid var(--ld-text-weak);
+  pointer-events: none;
 }
 .hud-btn--primary {
   border-color: var(--ld-accent);
@@ -462,6 +497,26 @@
   border: 1px solid #8fa9a3;
   position: relative;
 }
+/* #94: スキル欄でも無効は 2px 破線。理由つきは 52px（2行目の分だけ高くする） */
+.hud-skills .hud-btn:disabled {
+  border: 2px dashed #8fa9a3;
+}
+.hud-skills .hud-btn--why {
+  height: 52px;
+  min-height: 52px;
+}
+/* 縦持ち（2列）: 全文（最長16字）を中央寄せにすると画面の左右で切れるので、左列は左端・右列は右端に揃える */
+@media (max-width: 640px) {
+  .hud-skills > .hud-btn--why:nth-child(odd):hover::after {
+    left: 0;
+    transform: none;
+  }
+  .hud-skills > .hud-btn--why:nth-child(even):hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+}
 /* 「（CPU n）」は途中で折り返さない（#142 差し戻し: 844×390 で「（CPU」と「1）」が割れていた） */
 .hud-cpu-tag {
   white-space: nowrap;
@@ -629,6 +684,24 @@
     padding: 2px 4px;
     font-size: 12px;
     line-height: 1.25;
+  }
+  /*
+   * #94 Codex P2: 右列は overflow-y:auto なので、1段目のツールチップを上に出すと枠で切れる。
+   * 1段目（3列）だけ下に出す（下は2段目の上に重なるが枠内に収まる）
+   */
+  .hud-skills > .hud-btn--why:nth-child(-n + 3):hover::after {
+    top: calc(100% + 4px);
+    bottom: auto;
+  }
+  /* 横も枠で切れるので、左列は左端・右列は右端に揃える（全文は最長16字） */
+  .hud-skills > .hud-btn--why:nth-child(3n + 1):hover::after {
+    left: 0;
+    transform: none;
+  }
+  .hud-skills > .hud-btn--why:nth-child(3n):hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
   }
   .hud-battle-foot {
     grid-area: foot;

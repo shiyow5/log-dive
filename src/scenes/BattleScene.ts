@@ -15,7 +15,8 @@ import { button, el, renderHud, setHudBusy } from "../ui/hud";
 import { abandonButton, cpuDots, logLine, statsRow } from "./hud-parts";
 import { recommend } from "./battle-hint";
 import { bugName, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
-import type { Action, BattleState, RunState } from "./run-port";
+import type { Action, BattleState, RunError, RunState } from "./run-port";
+import { shortReason } from "./battle-reason";
 import { fadeIn, goTo } from "./transition";
 import { IMPACT, damagePop, edgeFlash, shakeX } from "../fx/impact-fx";
 import { flashLogLine } from "../ui/hud-flash";
@@ -191,12 +192,24 @@ export class BattleScene extends Phaser.Scene {
     if (!b) return;
     const here = s.floor.rooms.find((r) => r.id === s.roomId);
     const legal = legality(s);
-    /** 押せないボタンの理由（core の lastError.message）。ボタンから aria-describedby で指す。 */
-    const reasons: HTMLElement[] = [];
-    const withReason = (btn: HTMLButtonElement, name: string, why: string | null) => {
-      if (!btn.disabled || !why) return btn;
-      const id = `why-${reasons.length}`;
-      reasons.push(el("li", { id, class: "hud-stat" }, `${name}: ${why}`));
+    /**
+     * 押せないボタンの理由はボタン内2行目に短く出す（#94 minori 指定）。最下段の理由リストは廃止。
+     * 全文（core の message）はホバーのツールチップと読み上げ（aria-describedby）に出す。
+     * 2行目は aria-hidden なので、ボタンの名前（テストの照合）は変わらない。
+     */
+    let reasonCount = 0;
+    const withReason = (btn: HTMLButtonElement, e: RunError | null) => {
+      if (!btn.disabled || !e) return btn;
+      const id = `why-${reasonCount++}`;
+      btn.classList.add("hud-btn--why");
+      btn.dataset.why = e.message;
+      // 1行目（名前＋「（CPU n）」）は1かたまりにする（flex の列で名前と CPU が割れないように）
+      btn.replaceChildren(
+        el("span", { class: "hud-btn-name" }, ...Array.from(btn.childNodes)),
+        el("span", { class: "hud-why", "aria-hidden": "true" }, shortReason(e.code)),
+        // 全文は hidden（名前には入らず、aria-describedby からは読める）
+        el("span", { id, hidden: true }, e.message),
+      );
       btn.setAttribute("aria-describedby", id);
       return btn;
     };
@@ -251,11 +264,7 @@ export class BattleScene extends Phaser.Scene {
           k.name,
           k.cpu,
         );
-        return withReason(
-          mark(btn, rec === "reproduce" && id === reproduceId),
-          k.name,
-          legal.why(a),
-        );
+        return withReason(mark(btn, rec === "reproduce" && id === reproduceId), legal.error(a));
       }),
       hasPatch
         ? (() => {
@@ -274,7 +283,7 @@ export class BattleScene extends Phaser.Scene {
             );
             // 候補ぜんぶ押せないときは先頭の候補の理由を出す（未再現なら not_reproduced が先に来る）
             const first = patchActions[0];
-            return withReason(mark(btn, rec === "patch"), k.name, first ? legal.why(first) : null);
+            return withReason(mark(btn, rec === "patch"), first ? legal.error(first) : null);
           })()
         : null,
     );
@@ -293,7 +302,7 @@ export class BattleScene extends Phaser.Scene {
                 disabled: !legal.can(a),
               });
               if (i === 0) btn.dataset.autofocus = "";
-              return withReason(btn, name, legal.why(a));
+              return withReason(btn, legal.error(a));
             }),
             button(
               "やめる",
@@ -346,16 +355,7 @@ export class BattleScene extends Phaser.Scene {
         { class: "hud-battle-body" },
         el("div", { class: "hud-cols" }, candidates, symptoms),
         // 操作ボタン群。横持ちスマホ（hud.css の @media）では右列に分けて、情報と操作を並べる（#113）
-        el(
-          "div",
-          { class: "hud-battle-actions" },
-          skillRow,
-          picker,
-          reasons.length
-            ? el("ul", { class: "hud-list", "aria-label": "使えない理由" }, ...reasons)
-            : null,
-          logLine(s),
-        ),
+        el("div", { class: "hud-battle-actions" }, skillRow, picker, logLine(s)),
       ),
       el(
         "footer",
