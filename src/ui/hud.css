@@ -195,10 +195,45 @@
   outline: 2px solid var(--ld-hint);
   outline-offset: 2px;
 }
+/* #94 minori 指定: 無効は文字 #a9c2bc（地 #26393d で 6.41:1）・枠 2px 破線 #8fa9a3。opacity で薄くしない */
 .hud-btn:disabled {
-  color: var(--ld-text-weak);
-  border-style: dashed;
+  color: #a9c2bc;
+  border: 2px dashed var(--ld-text-weak);
   cursor: not-allowed;
+}
+/* 理由つきの無効ボタン: 1行目=ボタン名 16px / 2行目=理由 12px。高さ 44→52px */
+.hud-btn--why {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  line-height: 16px;
+}
+.hud-why {
+  display: block;
+  font-size: 12px;
+  line-height: 14px;
+  color: #a9c2bc;
+  white-space: nowrap;
+}
+/* ホバーで全文を補足（地 #0f1a1c・枠 1px #8fa9a3・16px）。disabled はフォーカスできないので読み上げは aria-describedby */
+.hud-btn--why:hover::after {
+  content: attr(data-why);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 4px 8px;
+  font-size: 16px;
+  line-height: 20px;
+  white-space: nowrap;
+  color: var(--ld-text);
+  background: var(--ld-bg);
+  border: 1px solid var(--ld-text-weak);
+  pointer-events: none;
 }
 .hud-btn--primary {
   border-color: var(--ld-accent);
@@ -461,6 +496,14 @@
   box-sizing: border-box;
   border: 1px solid #8fa9a3;
   position: relative;
+}
+/* #94: スキル欄でも無効は 2px 破線。理由つきは 52px（2行目の分だけ高くする） */
+.hud-skills .hud-btn:disabled {
+  border: 2px dashed #8fa9a3;
+}
+.hud-skills .hud-btn--why {
+  height: 52px;
+  min-height: 52px;
 }
 /* 「（CPU n）」は途中で折り返さない（#142 差し戻し: 844×390 で「（CPU」と「1）」が割れていた） */
 .hud-cpu-tag {

@@ -142,11 +142,69 @@ test("戦闘HUD(#93): CPUが丸で出る・推奨枠は1つだけ・スキルは
   const boxes = await page.locator(".hud-skills .hud-btn").evaluateAll((els) =>
     els.map((e) => {
       const r = e.getBoundingClientRect();
-      return { x: Math.round(r.x), y: Math.round(r.y), h: Math.round(r.height) };
+      return {
+        x: Math.round(r.x),
+        y: Math.round(r.y),
+        h: Math.round(r.height),
+        why: e.classList.contains("hud-btn--why"),
+      };
     }),
   );
-  for (const b of boxes) expect(b.h).toBe(44);
+  // 理由つきの無効ボタンだけ 52px（#94: 2行目の理由の分）。それ以外は 44px
+  for (const b of boxes) expect(b.h).toBe(b.why ? 52 : 44);
   expect(new Set(boxes.map((b) => b.x)).size).toBeLessThanOrEqual(3); // #142: 広い画面は 3 列
+});
+
+/**
+ * #94: 押せないボタンの理由はボタン内2行目に出す。文字 #a9c2bc（6:1 以上）・2px 破線・opacity なし。
+ * 最下段の理由リストは無い。全文は aria-describedby とホバーのツールチップ。
+ */
+test("戦闘HUD(#94): 押せないボタンの理由がボタン内2行目に出る", async ({ page }) => {
+  await page.goto(`/?fx=0&qa=1&seed=${encodeURIComponent(plan.seed)}`);
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  const firstBattle = plan.steps.findIndex((s) => s.scene === "battle");
+  for (const step of plan.steps.slice(0, firstBattle + 1)) {
+    await press(page, step.press);
+    await expect(page.locator("body")).toHaveAttribute("data-scene", step.scene);
+    await page.evaluate(() => window.__qa!.waitForIdle());
+  }
+  const patch = page.getByRole("button", { name: /修正パッチ/ });
+  await expect(patch).toBeDisabled();
+  const why = patch.locator(".hud-why");
+  await expect(why).toHaveText("再現が必要");
+  await expect(why).toBeVisible();
+  await expect(patch).toHaveAccessibleDescription("再現できていないバグは直せません");
+  await expect(page.getByRole("list", { name: "使えない理由" })).toHaveCount(0);
+
+  const st = await patch.evaluate((e) => {
+    const c = getComputedStyle(e);
+    const w = getComputedStyle(e.querySelector(".hud-why")!);
+    const btn = e.getBoundingClientRect();
+    const r = e.querySelector(".hud-why")!.getBoundingClientRect();
+    return {
+      color: c.color,
+      border: `${c.borderTopWidth} ${c.borderTopStyle} ${c.borderTopColor}`,
+      opacity: c.opacity,
+      whySize: w.fontSize,
+      inside:
+        r.top >= btn.top && r.bottom <= btn.bottom && r.left >= btn.left && r.right <= btn.right,
+    };
+  });
+  expect(st.color).toBe("rgb(169, 194, 188)"); // #a9c2bc
+  expect(st.border).toBe("2px dashed rgb(143, 169, 163)"); // #8fa9a3
+  expect(st.opacity).toBe("1");
+  expect(st.whySize).toBe("12px");
+  expect(st.inside).toBe(true);
+
+  // ホバーで全文のツールチップ（16px）
+  await patch.hover({ force: true });
+  const tip = await patch.evaluate((e) => {
+    const a = getComputedStyle(e, "::after");
+    return { content: a.content, size: a.fontSize };
+  });
+  expect(tip.content).toBe('"再現できていないバグは直せません"');
+  expect(tip.size).toBe("16px");
 });
 
 /**

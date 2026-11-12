@@ -12,13 +12,22 @@ import {
   legalActions,
   stairsOpen,
   type Action,
+  type RunError,
   type RunEvent,
   type RunState,
 } from "../core/run";
 export { stairsOpen, apply };
 
 export type { BugId, SkillId } from "../core/data";
-export type { Action, BattleState, RoomState, RunEvent, RunPhase, RunState } from "../core/run";
+export type {
+  Action,
+  BattleState,
+  RoomState,
+  RunError,
+  RunEvent,
+  RunPhase,
+  RunState,
+} from "../core/run";
 
 type Listener = (s: RunState) => void;
 
@@ -94,6 +103,8 @@ export interface Legality {
   can(a: Action): boolean;
   /** 押せない理由（core の lastError.message そのまま）。押せるなら null。 */
   why(a: Action): string | null;
+  /** 押せない理由のコード付き版（短い表示文に変えるとき用）。押せるなら null。 */
+  error(a: Action): RunError | null;
 }
 
 export function legality(s: RunState): Legality {
@@ -102,6 +113,7 @@ export function legality(s: RunState): Legality {
     can: (a) => legal.some((l) => sameAction(l, a)),
     why: (a) =>
       legal.some((l) => sameAction(l, a)) ? null : (apply(s, a, data).lastError?.message ?? null),
+    error: (a) => (legal.some((l) => sameAction(l, a)) ? null : apply(s, a, data).lastError),
   };
 }
 

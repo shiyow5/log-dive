@@ -32,9 +32,12 @@ test("?fx=0: タイトル→r1 移動→再現→パッチ→マップに戻る�
   await expect(page.locator("body")).toHaveAttribute("data-scene", "battle");
   // 未再現のうちはパッチを押せず、理由が出ている
   await expect(page.getByRole("button", { name: /修正パッチ/ })).toBeDisabled();
-  await expect(page.getByRole("list", { name: "使えない理由" })).toContainText(
+  // 理由はボタン内2行目（短文）と aria-describedby（全文）に出る（#94）
+  await expect(page.getByRole("button", { name: /修正パッチ/ })).toContainText("再現が必要");
+  await expect(page.getByRole("button", { name: /修正パッチ/ })).toHaveAccessibleDescription(
     "再現できていないバグは直せません",
   );
+  await expect(page.getByRole("list", { name: "使えない理由" })).toHaveCount(0);
   await page.getByRole("button", { name: /再現手順/ }).click();
   await expect(page.getByRole("region", { name: "症状" }).getByRole("listitem")).toHaveCount(1);
   await page.getByRole("button", { name: /修正パッチ/ }).click();
@@ -123,10 +126,12 @@ test("スキル6枚の内 starter が描画され、使えないスキルは dis
   await expect(page.getByRole("button", { name: /ブレークポイント/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /二分探索/ })).toHaveCount(0);
 
-  // 使えない理由がリストに出ている
-  await expect(page.getByRole("list", { name: "使えない理由" })).toContainText(
+  // 理由はボタン内2行目（短文）と aria-describedby（全文）に出る（#94）
+  await expect(page.getByRole("button", { name: /修正パッチ/ })).toContainText("再現が必要");
+  await expect(page.getByRole("button", { name: /修正パッチ/ })).toHaveAccessibleDescription(
     "再現できていないバグは直せません",
   );
+  await expect(page.getByRole("list", { name: "使えない理由" })).toHaveCount(0);
 
   expect(errors).toEqual([]);
 });
