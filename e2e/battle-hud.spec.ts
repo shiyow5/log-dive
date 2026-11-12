@@ -331,3 +331,72 @@ test("戦闘HUD(#94): ツールチップがスクロール枠と画面で切れ�
     }
   }
 });
+
+/**
+ * #166 sota レビュー: 症状が4つ並んでも、844×390（横持ちスマホ）で4行とも読める。
+ * 800×481 は操作列の1行目のボタン（スキル）が、スクロールで届いて実際にクリックできる。
+ */
+test("戦闘HUD(#166): 844×390で症状4行が見切れず、800×481で操作列1行目をクリックできる", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.goto(`/?fx=0&qa=1&seed=${encodeURIComponent(plan.seed)}`);
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  const firstFloor2Battle = plan.steps.findIndex((s) => s.floor === 2 && s.scene === "battle");
+  for (const step of plan.steps.slice(0, firstFloor2Battle + 1)) {
+    await press(page, step.press);
+    await expect(page.locator("body")).toHaveAttribute("data-scene", step.scene);
+    await page.evaluate(() => window.__qa!.waitForIdle());
+  }
+  // 症状欄を4行にする（見た目の検査だけなので DOM を差し替える）
+  await page.evaluate(() => {
+    const sec = document.querySelector('section[aria-label="症状"]')!;
+    sec.querySelector("p")?.remove();
+    let ul = sec.querySelector("ul");
+    if (!ul) {
+      ul = document.createElement("ul");
+      ul.className = "hud-list";
+      sec.appendChild(ul);
+    }
+    ul.replaceChildren(
+      ...["何かがおかしい", "表示と1ずれる", "ループが1回多い", "メモリが増え続ける"].map((t) => {
+        const li = document.createElement("li");
+        li.className = "hud-hint";
+        li.textContent = t;
+        return li;
+      }),
+    );
+  });
+
+  // 844×390: 4行すべてが症状欄（.hud-cols）と画面の中に収まり、スクロールしなくても読める
+  await page.setViewportSize({ width: 844, height: 390 });
+  const fit = await page.evaluate(() => {
+    const cols = document.querySelector(".hud-battle-body .hud-cols")!.getBoundingClientRect();
+    return [...document.querySelectorAll('section[aria-label="症状"] li')].map((li) => {
+      const r = li.getBoundingClientRect();
+      return {
+        text: li.textContent,
+        insideCols: r.top >= cols.top - 0.5 && r.bottom <= cols.bottom + 0.5,
+        insideViewport: r.bottom <= window.innerHeight,
+      };
+    });
+  });
+  expect(fit).toHaveLength(4);
+  for (const f of fit) {
+    expect(f.insideCols, `844x390 症状「${f.text}」が症状欄に収まる`).toBe(true);
+    expect(f.insideViewport, `844x390 症状「${f.text}」が画面内`).toBe(true);
+  }
+
+  // 800×481: 操作列1行目の先頭ボタンが、スクロールで届いて他の要素に隠れずクリックできる
+  await page.setViewportSize({ width: 800, height: 481 });
+  const first = page.locator(".hud-battle-actions .hud-skills button").first();
+  await first.scrollIntoViewIfNeeded();
+  const topmost = await first.evaluate((b) => {
+    const r = b.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return hit === b || b.contains(hit);
+  });
+  expect(topmost, "800x481 操作列1行目のボタンが他の要素に隠れていない").toBe(true);
+  await first.click({ timeout: 3_000 });
+});

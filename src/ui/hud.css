@@ -683,7 +683,7 @@
     padding: 4px 8px;
   }
   .hud-panel--battle {
-    height: 55vh;
+    height: 62vh;
     max-height: none;
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
@@ -727,6 +727,15 @@
   .hud-battle-body .hud-cols h3 {
     margin-bottom: 2px;
   }
+  /*
+   * #166 sota レビュー: 症状 4 つでも 4 行とも読めるよう、候補・症状の文字を 14px / 行高 1.25 に詰める。
+   * （症状欄は固定なので、収まらないと 3 行目以降が読めない）
+   */
+  .hud-battle-body .hud-cols li,
+  .hud-battle-body .hud-cols p {
+    font-size: 14px;
+    line-height: 1.25;
+  }
   /* 上段の行間を詰めて、中段（候補・症状）の高さを確保する（#142 差し戻し） */
   .hud-battle-head p,
   .hud-battle-head .hud-stat {
@@ -744,20 +753,20 @@
     grid-template-columns: 1fr;
     overflow-y: auto;
     min-height: 0;
-    padding: 0 10px 4px;
+    padding: 0 10px 2px;
     font-size: 13px;
     line-height: 1.35;
   }
   /* 候補 5 件を 3 列（2 段）にして、初期表示で「症状」の見出しと先頭が中段に入るようにする（#142 差し戻し） */
   .hud-battle-body .hud-cols {
-    gap: 2px 16px;
+    gap: 0 16px;
   }
   .hud-battle-body .hud-cands {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
+    gap: 3px;
   }
   .hud-cands li {
-    min-height: 24px;
+    min-height: 22px;
     padding: 0 6px;
     white-space: nowrap;
   }
