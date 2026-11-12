@@ -93,20 +93,32 @@ describe("race: ダメージは予告の multipliers 倍（戦闘用乱数）", 
   });
 });
 
-describe("leak: ダメージが行動ごとに growth ずつ増える", () => {
+describe("leak: ダメージが行動ごとに growth ずつ増える（cap で頭打ち）", () => {
   const b = bugDef(data, "leak").behavior;
   if (b.kind !== "leak") throw new Error("bugs.json の leak の kind が違う");
 
-  it("予告どおりに入り、予告は damage, damage+growth, damage+2*growth, …", () => {
+  it("予告どおりに入り、予告は damage, damage+growth, … を cap で頭打ちにした値", () => {
     let s = battleWith("leak");
     s = { ...s, player: { ...s.player, hp: 999 } };
     for (let i = 0; i < 6; i++) {
-      const expected = b.damage + b.growth * i;
+      const expected = Math.min(b.damage + b.growth * i, b.cap);
       expect(s.battle!.intent).toEqual({ damage: expected });
       const next = apply(s, { t: "endTurn" });
       expect(s.player.hp - next.player.hp).toBe(expected);
       s = next;
     }
+  });
+
+  it("cap=5 を超えない（1,2,3,4,5,5,5）", () => {
+    expect(b.cap).toBe(5);
+    let s = battleWith("leak");
+    s = { ...s, player: { ...s.player, hp: 999 } };
+    const seen: number[] = [];
+    for (let i = 0; i < 7; i++) {
+      seen.push(s.battle!.intent.damage);
+      s = apply(s, { t: "endTurn" });
+    }
+    expect(seen).toEqual([1, 2, 3, 4, 5, 5, 5]);
   });
 
   it("新しい戦闘では最初の damage に戻る", () => {

@@ -19,12 +19,11 @@
   --ld-hint: #e8c468;
   --ld-danger: #ff6b5e;
   --ld-ok: #8fd694;
-  /* 枠トークン（#102）: 外枠 1px 明色 → 内側 2px 暗色 → 角飾り 3px の四角。主ボタン=塗り＋明枠、副=枠のみ。ロック/無効=暗枠（破線にしない） */
+  /* 枠トークン（#102）: 外枠 1px 明色 → 内側 2px 暗色 → 角飾り 3px の四角。主ボタン=塗り＋明枠、副=枠のみ。無効は #94 の指定（2px 破線 #8fa9a3・文字 #a9c2bc）に従う */
   --ld-frame-outer: #8fa9a3; /* 外枠 1px。bg 7.07:1 / panel 5.85:1 */
   --ld-frame-inner: #070d0e; /* 内側 2px（inset） */
   --ld-frame-corner: #c5ddd5; /* 角飾り 3×3px。panel 10.25:1 */
   --ld-frame-bright: #e4f1ec; /* 主ボタンの明枠 */
-  --ld-frame-lock: #3d5459; /* 無効・ロックの暗枠 2px */
   --ld-bracket: #e8c468; /* 選択の角ブラケット（長さ6px・太さ2px・外へ4px） */
   /* フォントは1か所で管理。Phaser Text 側は src/config.ts の FONT_FAMILY（同じ値） */
   --ld-font: "DotGothic16", monospace;
@@ -218,11 +217,45 @@
   transform: translateY(1px);
   background: var(--ld-surface-up);
 }
+/* #94 minori 指定: 無効は文字 #a9c2bc（地 #26393d で 6.41:1）・枠 2px 破線 #8fa9a3。opacity で薄くしない */
 .hud-btn:disabled {
-  color: var(--ld-text-weak);
-  border-style: solid; /* #102: 破線は「無効」に見せつつ読みにくい。暗枠の実線にする */
-  border-color: var(--ld-frame-lock);
+  color: #a9c2bc;
+  border: 2px dashed var(--ld-text-weak);
   cursor: not-allowed;
+}
+/* 理由つきの無効ボタン: 1行目=ボタン名 16px / 2行目=理由 12px。高さ 44→52px */
+.hud-btn--why {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  line-height: 16px;
+}
+.hud-why {
+  display: block;
+  font-size: 12px;
+  line-height: 14px;
+  color: #a9c2bc;
+  white-space: nowrap;
+}
+/* ホバーで全文を補足（地 #0f1a1c・枠 1px #8fa9a3・16px）。disabled はフォーカスできないので読み上げは aria-describedby */
+.hud-btn--why:hover::after {
+  content: attr(data-why);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 4px 8px;
+  font-size: 16px;
+  line-height: 20px;
+  white-space: nowrap;
+  color: var(--ld-text);
+  background: var(--ld-bg);
+  border: 1px solid var(--ld-text-weak);
+  pointer-events: none;
 }
 .hud-btn--primary {
   border-color: var(--ld-frame-bright); /* 主ボタン=塗り＋明枠 */
@@ -234,9 +267,10 @@
   filter: brightness(0.85);
 }
 .hud-btn--primary:disabled {
-  color: var(--ld-text-weak);
+  /* 主ボタンも無効時は塗りを外し、#94 の無効表示（文字 #a9c2bc・2px 破線）にそろえる */
+  color: #a9c2bc;
   background: var(--ld-surface-up);
-  border-color: var(--ld-frame-lock);
+  border: 2px dashed var(--ld-text-weak);
 }
 
 .hud-field {
@@ -495,6 +529,26 @@
   border: 1px solid #8fa9a3;
   position: relative;
 }
+/* #94: スキル欄でも無効は 2px 破線。理由つきは 52px（2行目の分だけ高くする） */
+.hud-skills .hud-btn:disabled {
+  border: 2px dashed #8fa9a3;
+}
+.hud-skills .hud-btn--why {
+  height: 52px;
+  min-height: 52px;
+}
+/* 縦持ち（2列）: 全文（最長16字）を中央寄せにすると画面の左右で切れるので、左列は左端・右列は右端に揃える */
+@media (max-width: 640px) {
+  .hud-skills > .hud-btn--why:nth-child(odd):hover::after {
+    left: 0;
+    transform: none;
+  }
+  .hud-skills > .hud-btn--why:nth-child(even):hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+}
 /* 「（CPU n）」は途中で折り返さない（#142 差し戻し: 844×390 で「（CPU」と「1）」が割れていた） */
 .hud-cpu-tag {
   white-space: nowrap;
@@ -679,6 +733,24 @@
     font-size: 12px;
     line-height: 1.25;
   }
+  /*
+   * #94 Codex P2: 右列は overflow-y:auto なので、1段目のツールチップを上に出すと枠で切れる。
+   * 1段目（3列）だけ下に出す（下は2段目の上に重なるが枠内に収まる）
+   */
+  .hud-skills > .hud-btn--why:nth-child(-n + 3):hover::after {
+    top: calc(100% + 4px);
+    bottom: auto;
+  }
+  /* 横も枠で切れるので、左列は左端・右列は右端に揃える（全文は最長16字） */
+  .hud-skills > .hud-btn--why:nth-child(3n + 1):hover::after {
+    left: 0;
+    transform: none;
+  }
+  .hud-skills > .hud-btn--why:nth-child(3n):hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
   .hud-battle-foot {
     grid-area: foot;
     border-left: 2px solid #4a6a70;
@@ -848,4 +920,17 @@
 /* 敗北リザルトの「最後のバグ・誤パッチ」 */
 .result-defeat p {
   margin: 0 0 4px;
+}
+
+/* 視覚では隠し、スクリーンリーダーには読ませる（#92: 敵 HP は画面のバー横に1か所だけ出す） */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }

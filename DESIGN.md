@@ -142,9 +142,9 @@ Main UI panels use `--ld-surface` #1B2B2E. Interior padding is 16px. (The implem
 | Inner band                   | `--ld-frame-inner`  | 2px #070D0E (inset)                                                    |
 | Corner dots                  | `--ld-frame-corner` | 3×3px #C5DDD5 at the 4 inner corners (2px inset), 10.25:1              |
 | Selected (recommended skill) | `--ld-bracket`      | solid 2px #E8C468 + corner brackets (6px long, 2px thick, 4px outside) |
-| Locked / disabled            | `--ld-frame-lock`   | solid 2px #3D5459 (never dashed)                                       |
+| Disabled (#94)               | `--ld-text-weak`    | 2px dashed #8FA9A3, text #A9C2BC (no opacity)                          |
 
-**Buttons** — primary = filled `--ld-accent` + bright frame `--ld-frame-bright` #E4F1EC (2px); secondary = transparent fill + 2px `--ld-text-weak` frame. States: hover = accent frame, pressed = 1px down (primary darkens to 85%), focus = 2px `--ld-hint` outline (offset 2px), disabled = text-weak on a `--ld-frame-lock` solid frame (primary also drops its fill).
+**Buttons** — primary = filled `--ld-accent` + bright frame `--ld-frame-bright` #E4F1EC (2px); secondary = transparent fill + 2px `--ld-text-weak` frame. States: hover = accent frame, pressed = 1px down (primary darkens to 85%), focus = 2px `--ld-hint` outline (offset 2px), disabled = #94 spec: text #A9C2BC on a 2px dashed #8FA9A3 frame, reason on a 2nd line (primary also drops its fill).
 
 ### Tiles
 

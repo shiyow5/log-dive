@@ -44,8 +44,8 @@ export function advanceIntent(data: GameData, bug: BugId, prev: BugIntent): BugI
       return nullRefIntent(b, left === 0 ? b.period - 1 : left - 1);
     }
     case "leak":
-      // メモリリーク: 行動するたびに growth ずつ重くなる
-      return { damage: prev.damage + b.growth };
+      // メモリリーク: 行動するたびに growth ずつ重くなる（cap で頭打ち）
+      return { damage: Math.min(prev.damage + b.growth, b.cap) };
     default:
       return { damage: b.damage };
   }
