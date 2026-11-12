@@ -32,6 +32,10 @@ function withCpuTag(btn: HTMLButtonElement, name: string, cpu: number): HTMLButt
 const BUG_X = BUG_POS.x;
 const BUG_Y = BUG_POS.y;
 const BAR_W = 48;
+/** 未特定の敵のシルエット色（minori 指定 #5a7a80）。 */
+const SILHOUETTE = 0x5a7a80;
+/** HP 数値が減ったときの色（minori 指定 #e8c468・200ms）。 */
+const HIT_NUM_COLOR = "#e8c468";
 // HP バーは虫の上。下に置くと PC 幅（1280×720）で HUD パネル（上端 ≒ y69）に隠れる。ボス 4 倍の頭（y12）との間に 4px 空ける。
 // #142: 敵 HP が画面上端ぎりぎり（y≈5）だったので、敵ごと 4 ドット（1280 幅で 16px）下げる。
 const ENEMY_DY = 4;
@@ -114,6 +118,8 @@ export class BattleScene extends Phaser.Scene {
     // ボス（64px）は PC 幅で下端が HUD パネル（上端 ≒ y69）に隠れるので 8px 上げる。HP バーは角の外側に収まる。
     const cy = (b.boss ? BUG_Y - 8 : BUG_Y) + ENEMY_DY;
     const img = this.add.image(BUG_X, cy, enemyTextureKey(this.enemyKind, "idle")).setScale(scale);
+    // 正体未特定: #5a7a80 の単色シルエットにする（形は部屋由来のまま、色で種別を教えない）
+    img.setTintFill(SILHOUETTE);
     this.enemyImg = img;
     this.lastHp = b.hp;
     // 待機: 2 フレーム目の代わりに 1px 単位でゆっくり上下（ぼやけないよう整数ピクセル）
@@ -155,8 +161,20 @@ export class BattleScene extends Phaser.Scene {
     g.fillRect(x, BAR_Y, BAR_W, 4);
     g.fillStyle(0xff6b5e, 1);
     g.fillRect(x, BAR_Y, Math.round((BAR_W * b.hp) / b.maxHp), 4);
+    // 5 分割の目盛り（色だけに頼らない）。赤いバーの連続を切らないよう、バーの直下に 1 本ずつ置く
+    g.fillStyle(0xe4f1ec, 1);
+    for (let i = 0; i <= 5; i++) {
+      g.fillRect(x + Math.min(Math.round((BAR_W * i) / 5), BAR_W - 1), BAR_Y + 4, 1, 2);
+    }
     // 数値はバーの左に（右上の『?』と重ねない）（色だけに頼らない）
     this.hpText?.setText(`${b.hp}/${b.maxHp}`);
+    if (b.hp < this.lastHp && this.hpText) {
+      const t = this.hpText;
+      t.setColor(HIT_NUM_COLOR);
+      this.time.delayedCall(200, () => {
+        if (t.active) t.setColor("#e4f1ec");
+      });
+    }
     // 被弾フレーム（HP が減ったとき 250ms だけ）
     if (b.hp < this.lastHp && this.enemyImg) {
       const img = this.enemyImg;
@@ -304,7 +322,7 @@ export class BattleScene extends Phaser.Scene {
             "h2",
             {},
             ...(b.boss ? bossHeading() : [`${here?.label ?? ""} — 正体不明のバグ `]),
-            el("span", { class: "hud-danger" }, `HP ${b.hp}/${b.maxHp}`),
+            el("span", { class: "visually-hidden" }, ` 敵の HP ${b.hp}/${b.maxHp}`),
           ),
           // 危険操作はパネル右上（ターン終了から離す。#119）
           abandonButton(() => this.act({ t: "abandon" })),
