@@ -29,6 +29,9 @@ import {
 
 /** 横持ちでマップの下端と HUD パネルの上端を空ける余白（内部px）。 */
 const HUD_GAP = 4;
+
+/** 部屋名ラベルの depth。pixelfx の front レイヤー(10)・宝箱(25)より手前（#115）。 */
+const LABEL_DEPTH = 30;
 /** 宝箱の中心の上限は「部屋中心 + 部屋の半分 - この値」。箱(16px)の下端がラベル上端(部屋下端-2px)より1px上に来る値。ラベルが箱に重なる小さい部屋だけ上にずれる。 */
 const CHEST_LIFT_PX = 13;
 
@@ -342,7 +345,9 @@ export class MapScene extends Phaser.Scene {
             strokeThickness: portrait ? 4 : 1,
           })
           .setOrigin(0.5, 0)
-          .setResolution(RENDER_SCALE);
+          .setResolution(RENDER_SCALE)
+          // #115: 演出の front レイヤー(depth 10)より手前に置き、撃破・階段の演出中も部屋名を読めるようにする
+          .setDepth(LABEL_DEPTH);
       }
     }
   }
