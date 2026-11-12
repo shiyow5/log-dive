@@ -328,7 +328,12 @@ export class BattleScene extends Phaser.Scene {
     // / 下段=ターン終了（固定）+ 放棄は最下段の別行（ゴースト・右寄せ、#119）。2階以降で候補が増えても主ボタンが画面外に出ない。
     const panel = el(
       "section",
-      { class: "hud-panel hud-panel--battle", "aria-label": "バトル" },
+      {
+        class: b.boss
+          ? "hud-panel hud-panel--battle hud-panel--boss"
+          : "hud-panel hud-panel--battle",
+        "aria-label": "バトル",
+      },
       el(
         "header",
         { class: "hud-battle-head" },
