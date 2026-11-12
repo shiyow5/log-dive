@@ -132,7 +132,19 @@ Primary buttons use the tertiary red with on-tertiary dark text. Secondary (canc
 
 ### Panels
 
-Main UI panels have a dark navy background (#0D0D1A) with a subtle 1px border (#2A2A4A). Interior padding is 16px.
+Main UI panels use `--ld-surface` #1B2B2E. Interior padding is 16px. (The implementation is the source of truth: `--ld-*` variables in `src/ui/hud.css` `:root`. Change DESIGN.md and hud.css in the same PR.)
+
+**Frame token (#102, shared with auto-encore #111)** — applied to `.hud-panel`. The outer line is the element's 1px border; the inner band and corner dots are an inset shadow and background gradients.
+
+| Part                         | Variable            | Value                                                                  |
+| ---------------------------- | ------------------- | ---------------------------------------------------------------------- |
+| Outer line                   | `--ld-frame-outer`  | 1px #8FA9A3 (7.07:1 on bg, 5.85:1 on panel)                            |
+| Inner band                   | `--ld-frame-inner`  | 2px #070D0E (inset)                                                    |
+| Corner dots                  | `--ld-frame-corner` | 3×3px #C5DDD5 at the 4 inner corners (2px inset), 10.25:1              |
+| Selected (recommended skill) | `--ld-bracket`      | solid 2px #E8C468 + corner brackets (6px long, 2px thick, 4px outside) |
+| Locked / disabled            | `--ld-frame-lock`   | solid 2px #3D5459 (never dashed)                                       |
+
+**Buttons** — primary = filled `--ld-accent` + bright frame `--ld-frame-bright` #E4F1EC (2px); secondary = transparent fill + 2px `--ld-text-weak` frame. States: hover = accent frame, pressed = 1px down (primary darkens to 85%), focus = 2px `--ld-hint` outline (offset 2px), disabled = text-weak on a `--ld-frame-lock` solid frame (primary also drops its fill).
 
 ### Tiles
 
