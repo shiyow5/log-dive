@@ -260,3 +260,31 @@ describe("legalActions（null-ref・race・leak・infinite-loop）", () => {
     },
   );
 });
+
+describe("誤パッチした候補は候補から外れる（#154 案A）", () => {
+  it("外れパッチで候補から消え、同じ候補は再選択できない", () => {
+    let s = battleWith("race", "s154");
+    s = { ...s, battle: { ...s.battle!, reproduced: true } };
+    const before = s.battle!.candidates.length;
+    s = apply(s, { t: "skill", id: "patch", arg: "leak" });
+    expect(s.lastError).toBeNull();
+    expect(s.battle!.candidates).not.toContain("leak");
+    expect(s.battle!.candidates).toContain("race");
+    expect(s.battle!.candidates).toHaveLength(before - 1);
+    const again = apply(s, { t: "skill", id: "patch", arg: "leak" });
+    expect(again.lastError).not.toBeNull();
+  });
+
+  it("外れを順に打っても、最大 候補数-1 回で正解に届く", () => {
+    let s = battleWith("race", "s154b");
+    s = {
+      ...s,
+      battle: { ...s.battle!, reproduced: true },
+      player: { ...s.player, cpu: 99, maxCpu: 99 },
+    } as RunState;
+    for (const c of BUG_IDS.filter((c) => c !== "race")) {
+      s = apply(s, { t: "skill", id: "patch", arg: c });
+    }
+    expect(s.battle!.candidates).toEqual(["race"]);
+  });
+});
