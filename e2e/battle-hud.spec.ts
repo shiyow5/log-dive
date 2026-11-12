@@ -258,3 +258,72 @@ test("戦闘HUD(#142): スキルが全部見える・ターン終了と重なら
       }
   }
 });
+
+/**
+ * #94 Codex P2: 844×390 横は右列が overflow-y:auto なので、1段目の無効ボタンのツールチップを上に出すと枠で切れていた。
+ * CPU を使い切って1段目を無効にし、全文（最長16字に差し替え）のツールチップがスクロール枠と画面の中に収まることを見る。
+ */
+test("戦闘HUD(#94): ツールチップがスクロール枠と画面で切れない", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto(`/?fx=0&qa=1&seed=${encodeURIComponent(plan.seed)}`);
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "title", { timeout: 15_000 });
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  const firstBattle = plan.steps.findIndex((s) => s.scene === "battle");
+  for (const step of plan.steps.slice(0, firstBattle + 1)) {
+    await press(page, step.press);
+    await expect(page.locator("body")).toHaveAttribute("data-scene", step.scene);
+    await page.evaluate(() => window.__qa!.waitForIdle());
+  }
+  for (const name of [/^ホットフィックス/, /^ブレークポイント/]) {
+    await page.getByRole("button", { name }).click();
+    await page.evaluate(() => window.__qa!.waitForIdle());
+  }
+  await page.evaluate(() =>
+    document
+      .querySelectorAll(".hud-btn--why")
+      .forEach((e) => e.setAttribute("data-why", "再現できていないバグは直せません")),
+  );
+  for (const vp of [
+    { width: 844, height: 390 },
+    { width: 390, height: 844 },
+    { width: 1280, height: 720 },
+  ]) {
+    await page.setViewportSize(vp);
+    const btns = page.locator(".hud-skills .hud-btn--why");
+    const n = await btns.count();
+    expect(n, `${vp.width}x${vp.height} 理由つきボタン`).toBeGreaterThanOrEqual(3);
+    for (let i = 0; i < n; i++) {
+      const b = btns.nth(i);
+      await b.hover({ force: true });
+      const r = await b.evaluate((e) => {
+        const a = getComputedStyle(e, "::after");
+        const c = getComputedStyle(e);
+        const btn = e.getBoundingClientRect();
+        const w = parseFloat(a.width) + parseFloat(a.paddingLeft) + parseFloat(a.paddingRight) + 2;
+        const h = parseFloat(a.height) + parseFloat(a.paddingTop) + parseFloat(a.paddingBottom) + 2;
+        const x0 = btn.left + parseFloat(c.borderLeftWidth);
+        const y0 = btn.top + parseFloat(c.borderTopWidth);
+        const left = x0 + parseFloat(a.left) - (a.transform === "none" ? 0 : w / 2);
+        const top = y0 + parseFloat(a.top);
+        // 切り取る祖先: overflow が visible 以外の一番近い祖先（無ければ画面）
+        let p = e.parentElement;
+        while (p && getComputedStyle(p).overflowY === "visible") p = p.parentElement;
+        const clip = p && p !== document.documentElement ? p.getBoundingClientRect() : null;
+        return {
+          tip: { left, top, right: left + w, bottom: top + h },
+          clip: {
+            left: Math.max(clip?.left ?? 0, 0),
+            top: Math.max(clip?.top ?? 0, 0),
+            right: Math.min(clip?.right ?? innerWidth, innerWidth),
+            bottom: Math.min(clip?.bottom ?? innerHeight, innerHeight),
+          },
+        };
+      });
+      const tag = `${vp.width}x${vp.height} #${i}`;
+      expect(r.tip.left, tag).toBeGreaterThanOrEqual(r.clip.left - 0.5);
+      expect(r.tip.top, tag).toBeGreaterThanOrEqual(r.clip.top - 0.5);
+      expect(r.tip.right, tag).toBeLessThanOrEqual(r.clip.right + 0.5);
+      expect(r.tip.bottom, tag).toBeLessThanOrEqual(r.clip.bottom + 0.5);
+    }
+  }
+});

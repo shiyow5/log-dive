@@ -505,6 +505,18 @@
   height: 52px;
   min-height: 52px;
 }
+/* 縦持ち（2列）: 全文（最長16字）を中央寄せにすると画面の左右で切れるので、左列は左端・右列は右端に揃える */
+@media (max-width: 640px) {
+  .hud-skills > .hud-btn--why:nth-child(odd):hover::after {
+    left: 0;
+    transform: none;
+  }
+  .hud-skills > .hud-btn--why:nth-child(even):hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+}
 /* 「（CPU n）」は途中で折り返さない（#142 差し戻し: 844×390 で「（CPU」と「1）」が割れていた） */
 .hud-cpu-tag {
   white-space: nowrap;
@@ -672,6 +684,24 @@
     padding: 2px 4px;
     font-size: 12px;
     line-height: 1.25;
+  }
+  /*
+   * #94 Codex P2: 右列は overflow-y:auto なので、1段目のツールチップを上に出すと枠で切れる。
+   * 1段目（3列）だけ下に出す（下は2段目の上に重なるが枠内に収まる）
+   */
+  .hud-skills > .hud-btn--why:nth-child(-n + 3):hover::after {
+    top: calc(100% + 4px);
+    bottom: auto;
+  }
+  /* 横も枠で切れるので、左列は左端・右列は右端に揃える（全文は最長16字） */
+  .hud-skills > .hud-btn--why:nth-child(3n + 1):hover::after {
+    left: 0;
+    transform: none;
+  }
+  .hud-skills > .hud-btn--why:nth-child(3n):hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
   }
   .hud-battle-foot {
     grid-area: foot;
