@@ -19,6 +19,12 @@
   --ld-hint: #e8c468;
   --ld-danger: #ff6b5e;
   --ld-ok: #8fd694;
+  /* 枠トークン（#102）: 外枠 1px 明色 → 内側 2px 暗色 → 角飾り 3px の四角。主ボタン=塗り＋明枠、副=枠のみ。無効は #94 の指定（2px 破線 #8fa9a3・文字 #a9c2bc）に従う */
+  --ld-frame-outer: #8fa9a3; /* 外枠 1px。bg 7.07:1 / panel 5.85:1 */
+  --ld-frame-inner: #070d0e; /* 内側 2px（inset） */
+  --ld-frame-corner: #c5ddd5; /* 角飾り 3×3px。panel 10.25:1 */
+  --ld-frame-bright: #e4f1ec; /* 主ボタンの明枠 */
+  --ld-bracket: #e8c468; /* 選択の角ブラケット（長さ6px・太さ2px・外へ4px） */
   /* フォントは1か所で管理。Phaser Text 側は src/config.ts の FONT_FAMILY（同じ値） */
   --ld-font: "DotGothic16", monospace;
 }
@@ -53,9 +59,21 @@
 
 .hud-panel {
   pointer-events: auto;
-  background: var(--ld-surface);
-  border: 2px solid var(--ld-surface-up);
-  box-shadow: inset 0 0 0 1px #33494e;
+  background-color: var(--ld-surface);
+  background-image:
+    linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner)),
+    linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner)),
+    linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner)),
+    linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner));
+  background-size: 3px 3px;
+  background-repeat: no-repeat;
+  background-position:
+    2px 2px,
+    calc(100% - 2px) 2px,
+    2px calc(100% - 2px),
+    calc(100% - 2px) calc(100% - 2px);
+  border: 1px solid var(--ld-frame-outer);
+  box-shadow: inset 0 0 0 2px var(--ld-frame-inner);
   padding: 8px 16px;
   max-width: 960px;
   width: 100%;
@@ -179,7 +197,7 @@
 .hud-btn {
   font: inherit;
   color: var(--ld-text);
-  background: var(--ld-surface-up);
+  background: transparent; /* 副ボタン=枠のみ */
   border: 2px solid var(--ld-text-weak);
   padding: 4px 12px;
   min-height: 40px;
@@ -194,6 +212,10 @@
 .hud-btn:focus-visible {
   outline: 2px solid var(--ld-hint);
   outline-offset: 2px;
+}
+.hud-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  background: var(--ld-surface-up);
 }
 /* #94 minori 指定: 無効は文字 #a9c2bc（地 #26393d で 6.41:1）・枠 2px 破線 #8fa9a3。opacity で薄くしない */
 .hud-btn:disabled {
@@ -236,9 +258,19 @@
   pointer-events: none;
 }
 .hud-btn--primary {
-  border-color: var(--ld-accent);
+  border-color: var(--ld-frame-bright); /* 主ボタン=塗り＋明枠 */
   color: var(--ld-bg);
   background: var(--ld-accent);
+}
+.hud-btn--primary:active:not(:disabled) {
+  background: var(--ld-accent);
+  filter: brightness(0.85);
+}
+.hud-btn--primary:disabled {
+  /* 主ボタンも無効時は塗りを外し、#94 の無効表示（文字 #a9c2bc・2px 破線）にそろえる */
+  color: #a9c2bc;
+  background: var(--ld-surface-up);
+  border: 2px dashed var(--ld-text-weak);
 }
 
 .hud-field {
@@ -542,6 +574,22 @@
 .hud-skills .hud-btn[data-recommended] {
   border: 2px solid #e8c468;
   padding-left: 22px;
+}
+/* 選択（おすすめ）: 実線2px＋角ブラケット（::after） */
+.hud-skills .hud-btn[data-recommended]::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 0 0 / 6px 2px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 0 0 / 2px 6px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 100% 0 / 6px 2px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 100% 0 / 2px 6px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 0 100% / 6px 2px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 0 100% / 2px 6px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 100% 100% / 6px 2px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 100% 100% / 2px 6px no-repeat;
 }
 .hud-skills .hud-btn[data-recommended]::before {
   content: "";
