@@ -351,11 +351,22 @@ export class BattleScene extends Phaser.Scene {
         ),
       ),
     );
+    // 戦闘の最初の描画（ボス登場文を見せたい）か、操作後の再描画（フォーカスを戻したボタンを残したい）かを区別する
+    const redraw = document.body.dataset.scene === "battle";
     renderHud("battle", panel);
     // #158: 新しい行（ボス登場文など）がスクロール領域の下に隠れないよう、ログ行を見える位置まで送る。
     // 画面幅ごとにスクロールする要素が違う（中段・右列・HUD全体）ので、祖先すべてに効く scrollIntoView を使う。
     // 既に見えているときは何もしない（block: "nearest"）。
     panel.querySelector(".hud-log")?.scrollIntoView({ block: "nearest" });
+    // #158 P2: ログを送ったせいで、フォーカスを戻したボタン（横持ちの上段スキル行など）が操作列から外れないよう、
+    // フォーカス中のボタンが操作列の中にあるときは、そちらも見える位置へ送り直す（ログと同時に見えるときは動かない）。
+    const focused = document.activeElement;
+    if (
+      redraw &&
+      focused instanceof HTMLElement &&
+      panel.querySelector(".hud-battle-actions")?.contains(focused)
+    )
+      focused.scrollIntoView({ block: "nearest" });
   }
 }
 
