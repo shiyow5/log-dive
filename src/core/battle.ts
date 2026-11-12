@@ -177,13 +177,28 @@ export function useSkill(
   if (!player.skills.includes(id)) return err("skill_not_owned", "そのスキルは持っていません");
   const def = skillDef(data, id);
   // 意味の無い操作の理由を先に返し、最後に CPU を見る（どちらでも CPU は減らさない）
-  const r = resolveSkill(battle, { ...player, cpu: player.cpu - def.cpu }, def.effect, arg);
+  const r = resolveSkill(data, battle, { ...player, cpu: player.cpu - def.cpu }, def.effect, arg);
   if (isRunError(r)) return r;
   if (player.cpu < def.cpu) return err("not_enough_cpu", "CPU が足りません");
   return r;
 }
 
+/**
+ * ログ確認で消す候補の集合（#118）。公開済みの症状と食い違う（その症状を持たない）外れ候補を先に消し、
+ * それが無いときだけ残りの外れ候補から選ぶ。ボスのノイズ症状は手がかりにならないので無視する。
+ */
+export function logRemovable(data: GameData, battle: BattleState): BugId[] {
+  const wrong = battle.candidates.filter((c) => c !== battle.bug);
+  const noise = bossDef(data).noiseSymptom;
+  const known = battle.symptoms.filter((s) => s !== noise);
+  const inconsistent = wrong.filter(
+    (c) => !known.every((s) => bugDef(data, c).symptoms.includes(s)),
+  );
+  return inconsistent.length > 0 ? inconsistent : wrong;
+}
+
 function resolveSkill(
+  data: GameData,
   battle: BattleState,
   paid: PlayerState,
   effect: SkillEffect,
@@ -221,7 +236,7 @@ function resolveSkill(
       if (battle.candidates.length <= 1 || wrong.length === 0) {
         return err("too_few_candidates", "候補はもう1つだけです");
       }
-      const [removed, rng] = randPick(battle.rng, wrong);
+      const [removed, rng] = randPick(battle.rng, logRemovable(data, battle));
       return {
         battle: { ...battle, candidates: battle.candidates.filter((c) => c !== removed), rng },
         player: paid,
