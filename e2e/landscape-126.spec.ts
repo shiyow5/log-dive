@@ -16,7 +16,11 @@ test("landscape 844x390: リザルト見出しが切れない #126", async ({ pa
   for (let i = 0; i < 60; i++) {
     if ((await page.locator("body").getAttribute("data-scene")) === "result") break;
     await page.evaluate(() => window.__qa!.waitForIdle());
-    await page.getByRole("button", { name: "ターン終了" }).first().click({ timeout: 2000 }).catch(() => undefined);
+    await page
+      .getByRole("button", { name: "ターン終了" })
+      .first()
+      .click({ timeout: 2000 })
+      .catch(() => undefined);
   }
   await expect(page.locator("body")).toHaveAttribute("data-scene", "result");
 
