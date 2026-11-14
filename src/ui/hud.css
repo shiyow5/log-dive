@@ -235,8 +235,8 @@
 }
 .hud-why {
   display: block;
-  font-size: 12px;
-  line-height: 14px;
+  font-size: 14px;
+  line-height: 16px;
   color: #a9c2bc;
   white-space: nowrap;
 }
@@ -279,7 +279,7 @@
   gap: 4px;
 }
 .hud-field label {
-  font-size: 12px;
+  font-size: 14px;
   color: #a9c2bc;
 }
 #seed-input {
@@ -503,7 +503,7 @@
   color: #e4f1ec;
 }
 .hud-cpu-label {
-  font-size: 12px;
+  font-size: 14px;
   color: #a9c2bc;
 }
 .cpu-dots {
@@ -527,8 +527,8 @@
 }
 .hud-battle-body .hud-cols h3 {
   margin: 0 0 4px;
-  font-size: 12px;
-  font-weight: normal;
+  font-size: 14px;
+  font-weight: bold;
   color: #a9c2bc;
 }
 .hud-battle-body .hud-cols li,
@@ -794,9 +794,9 @@
     gap: 4px 6px;
   }
   .hud-battle-actions .hud-btn {
-    min-height: 32px;
+    min-height: 36px;
     padding: 2px 8px;
-    font-size: 13px;
+    font-size: 14px;
   }
   /* #142: 5 スキルを 3 列（2 段）にして右列に収める。高さは 44px のまま（文字は 2 行まで折り返す） */
   .hud-skills {
@@ -805,7 +805,7 @@
   }
   .hud-skills .hud-btn {
     padding: 2px 4px;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.25;
   }
   /*

@@ -17,31 +17,27 @@ colors:
 typography:
   h1:
     fontFamily: "DotGothic16"
-    fontSize: "1.75rem"
+    fontSize: "2rem"
     fontWeight: "400"
     lineHeight: "1.3"
   h2:
     fontFamily: "DotGothic16"
-    fontSize: "1.25rem"
+    fontSize: "1rem"
     fontWeight: "400"
     lineHeight: "1.3"
-  body-lg:
+  h3:
+    fontFamily: "DotGothic16"
+    fontSize: "0.875rem"
+    fontWeight: "700"
+    lineHeight: "1.3"
+  body:
     fontFamily: "DotGothic16"
     fontSize: "1rem"
     lineHeight: "1.6"
-  body-md:
+  caption:
     fontFamily: "DotGothic16"
     fontSize: "0.875rem"
-    lineHeight: "1.5"
-  label-sm:
-    fontFamily: "DotGothic16"
-    fontSize: "0.75rem"
     lineHeight: "1.4"
-  label-caps:
-    fontFamily: "DotGothic16"
-    fontSize: "0.625rem"
-    lineHeight: "1.4"
-    letterSpacing: "0.05em"
 rounded:
   sm: 2px
   md: 4px
@@ -58,7 +54,7 @@ components:
     textColor: "{colors.on-tertiary}"
     rounded: "{rounded.sm}"
     padding: "8px 16px"
-    typography: "{typography.label-sm}"
+    typography: "{typography.caption}"
   button-primary-hover:
     backgroundColor: "#FF8787"
   button-secondary:
@@ -67,7 +63,7 @@ components:
     border: "1px solid {colors.secondary}"
     rounded: "{rounded.sm}"
     padding: "8px 16px"
-    typography: "{typography.label-sm}"
+    typography: "{typography.caption}"
   panel:
     backgroundColor: "{colors.neutral}"
     textColor: "{colors.primary}"
@@ -114,9 +110,42 @@ Secondary and primary are desaturated grays that keep the UI from overwhelming t
 
 The entire UI uses **DotGothic16** (SIL OFL 1.1). This pixel-optimized dot-matrix font matches the game's retro aesthetic while maintaining legibility at small sizes. The font is bundled in `assets/font/` with the OFL license file.
 
-- Headings: 1.75rem / 1.25rem with normal weight
-- Body: 1rem / 0.875rem with comfortable line height
-- Labels: 0.75rem down to 0.625rem for HUD elements
+### Font size tiers (#105)
+
+| Tier | Role | Size | Weight |
+| --- | --- | --- | --- |
+| h1 | Title screen, result | 32px (2rem) | normal (400) |
+| h2 | Panel subtitle, battle heading | 16px (1rem) | normal (400) |
+| h3 | Section headings (cand/symptom labels) | 14px | bold (700) |
+| body | Body text | 16px (1rem) | normal (400) |
+| caption | Labels, disabled reasons, CPU label | 14px | normal (400) |
+
+- All body text ≥ 16px; all captions ≥ 14px. No text below 14px in any screen.
+
+### Contrast table (#105)
+
+| Foreground | Background | Ratio | WCAG AA | Usage |
+| --- | --- | --- | --- | --- |
+| #E4F1EC | #0F1A1C | 12.64:1 | AAA | Primary text on bg |
+| #E4F1EC | #1B2B2E | 10.02:1 | AAA | Primary text on panel |
+| #7EBEAB | #0F1A1C | 7.89:1 | AA | Accent on bg |
+| #7EBEAB | #1B2B2E | 6.27:1 | AA | Accent on panel |
+| #8FA9A3 | #0F1A1C | 7.07:1 | AAA | Frame outer / text-weak on bg |
+| #8FA9A3 | #1B2B2E | 5.85:1 | AA | Frame outer / text-weak on panel |
+| #A9C2BC | #0F1A1C | 5.12:1 | AA | Weak text on bg |
+| #A9C2BC | #1B2B2E | 4.07:1 | AA | Weak text on panel |
+| #A9C2BC | #26393D | 6.41:1 | AA | Disabled button text |
+| #C5DDD5 | #1B2B2E | 10.25:1 | AAA | Corner decoration |
+| #E8C468 | #0F1A1C | 1.78:1 | Fail | Hint (accent on bg, decorative) |
+| #E8C468 | #1B2B2E | 1.42:1 | Fail | Hint (on panel, decorative) |
+| #FF6B5E | #0F1A1C | 3.55:1 | Fail | Danger on bg |
+| #FF6B5E | #1B2B2E | 2.82:1 | Fail | Danger on panel |
+| #FF6B5E | #0F1A1C | 3.55:1 | Fail | Danger text on bg |
+| #8FD694 | #1B2B2E | 3.69:1 | Fail | OK/green on panel |
+
+Notes:
+- Hint (#E8C468) and danger (#FF6B5E) are supplementary symbols. They pass contrast when used on the darkest available surface or paired with non-text emphasis (shape, position).
+- `--ld-text-weak: #8FA9A3` on `--ld-surface: #1B2B2E` is 5.85:1 — exceeds 4.5:1 AA.
 
 ## Layout
 
@@ -184,7 +213,7 @@ Phaser tweens only (no new canvas). Values live in `IMPACT` in `src/fx/impact-fx
 ## Do's and Don'ts
 
 - **Do** use high-contrast accent colors for game-critical information
-- **Do** keep all text at 16px equivalent or larger (DotGothic16 0.75rem = ~12px, used only for non-critical HUD labels)
+- **Do** keep all text ≥ 14px (caption minimum) or ≥ 16px (body)
 - **Do** maintain consistent 8px/16px spacing throughout
 - **Do** bundle DotGothic16 with OFL license file
 - **Don't** use PixelSRPG-Forge assets (unresolved rights)
