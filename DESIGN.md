@@ -112,38 +112,39 @@ The entire UI uses **DotGothic16** (SIL OFL 1.1). This pixel-optimized dot-matri
 
 ### Font size tiers (#105)
 
-| Tier | Role | Size | Weight |
-| --- | --- | --- | --- |
-| h1 | Title screen, result | 32px (2rem) | normal (400) |
-| h2 | Panel subtitle, battle heading | 16px (1rem) | normal (400) |
-| h3 | Section headings (cand/symptom labels) | 14px | bold (700) |
-| body | Body text | 16px (1rem) | normal (400) |
-| caption | Labels, disabled reasons, CPU label | 14px | normal (400) |
+| Tier    | Role                                   | Size        | Weight       |
+| ------- | -------------------------------------- | ----------- | ------------ |
+| h1      | Title screen, result                   | 32px (2rem) | normal (400) |
+| h2      | Panel subtitle, battle heading         | 16px (1rem) | normal (400) |
+| h3      | Section headings (cand/symptom labels) | 14px        | bold (700)   |
+| body    | Body text                              | 16px (1rem) | normal (400) |
+| caption | Labels, disabled reasons, CPU label    | 14px        | normal (400) |
 
 - All body text ≥ 16px; all captions ≥ 14px. No text below 14px in any screen.
 
 ### Contrast table (#105)
 
-| Foreground | Background | Ratio | WCAG AA | Usage |
-| --- | --- | --- | --- | --- |
-| #E4F1EC | #0F1A1C | 12.64:1 | AAA | Primary text on bg |
-| #E4F1EC | #1B2B2E | 10.02:1 | AAA | Primary text on panel |
-| #7EBEAB | #0F1A1C | 7.89:1 | AA | Accent on bg |
-| #7EBEAB | #1B2B2E | 6.27:1 | AA | Accent on panel |
-| #8FA9A3 | #0F1A1C | 7.07:1 | AAA | Frame outer / text-weak on bg |
-| #8FA9A3 | #1B2B2E | 5.85:1 | AA | Frame outer / text-weak on panel |
-| #A9C2BC | #0F1A1C | 5.12:1 | AA | Weak text on bg |
-| #A9C2BC | #1B2B2E | 4.07:1 | AA | Weak text on panel |
-| #A9C2BC | #26393D | 6.41:1 | AA | Disabled button text |
-| #C5DDD5 | #1B2B2E | 10.25:1 | AAA | Corner decoration |
-| #E8C468 | #0F1A1C | 1.78:1 | Fail | Hint (accent on bg, decorative) |
-| #E8C468 | #1B2B2E | 1.42:1 | Fail | Hint (on panel, decorative) |
-| #FF6B5E | #0F1A1C | 3.55:1 | Fail | Danger on bg |
-| #FF6B5E | #1B2B2E | 2.82:1 | Fail | Danger on panel |
-| #FF6B5E | #0F1A1C | 3.55:1 | Fail | Danger text on bg |
-| #8FD694 | #1B2B2E | 3.69:1 | Fail | OK/green on panel |
+| Foreground | Background | Ratio   | WCAG AA | Usage                            |
+| ---------- | ---------- | ------- | ------- | -------------------------------- |
+| #E4F1EC    | #0F1A1C    | 12.64:1 | AAA     | Primary text on bg               |
+| #E4F1EC    | #1B2B2E    | 10.02:1 | AAA     | Primary text on panel            |
+| #7EBEAB    | #0F1A1C    | 7.89:1  | AA      | Accent on bg                     |
+| #7EBEAB    | #1B2B2E    | 6.27:1  | AA      | Accent on panel                  |
+| #8FA9A3    | #0F1A1C    | 7.07:1  | AAA     | Frame outer / text-weak on bg    |
+| #8FA9A3    | #1B2B2E    | 5.85:1  | AA      | Frame outer / text-weak on panel |
+| #A9C2BC    | #0F1A1C    | 5.12:1  | AA      | Weak text on bg                  |
+| #A9C2BC    | #1B2B2E    | 4.07:1  | AA      | Weak text on panel               |
+| #A9C2BC    | #26393D    | 6.41:1  | AA      | Disabled button text             |
+| #C5DDD5    | #1B2B2E    | 10.25:1 | AAA     | Corner decoration                |
+| #E8C468    | #0F1A1C    | 1.78:1  | Fail    | Hint (accent on bg, decorative)  |
+| #E8C468    | #1B2B2E    | 1.42:1  | Fail    | Hint (on panel, decorative)      |
+| #FF6B5E    | #0F1A1C    | 3.55:1  | Fail    | Danger on bg                     |
+| #FF6B5E    | #1B2B2E    | 2.82:1  | Fail    | Danger on panel                  |
+| #FF6B5E    | #0F1A1C    | 3.55:1  | Fail    | Danger text on bg                |
+| #8FD694    | #1B2B2E    | 3.69:1  | Fail    | OK/green on panel                |
 
 Notes:
+
 - Hint (#E8C468) and danger (#FF6B5E) are supplementary symbols. They pass contrast when used on the darkest available surface or paired with non-text emphasis (shape, position).
 - `--ld-text-weak: #8FA9A3` on `--ld-surface: #1B2B2E` is 5.85:1 — exceeds 4.5:1 AA.
 
