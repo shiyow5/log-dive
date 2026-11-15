@@ -110,7 +110,7 @@ export function setHudBusy(busy: boolean): void {
 export function focusFirst(container: HTMLElement): void {
   // 危険操作（.hud-abandon）は初期フォーカスにしない（Enter 連打で放棄ダイアログが開かないように）
   const target = container.querySelector<HTMLElement>(
-    "[data-autofocus], button:not([disabled]):not(.hud-abandon)",
+    "[data-autofocus], button:not([disabled]):not(.hud-abandon):not(.hud-guide)",
   );
   // 初期フォーカスで中段が勝手にスクロールしないよう preventScroll（#87: scrollTop=0 を保つ）
   target?.focus({ preventScroll: true });

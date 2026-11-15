@@ -33,7 +33,12 @@ export type BugBehavior =
       readonly period: number;
     }
   | { readonly kind: "race"; readonly damage: number; readonly multipliers: readonly number[] }
-  | { readonly kind: "leak"; readonly damage: number; readonly growth: number }
+  | {
+      readonly kind: "leak";
+      readonly damage: number;
+      readonly growth: number;
+      readonly cap: number;
+    }
   | { readonly kind: "infinite-loop"; readonly damage: number; readonly cpuDrain: number };
 
 export interface BugDef {
@@ -218,7 +223,12 @@ function parseBehavior(c: Checker, v: unknown, path: string, id: BugId): BugBeha
       };
     }
     case "leak":
-      return { kind, damage, growth: c.int(o.growth, `${path}.growth`, 1, MAX_DAMAGE) };
+      return {
+        kind,
+        damage,
+        growth: c.int(o.growth, `${path}.growth`, 1, MAX_DAMAGE),
+        cap: c.int(o.cap, `${path}.cap`, damage, MAX_DAMAGE),
+      };
     case "infinite-loop":
       return { kind, damage, cpuDrain: c.int(o.cpuDrain, `${path}.cpuDrain`, 1, 3) };
   }

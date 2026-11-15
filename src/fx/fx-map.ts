@@ -1,13 +1,9 @@
-import * as blinds from "pixelfx/fx/transitions/blinds";
-import * as pixelDissolve from "pixelfx/fx/transitions/pixel-dissolve";
 import * as campfire from "pixelfx/fx/fire/campfire";
 import * as candle from "pixelfx/fx/fire/candle";
-import * as chestOpen from "pixelfx/fx/pickups/chest-open";
 import * as collectBurst from "pixelfx/fx/pickups/collect-burst";
 import * as smallExplosion from "pixelfx/fx/explosions/small-explosion";
 import * as confetti from "pixelfx/fx/ui/confetti";
 import * as questComplete from "pixelfx/fx/ui/quest-complete";
-import * as levelUp from "pixelfx/fx/ui/level-up";
 import * as glitch from "pixelfx/fx/scifi/glitch";
 import * as hitFlash from "pixelfx/fx/impacts/hit-flash";
 import * as hitSpark from "pixelfx/fx/impacts/hit-spark";
@@ -67,21 +63,16 @@ export const FX_MAP: Readonly<Record<FxEventName, readonly FxSpec[]>> = {
     { mod: hitSpark, x: 160, y: 150, layer: "front" },
   ],
   bugDefeated: [
-    { mod: smallExplosion, x: 160, y: 100, options: { size: 0.5 }, layer: "front" },
-    { mod: confetti, x: 160, y: 120, layer: "front" },
+    // #115: 画面中央（マップ・部屋名が並ぶ所）に炎を出さず、撃破した敵の位置に収める
+    { mod: smallExplosion, ...BUG_POS, options: { size: 0.4 }, layer: "front" },
+    { mod: confetti, x: BUG_POS.x, y: BUG_POS.y - 20, layer: "front" },
   ],
-  chestOpen: [
-    { mod: chestOpen, x: 160, y: 110, layer: "front" },
-    { mod: collectBurst, x: 160, y: 90, layer: "front" },
-  ],
-  stairs: [
-    { mod: blinds, x: 0, y: 0, layer: "front" },
-    { mod: pixelDissolve, x: 0, y: 0, layer: "front" },
-  ],
-  result: [
-    { mod: questComplete, x: 160, y: 20, layer: "front" },
-    { mod: levelUp, x: 160, y: 118, layer: "front" },
-  ],
+  chestOpen: [{ mod: collectBurst, x: 160, y: 90, layer: "front" }],
+  // 階段は暗転フェード（MapScene）が主役。全画面系(blinds/dissolve)は重ねず、小さな光だけ添える
+  // #115: マップ中央ではなく上端の帯に出す（現在地・部屋名を覆わない）
+  stairs: [{ mod: collectBurst, x: 160, y: 14, layer: "front" }],
+  // 英語バナー文字は出さない（「復旧完了」と重複・#128 fumino v1.0）。リボンと封印の演出は維持
+  result: [{ mod: questComplete, x: 160, y: 20, options: { text: "" }, layer: "front" }],
   mapAmbient: [
     { mod: campfire, x: 28, y: 138, layer: "back" },
     { mod: candle, x: 296, y: 138, layer: "back" },

@@ -93,20 +93,32 @@ describe("race: ダメージは予告の multipliers 倍（戦闘用乱数）", 
   });
 });
 
-describe("leak: ダメージが行動ごとに growth ずつ増える", () => {
+describe("leak: ダメージが行動ごとに growth ずつ増える（cap で頭打ち）", () => {
   const b = bugDef(data, "leak").behavior;
   if (b.kind !== "leak") throw new Error("bugs.json の leak の kind が違う");
 
-  it("予告どおりに入り、予告は damage, damage+growth, damage+2*growth, …", () => {
+  it("予告どおりに入り、予告は damage, damage+growth, … を cap で頭打ちにした値", () => {
     let s = battleWith("leak");
     s = { ...s, player: { ...s.player, hp: 999 } };
     for (let i = 0; i < 6; i++) {
-      const expected = b.damage + b.growth * i;
+      const expected = Math.min(b.damage + b.growth * i, b.cap);
       expect(s.battle!.intent).toEqual({ damage: expected });
       const next = apply(s, { t: "endTurn" });
       expect(s.player.hp - next.player.hp).toBe(expected);
       s = next;
     }
+  });
+
+  it("cap=5 を超えない（1,2,3,4,5,5,5）", () => {
+    expect(b.cap).toBe(5);
+    let s = battleWith("leak");
+    s = { ...s, player: { ...s.player, hp: 999 } };
+    const seen: number[] = [];
+    for (let i = 0; i < 7; i++) {
+      seen.push(s.battle!.intent.damage);
+      s = apply(s, { t: "endTurn" });
+    }
+    expect(seen).toEqual([1, 2, 3, 4, 5, 5, 5]);
   });
 
   it("新しい戦闘では最初の damage に戻る", () => {
@@ -259,4 +271,32 @@ describe("legalActions（null-ref・race・leak・infinite-loop）", () => {
       }
     },
   );
+});
+
+describe("誤パッチした候補は候補から外れる（#154 案A）", () => {
+  it("外れパッチで候補から消え、同じ候補は再選択できない", () => {
+    let s = battleWith("race", "s154");
+    s = { ...s, battle: { ...s.battle!, reproduced: true } };
+    const before = s.battle!.candidates.length;
+    s = apply(s, { t: "skill", id: "patch", arg: "leak" });
+    expect(s.lastError).toBeNull();
+    expect(s.battle!.candidates).not.toContain("leak");
+    expect(s.battle!.candidates).toContain("race");
+    expect(s.battle!.candidates).toHaveLength(before - 1);
+    const again = apply(s, { t: "skill", id: "patch", arg: "leak" });
+    expect(again.lastError).not.toBeNull();
+  });
+
+  it("外れを順に打っても、最大 候補数-1 回で正解に届く", () => {
+    let s = battleWith("race", "s154b");
+    s = {
+      ...s,
+      battle: { ...s.battle!, reproduced: true },
+      player: { ...s.player, cpu: 99, maxCpu: 99 },
+    } as RunState;
+    for (const c of BUG_IDS.filter((c) => c !== "race")) {
+      s = apply(s, { t: "skill", id: "patch", arg: c });
+    }
+    expect(s.battle!.candidates).toEqual(["race"]);
+  });
 });

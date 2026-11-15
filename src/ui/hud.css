@@ -19,6 +19,12 @@
   --ld-hint: #e8c468;
   --ld-danger: #ff6b5e;
   --ld-ok: #8fd694;
+  /* 枠トークン（#102）: 外枠 1px 明色 → 内側 2px 暗色 → 角飾り 3px の四角。主ボタン=塗り＋明枠、副=枠のみ。無効は #94 の指定（2px 破線 #8fa9a3・文字 #a9c2bc）に従う */
+  --ld-frame-outer: #8fa9a3; /* 外枠 1px。bg 7.07:1 / panel 5.85:1 */
+  --ld-frame-inner: #070d0e; /* 内側 2px（inset） */
+  --ld-frame-corner: #c5ddd5; /* 角飾り 3×3px。panel 10.25:1 */
+  --ld-frame-bright: #e4f1ec; /* 主ボタンの明枠 */
+  --ld-bracket: #e8c468; /* 選択の角ブラケット（長さ6px・太さ2px・外へ4px） */
   /* フォントは1か所で管理。Phaser Text 側は src/config.ts の FONT_FAMILY（同じ値） */
   --ld-font: "DotGothic16", monospace;
 }
@@ -53,9 +59,21 @@
 
 .hud-panel {
   pointer-events: auto;
-  background: var(--ld-surface);
-  border: 2px solid var(--ld-surface-up);
-  box-shadow: inset 0 0 0 1px #33494e;
+  background-color: var(--ld-surface);
+  background-image:
+    linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner)),
+    linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner)),
+    linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner)),
+    linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner));
+  background-size: 3px 3px;
+  background-repeat: no-repeat;
+  background-position:
+    2px 2px,
+    calc(100% - 2px) 2px,
+    2px calc(100% - 2px),
+    calc(100% - 2px) calc(100% - 2px);
+  border: 1px solid var(--ld-frame-outer);
+  box-shadow: inset 0 0 0 2px var(--ld-frame-inner);
   padding: 8px 16px;
   max-width: 960px;
   width: 100%;
@@ -63,6 +81,32 @@
   box-sizing: border-box;
   max-height: 50vh;
   overflow-y: auto;
+}
+
+/* #128: クリアは文言が増えた。ボタンまで見えるよう 50vh の上限をゆるめる（リボン＝上から約 22% は避ける） */
+@media (min-aspect-ratio: 1/1) {
+  #hud[data-scene="result"] .hud-panel {
+    max-height: 72%;
+  }
+}
+
+/* 横画面で背が低い端末（844x390 など）: 数値欄を2列にして、ボタンまでスクロールなしで見せる */
+@media (orientation: landscape) and (max-height: 480px) {
+  #hud[data-scene="result"] .hud-panel {
+    max-height: calc(100% - 8px);
+  }
+  #hud[data-scene="result"] .hud-panel h1 {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+  #hud[data-scene="result"] .hud-dl {
+    grid-template-columns: max-content 1fr max-content 1fr;
+    margin: 4px 0;
+  }
+}
+
+.hud-nowrap {
+  white-space: nowrap;
 }
 
 .hud-panel h1,
@@ -153,7 +197,7 @@
 .hud-btn {
   font: inherit;
   color: var(--ld-text);
-  background: var(--ld-surface-up);
+  background: transparent; /* 副ボタン=枠のみ */
   border: 2px solid var(--ld-text-weak);
   padding: 4px 12px;
   min-height: 40px;
@@ -169,15 +213,64 @@
   outline: 2px solid var(--ld-hint);
   outline-offset: 2px;
 }
+.hud-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  background: var(--ld-surface-up);
+}
+/* #94 minori 指定: 無効は文字 #a9c2bc（地 #26393d で 6.41:1）・枠 2px 破線 #8fa9a3。opacity で薄くしない */
 .hud-btn:disabled {
-  color: var(--ld-text-weak);
-  border-style: dashed;
+  color: #a9c2bc;
+  border: 2px dashed var(--ld-text-weak);
   cursor: not-allowed;
 }
+/* 理由つきの無効ボタン: 1行目=ボタン名 16px / 2行目=理由 12px。高さ 44→52px */
+.hud-btn--why {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  line-height: 16px;
+}
+.hud-why {
+  display: block;
+  font-size: 14px;
+  line-height: 16px;
+  color: #a9c2bc;
+  white-space: nowrap;
+}
+/* ホバーで全文を補足（地 #0f1a1c・枠 1px #8fa9a3・16px）。disabled はフォーカスできないので読み上げは aria-describedby */
+.hud-btn--why:hover::after {
+  content: attr(data-why);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 4px 8px;
+  font-size: 16px;
+  line-height: 20px;
+  white-space: nowrap;
+  color: var(--ld-text);
+  background: var(--ld-bg);
+  border: 1px solid var(--ld-text-weak);
+  pointer-events: none;
+}
 .hud-btn--primary {
-  border-color: var(--ld-accent);
+  border-color: var(--ld-frame-bright); /* 主ボタン=塗り＋明枠 */
   color: var(--ld-bg);
   background: var(--ld-accent);
+}
+.hud-btn--primary:active:not(:disabled) {
+  background: var(--ld-accent);
+  filter: brightness(0.85);
+}
+.hud-btn--primary:disabled {
+  /* 主ボタンも無効時は塗りを外し、#94 の無効表示（文字 #a9c2bc・2px 破線）にそろえる */
+  color: #a9c2bc;
+  background: var(--ld-surface-up);
+  border: 2px dashed var(--ld-text-weak);
 }
 
 .hud-field {
@@ -186,7 +279,7 @@
   gap: 4px;
 }
 .hud-field label {
-  font-size: 12px;
+  font-size: 14px;
   color: #a9c2bc;
 }
 #seed-input {
@@ -251,7 +344,12 @@
   color: var(--ld-hint);
 }
 
+.hud-lines {
+  white-space: pre-line;
+}
+
 .hud-log {
+  white-space: pre-line;
   min-height: 1.5em;
   margin: 4px 0 0;
 }
@@ -259,7 +357,7 @@
 /* 縦長（スマホ縦持ちなど）: HUD はキャンバスの下から。キャンバスと重ねない */
 @media (max-aspect-ratio: 1/1) {
   #hud {
-    top: calc(100vw * 9 / 16);
+    top: var(--ld-canvas-h, calc(100vw * 9 / 16));
     justify-content: flex-start;
     overflow-y: auto;
   }
@@ -343,11 +441,29 @@
 .hud-battle-head .hud-row {
   margin: 4px 0 0;
 }
+/*
+ * #166: 中段のうち「候補・症状」（.hud-cols）は固定、スクロールするのは操作列（.hud-battle-actions）だけにする。
+ * ボス登場文を見せる自動スクロール（#158）が効いても、見出しが領域の外へ出ない。
+ */
 .hud-battle-body {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   padding: 8px 12px;
+}
+.hud-battle-body .hud-cols {
+  flex: none;
+}
+.hud-battle-body .hud-battle-actions {
+  flex: 1 1 auto;
+  /* 症状が4つ並んでも操作列が高さ0まで潰れない（スキル2行分＋余白。#166 Codex P2: 800×481） */
+  min-height: 104px;
+  overflow-y: auto;
+}
+/* 最低高さの合計が中段を超える低い画面でも、中段全体をスクロールして操作列へ届く（安全網） */
+.hud-battle-body {
+  overflow-y: auto;
 }
 .hud-battle-foot {
   flex: none;
@@ -387,7 +503,7 @@
   color: #e4f1ec;
 }
 .hud-cpu-label {
-  font-size: 12px;
+  font-size: 14px;
   color: #a9c2bc;
 }
 .cpu-dots {
@@ -411,8 +527,8 @@
 }
 .hud-battle-body .hud-cols h3 {
   margin: 0 0 4px;
-  font-size: 12px;
-  font-weight: normal;
+  font-size: 14px;
+  font-weight: bold;
   color: #a9c2bc;
 }
 .hud-battle-body .hud-cols li,
@@ -431,6 +547,31 @@
   border: 1px solid #8fa9a3;
   position: relative;
 }
+/* #94: スキル欄でも無効は 2px 破線。理由つきは 52px（2行目の分だけ高くする） */
+.hud-skills .hud-btn:disabled {
+  border: 2px dashed #8fa9a3;
+}
+.hud-skills .hud-btn--why {
+  height: 52px;
+  min-height: 52px;
+}
+/* 縦持ち（2列）: 全文（最長16字）を中央寄せにすると画面の左右で切れるので、左列は左端・右列は右端に揃える */
+@media (max-width: 640px) {
+  /* #166: 操作列がスクロール枠になったので、1段目（2列）のツールチップは上に出すと枠で切れる。下に出す */
+  .hud-skills > .hud-btn--why:nth-child(-n + 2):hover::after {
+    top: calc(100% + 4px);
+    bottom: auto;
+  }
+  .hud-skills > .hud-btn--why:nth-child(odd):hover::after {
+    left: 0;
+    transform: none;
+  }
+  .hud-skills > .hud-btn--why:nth-child(even):hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+}
 /* 「（CPU n）」は途中で折り返さない（#142 差し戻し: 844×390 で「（CPU」と「1）」が割れていた） */
 .hud-cpu-tag {
   white-space: nowrap;
@@ -438,6 +579,22 @@
 .hud-skills .hud-btn[data-recommended] {
   border: 2px solid #e8c468;
   padding-left: 22px;
+}
+/* 選択（おすすめ）: 実線2px＋角ブラケット（::after） */
+.hud-skills .hud-btn[data-recommended]::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 0 0 / 6px 2px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 0 0 / 2px 6px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 100% 0 / 6px 2px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 100% 0 / 2px 6px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 0 100% / 6px 2px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 0 100% / 2px 6px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 100% 100% / 6px 2px no-repeat,
+    linear-gradient(var(--ld-bracket), var(--ld-bracket)) 100% 100% / 2px 6px no-repeat;
 }
 .hud-skills .hud-btn[data-recommended]::before {
   content: "";
@@ -460,6 +617,11 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
   }
+  /* #166: 操作列がスクロール枠なので、1段目（3列）のツールチップは下に出す */
+  .hud-skills > .hud-btn--why:nth-child(-n + 3):hover::after {
+    top: calc(100% + 4px);
+    bottom: auto;
+  }
   .hud-battle-body .hud-cols {
     grid-template-columns: 3fr 2fr;
   }
@@ -479,6 +641,12 @@
   }
   .hud-battle-head .hud-cpu {
     margin: 0;
+  }
+}
+/* 800×481 など「横長だが横持ちスマホ扱いにならない低い画面」: パネルを少し高くして、候補・症状と操作列を両方収める */
+@media (min-width: 641px) and (min-height: 481px) and (max-height: 600px) {
+  .hud-panel--battle {
+    max-height: 80vh;
   }
 }
 .hud-battle-foot .hud-btn--primary {
@@ -506,6 +674,18 @@
   content: none;
 }
 /*
+ * #160: 縦持ちスマホ(390×844 等)では候補を1列にして、バグ名を1行で読めるようにする。
+ * 2列×2列の入れ子だと1マスが約80pxになり「? 無限ループ」が縦に割れていた。
+ */
+@media (max-width: 640px) and (min-height: 481px) {
+  .hud-battle-body .hud-cands {
+    grid-template-columns: 1fr;
+  }
+  .hud-cands li {
+    white-space: nowrap;
+  }
+}
+/*
  * 横持ちスマホ（高さが低い横長）: パネルを2列にして高さを画面の45%に収める（#113）。
  * 左=敵情報（上段）+ 候補・症状 / 右=スキル・パッチ + ターン終了・ランを放棄。
  * 左右それぞれが自分でスクロールするので、操作ボタンが画面外に押し出されない。
@@ -515,7 +695,7 @@
     padding: 4px 8px;
   }
   .hud-panel--battle {
-    height: 55vh;
+    height: 62vh;
     max-height: none;
     display: grid;
     grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
@@ -539,6 +719,35 @@
     margin: 2px 0 0;
     gap: 4px 8px;
   }
+  /* #166: 予告 / CPU / 稼働率 を折り返しながら横に並べ、行数を減らして「症状」の1行目まで中段に収める */
+  .hud-battle-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 14px;
+  }
+  .hud-battle-head .hud-battle-title {
+    flex: 1 1 100%;
+  }
+  .hud-battle-head .hud-cpu {
+    margin: 0;
+  }
+  /* 放棄ボタンは 44→36px（誤タップ防止の距離は右上配置のまま。WCAG 2.2 の最小 24px は満たす） */
+  .hud-battle-head .hud-battle-title .hud-btn--ghost {
+    min-height: 36px;
+  }
+  .hud-battle-body .hud-cols h3 {
+    margin-bottom: 2px;
+  }
+  /*
+   * #166 sota レビュー: 症状 4 つでも 4 行とも読めるよう、候補・症状の文字を 14px / 行高 1.25 に詰める。
+   * （症状欄は固定なので、収まらないと 3 行目以降が読めない）
+   */
+  .hud-battle-body .hud-cols li,
+  .hud-battle-body .hud-cols p {
+    font-size: 14px;
+    line-height: 1.25;
+  }
   /* 上段の行間を詰めて、中段（候補・症状）の高さを確保する（#142 差し戻し） */
   .hud-battle-head p,
   .hud-battle-head .hud-stat {
@@ -556,20 +765,20 @@
     grid-template-columns: 1fr;
     overflow-y: auto;
     min-height: 0;
-    padding: 0 10px 4px;
+    padding: 0 10px 2px;
     font-size: 13px;
     line-height: 1.35;
   }
   /* 候補 5 件を 3 列（2 段）にして、初期表示で「症状」の見出しと先頭が中段に入るようにする（#142 差し戻し） */
   .hud-battle-body .hud-cols {
-    gap: 4px 16px;
+    gap: 0 16px;
   }
   .hud-battle-body .hud-cands {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
+    gap: 3px;
   }
   .hud-cands li {
-    min-height: 28px;
+    min-height: 22px;
     padding: 0 6px;
     white-space: nowrap;
   }
@@ -585,9 +794,9 @@
     gap: 4px 6px;
   }
   .hud-battle-actions .hud-btn {
-    min-height: 32px;
+    min-height: 36px;
     padding: 2px 8px;
-    font-size: 13px;
+    font-size: 14px;
   }
   /* #142: 5 スキルを 3 列（2 段）にして右列に収める。高さは 44px のまま（文字は 2 行まで折り返す） */
   .hud-skills {
@@ -596,8 +805,26 @@
   }
   .hud-skills .hud-btn {
     padding: 2px 4px;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.25;
+  }
+  /*
+   * #94 Codex P2: 右列は overflow-y:auto なので、1段目のツールチップを上に出すと枠で切れる。
+   * 1段目（3列）だけ下に出す（下は2段目の上に重なるが枠内に収まる）
+   */
+  .hud-skills > .hud-btn--why:nth-child(-n + 3):hover::after {
+    top: calc(100% + 4px);
+    bottom: auto;
+  }
+  /* 横も枠で切れるので、左列は左端・右列は右端に揃える（全文は最長16字） */
+  .hud-skills > .hud-btn--why:nth-child(3n + 1):hover::after {
+    left: 0;
+    transform: none;
+  }
+  .hud-skills > .hud-btn--why:nth-child(3n):hover::after {
+    left: auto;
+    right: 0;
+    transform: none;
   }
   .hud-battle-foot {
     grid-area: foot;
@@ -648,6 +875,24 @@
   min-height: 44px;
   min-width: 44px;
   padding: 2px 10px;
+  font-size: 13px;
+}
+/* 症状の見出し行: 「症状の読み方」を開く小さなボタン（#118）。行の高さを増やさないよう上下の余白を相殺 */
+.hud-sym-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hud-sym-head h3 {
+  margin: 0;
+}
+.hud-sym-head .hud-guide {
+  flex: none;
+  min-height: 28px;
+  min-width: 28px;
+  margin: -4px 0;
+  padding: 0 8px;
   font-size: 13px;
 }
 /* マップ: 移動ボタン列との間は 24px 以上 */
@@ -740,4 +985,80 @@
 /* #126 残P2: リザルトの「タイトルへ」も 44px 以上（タップ対象） */
 #hud[data-scene="result"] .hud-btn {
   min-height: 44px;
+}
+
+/* 推理で候補が絞れたとき、ログ行を 800ms だけ強調（#104）。背景色だけ。文字色は変えない */
+.hud-log-flash {
+  animation: ld-log-flash 800ms steps(1, end);
+}
+@keyframes ld-log-flash {
+  0% {
+    background: rgb(78 205 196 / 20%);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* 症状の読み方（遊び方）。1列で折り返す */
+.help-symptoms {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.help-symptoms li {
+  margin-bottom: 4px;
+}
+
+/* 敗北リザルトの「最後のバグ・誤パッチ」 */
+.result-defeat p {
+  margin: 0 0 4px;
+}
+
+/* 視覚では隠し、スクリーンリーダーには読ませる（#92: 敵 HP は画面のバー横に1か所だけ出す） */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * #169: ボス戦は候補が5つあり、縦持ちスマホ(390×844)・1280×720 で操作列の上段が内部スクロールの外へ隠れていた。
+ * 候補は読むだけの表示（ボタンではない）なので、ボス戦に限り高さと余白を詰めて操作列に高さを回す。
+ * 操作ボタン（44px 以上）は詰めない。横持ちスマホ（高さ480px以下）は別レイアウトで、もともと収まるので対象外。
+ */
+@media (min-height: 481px) {
+  .hud-panel--boss .hud-cands {
+    gap: 4px;
+  }
+  .hud-panel--boss .hud-cands li {
+    min-height: 36px;
+  }
+  .hud-panel--boss .hud-battle-body {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+}
+
+/* 縦持ちスマホ: 見出し行と予告行の余白、ステータスの行間も詰める（#169） */
+@media (max-width: 640px) and (min-height: 481px) {
+  .hud-panel--boss .hud-battle-head {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .hud-panel--boss .hud-battle-head .hud-cpu {
+    margin: 2px 0;
+  }
+  .hud-panel--boss .hud-battle-body .hud-cols h3 {
+    margin-bottom: 2px;
+  }
+  .hud-panel--boss .hud-cands li {
+    min-height: 30px;
+  }
 }

@@ -10,7 +10,14 @@ import {
   type BotGame,
 } from "./bot";
 import { toyIsTerminal, toyLegalActions, toyReducer, type ToyAction, type ToyState } from "./toy";
-import { initRun, runReducer, legalActions, type Action, type RunState } from "../../src/core/run";
+import {
+  initRun,
+  runReducer,
+  legalActions,
+  RULES_VERSION,
+  type Action,
+  type RunState,
+} from "../../src/core/run";
 
 const hpNonNegative = (s: ToyState): string | null =>
   s.hp >= 0 && s.bugHp >= 0 ? null : `HP がマイナス: hp=${s.hp} bugHp=${s.bugHp}`;
@@ -176,7 +183,7 @@ describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
       s.player.cpu >= 0 ? null : `CPU がマイナス: ${s.player.cpu}`;
     const runGame: BotGame<RunState, Action> = {
       name: "log-dive",
-      version: 4,
+      version: RULES_VERSION,
       reducer: runReducer,
       legalActions: (state) => legalActions(state),
       isTerminal: (state) =>
@@ -194,7 +201,7 @@ describe("LD-15 本物の BOT（Log Dive の reducer 待ち）", () => {
       s.player.cpu >= 0 ? null : `CPU がマイナス: ${s.player.cpu}`;
     const runGame: BotGame<RunState, Action> = {
       name: "log-dive",
-      version: 4,
+      version: RULES_VERSION,
       reducer: runReducer,
       legalActions: (state) => legalActions(state),
       isTerminal: (state) =>

@@ -1,8 +1,10 @@
+import { STORY } from "./story-text";
 import Phaser from "phaser";
 import { setupView } from "./view";
 import { createSceneFx } from "../fx/scene-fx";
 import { button, el, renderHud } from "../ui/hud";
-import { current } from "./run-port";
+import { bugName, current, sceneFor, startRun } from "./run-port";
+import { defeatHint, defeatSummary } from "./result-text";
 import type { RunPhase } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 
@@ -34,10 +36,28 @@ export class ResultScene extends Phaser.Scene {
       ["デグレ回数", String(s.stats.degrades)],
       ["シード", s.seed],
     ];
+    const defeat = defeatSummary(s);
+    const retry = () => {
+      const next = startRun(s.seed);
+      goTo(this, sceneFor(next));
+    };
     const panel = el(
       "section",
       { class: "hud-panel", "aria-label": "リザルト" },
       el("h1", { class: s.phase === "won" ? "hud-ok" : "hud-danger" }, HEADLINE[s.phase]),
+      s.phase === "won" ? el("p", { class: "hud-ok hud-lines" }, STORY.clearEpilogue) : null,
+      s.phase === "won"
+        ? el("h2", { class: "hud-stat" }, STORY.clearStatsHeading(s.stats.bugsClosed))
+        : null,
+      defeat
+        ? el(
+            "div",
+            { class: "result-defeat", "data-testid": "result-defeat" },
+            el("p", {}, `最後のバグ: ${bugName(defeat.bug)}${defeat.boss ? "（ボス）" : ""}`),
+            el("p", {}, `誤パッチ: ${defeat.wrongPatches}回`),
+            el("p", { class: "hud-hint" }, defeatHint(defeat)),
+          )
+        : null,
       el(
         "dl",
         { class: "hud-dl" },
@@ -46,10 +66,12 @@ export class ResultScene extends Phaser.Scene {
           el("dd", { "data-testid": `result-${k}` }, v),
         ]),
       ),
+      s.phase === "won" ? el("p", { class: "hud-ok" }, STORY.clearCoda) : null,
       el(
         "div",
         { class: "hud-row" },
-        button("タイトルへ", () => goTo(this, "title"), { primary: true }),
+        s.phase === "lost" ? button("同じシードでもう一度", retry, { primary: true }) : null,
+        button("タイトルへ", () => goTo(this, "title"), { primary: s.phase !== "lost" }),
       ),
     );
     renderHud("result", panel);

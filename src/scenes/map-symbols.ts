@@ -107,8 +107,6 @@ export const UNKNOWN_H = 10;
 /** CELL の下限（全階で維持。密な階は #66 の ID 規則）と上限（minori 指定 #89: 疎な階は最大 24px）。 */
 export const MIN_CELL = 12;
 export const MAX_CELL = 24;
-/** 縦持ちの部屋の原点Y（上マージン）。 */
-const MAP_ORIGIN_Y = 20;
 /**
  * 横持ちのマップ領域の既定値（内部 px、minori 指定 #89）。下端は既定で y=106 だが、
  * 実際の下端は MapScene が HUD パネルの実測位置から求めて `mapBottom` で渡す（HUD の高さは画面サイズで変わるため）。
@@ -128,19 +126,68 @@ export interface MapLayoutOptions {
    * 省略時は既定の下端（MAP_AREA_TOP + MAP_AREA_H）。
    */
   readonly mapBottom?: number;
+  /**
+   * 縦持ちで実際に描く部屋（未踏で隠れている行は含めない）。縦の間隔と配置は、この部屋群の行範囲（bbox）を基準にする（#121 A）。
+   * 横の格子（CELL・ROOM・ORIGIN_X）は省略時と同じく全部屋で決める。省略時は rooms 全体。
+   */
+  readonly shown?: readonly RoomState[];
 }
-/** 縦持ち（aspect<1）のマップ高さ。HUD は canvas の下に置かれるので上マージン20pxを除く全高。 */
+/** 縦持ち（aspect<1）の canvas 内部高さの下限（横持ちと同じ 180）。HUD が極端に高い画面でもここで止める（HUD 側がスクロール）。 */
 export const PORTRAIT_AVAIL_H = 180;
-/** 縦持ち（aspect<1）時の部屋 ID フォントサイズ（内部 px）。判読性のため横持ちの ID_FONT_PX より大きくする。 */
+/**
+ * 縦持ちのマップ領域の上マージン（内部 px）。右上の音ボタン（44px＋余白 8px ≒ 52 画面px）と
+ * 最上段の部屋が重ならない高さ（44 × 390/320 ≒ 54 画面px）。
+ */
+const PORTRAIT_MAP_TOP = 44;
+/**
+ * 縦持ちの CELL の上限（内部 px）。疎な階（3×2 など）で canvas の上下が黒く空くのを防ぐため 80 にする。
+ * 幅・高さのどちらかが埋まった時点で止まるので、横幅いっぱいの階が間延びすることはない（#121 残件）。
+ */
+export const PORTRAIT_MAX_CELL = 80;
+/**
+ * 縦持ちの部屋の比率。ROOM = CELL × 0.65。CELL=46（6 列の階）で ROOM=29 内部px
+ * ＝ 幅 360〜430 の画面で約 32〜39 画面px（#121: 32px 以上）。箱の下の隙間はラベル（12px）が入る高さ。
+ */
+const PORTRAIT_ROOM_RATIO = 0.65;
+/** 縦持ちのラベルのフォントサイズ（内部 px）。画面幅 390 で約 14.6px、幅 320 でも 12px。 */
 export const PORTRAIT_ID_FONT_PX = 12;
+/** 縦持ちのラベル1文字の幅（内部 px、12px フォントの概算）。 */
+export const PORTRAIT_CHAR_W = 7;
+/** 縦持ちのラベルの文字高（内部 px、衝突判定と下端計算用）。 */
+export const PORTRAIT_ID_H = 14;
+/** 縦持ちの下マージン（内部 px）。 */
+const PORTRAIT_BOTTOM_GAP = 8;
+/** 縦の間隔を広げた階で、部屋群の上下に必ず残す余白（内部 px）。最上段を音ボタン（上 52 画面px）より下に保つ。 */
+export const PORTRAIT_STRETCH_PAD = 8;
+
+/**
+ * 縦持ちのマップ画面で canvas の内部高さ（px。幅は 320 固定）を決める（#121）。
+ * canvas の下に HUD（高さ hudH 画面px）が入るので、画面高から HUD を引いた残り全部を canvas に使う。
+ * 戻り値は内部 px なので、表示の高さは「戻り値 × 画面幅 / 320」。画面に収まるよう切り捨てる。
+ * 下限は PORTRAIT_AVAIL_H（HUD が高すぎるときは HUD 側がスクロールする）。
+ */
+export function portraitCanvasH(viewW: number, viewH: number, hudH: number): number {
+  if (viewW <= 0 || viewH <= 0) return PORTRAIT_AVAIL_H;
+  const h = Math.floor(((viewH - Math.max(0, hudH)) * 320) / viewW);
+  return Math.max(PORTRAIT_AVAIL_H, h);
+}
 
 export interface MapLayout {
-  /** 1マスの間隔（px）。 */
+  /** 1マスの横の間隔（px。CELL_X）。ROOM の大きさ・ラベル幅の基準。 */
   readonly CELL: number;
+  /**
+   * 1マスの縦の間隔（px。CELL_Y）。省略時は CELL（横持ち・PC は縦横同じ）。
+   * 縦持ちで列数が多い階は CELL が幅で決まり高さが余るので、余りを縦の間隔に回す（#121 残件）。
+   */
+  readonly CELL_Y?: number;
   /** 部屋の四角の一辺（px）。 */
   readonly ROOM: number;
   readonly ORIGIN_X: number;
   readonly ORIGIN_Y: number;
+  /** ラベル1文字の幅（px）。省略時は CHAR_W（横持ち）。縦持ちは PORTRAIT_CHAR_W。 */
+  readonly charW?: number;
+  /** ラベルの文字高（px）。省略時は ID_H（横持ち）。縦持ちは PORTRAIT_ID_H。 */
+  readonly idH?: number;
 }
 
 /**
@@ -153,19 +200,50 @@ export function calcMapLayout(rooms: readonly RoomState[], opts?: MapLayoutOptio
   const mapH = Math.max(...rooms.map((r) => r.y)) + 1;
   const availW = width - 40; // 左右マージン20px
   const portraitH = opts?.availH;
-  // 縦持ち: HUD が canvas の外（下）なので、上マージン(ORIGIN_Y)と最下段の ID ラベル(ID_H)を引いた全高を使う（#114）
-  // 横持ち: マップ領域 MAP_AREA_H に収める（#89）
-  // 横持ちの領域: 上端 MAP_AREA_TOP、下端 mapBottom（HUD の上端を避けた値）。
+  // 縦持ち（#121）: HUD が canvas の外（下）なので、上マージン（音ボタンを避ける）と最下段のラベルを引いた全高を使う。
+  //   CELL の上限は PORTRAIT_MAX_CELL、箱は PORTRAIT_ROOM_RATIO（ラベルを入れる隙間を残しつつ大きく）。
+  if (portraitH !== undefined) {
+    const availPH = portraitH - PORTRAIT_MAP_TOP - PORTRAIT_ID_H - PORTRAIT_BOTTOM_GAP;
+    const raw = Math.min(Math.floor(availW / mapW), Math.floor(availPH / mapH));
+    const CELL = Math.max(MIN_CELL, Math.min(PORTRAIT_MAX_CELL, raw));
+    // 箱の下にラベル（PORTRAIT_ID_H）が入る隙間を必ず残す（HUD が極端に高く CELL が小さい画面の保険）
+    const ROOM = Math.max(
+      4,
+      Math.min(Math.floor(CELL * PORTRAIT_ROOM_RATIO), CELL - PORTRAIT_ID_H),
+    );
+    const ORIGIN_X = Math.floor((width - (mapW - 1) * CELL - ROOM) / 2) + Math.floor(ROOM / 2);
+    // 縦は「描く部屋の行範囲（bbox）」で決める。隠れている行は場所を取らない（横は上の固定格子のまま）。
+    // 幅で CELL が決まり高さが余る階は、縦の間隔（CELL_Y）を広げて bbox が availPH を使い切るようにする。
+    // CELL_Y は CELL を下回らない（高さで決まる階・MIN_CELL で止まる階は従来どおり）。
+    const shown = opts?.shown ?? rooms;
+    const rowMin = Math.min(...shown.map((r) => r.y));
+    const spanH = Math.max(...shown.map((r) => r.y)) - rowMin + 1;
+    const CELL_Y =
+      spanH > 1
+        ? Math.max(CELL, Math.floor((availPH - ROOM - 2 * PORTRAIT_STRETCH_PAD) / (spanH - 1)))
+        : CELL;
+    // 残りの端数は上下に振り分けて、bbox を領域の縦の中央に置く
+    const free = Math.max(0, availPH - ((spanH - 1) * CELL_Y + ROOM));
+    return {
+      CELL,
+      CELL_Y,
+      ROOM,
+      ORIGIN_X,
+      // 描く部屋の最上行（rowMin）が領域の上端（free の半分の位置）に来るよう原点をずらす
+      ORIGIN_Y: PORTRAIT_MAP_TOP + Math.floor(free / 2) + Math.floor(ROOM / 2) - rowMin * CELL_Y,
+      charW: PORTRAIT_CHAR_W,
+      idH: PORTRAIT_ID_H,
+    };
+  }
+  // 横持ち: マップ領域 MAP_AREA_H に収める（#89）。領域: 上端 MAP_AREA_TOP、下端 mapBottom（HUD の上端を避けた値）。
   const areaH = (opts?.mapBottom ?? MAP_AREA_TOP + MAP_AREA_H) - MAP_AREA_TOP;
-  const availH = portraitH !== undefined ? portraitH - MAP_ORIGIN_Y - ID_H : areaH;
-  const raw = Math.min(Math.floor(availW / mapW), Math.floor(availH / mapH));
+  const raw = Math.min(Math.floor(availW / mapW), Math.floor(areaH / mapH));
   // 領域が足りない短い画面でも CELL は MIN_CELL で止める（それ以上縮めると判読できない）
   const CELL = Math.max(MIN_CELL, Math.min(MAX_CELL, raw));
   const ratio = CELL >= DENSE_CELL ? SPARSE_ROOM_RATIO : BASE_ROOM_RATIO;
   const ROOM = Math.max(4, Math.floor(CELL * ratio));
   const ORIGIN_X = Math.floor((width - (mapW - 1) * CELL - ROOM) / 2) + Math.floor(ROOM / 2);
-  if (portraitH !== undefined) return { CELL, ROOM, ORIGIN_X, ORIGIN_Y: MAP_ORIGIN_Y };
-  // 横持ち: 箱の上端〜最下段のラベル下端（疎な階のみ。ROOM の下に ID_H）を領域内で垂直中央に置く
+  // 箱の上端〜最下段のラベル下端（疎な階のみ。ROOM の下に ID_H）を領域内で垂直中央に置く
   const extent = (mapH - 1) * CELL + ROOM + (CELL >= DENSE_CELL ? ID_H : 0);
   const top = MAP_AREA_TOP + Math.max(0, Math.floor((areaH - extent) / 2));
   return { CELL, ROOM, ORIGIN_X, ORIGIN_Y: top + Math.floor(ROOM / 2) };
@@ -181,6 +259,8 @@ export const DENSE_CELL = 20;
 export const DENSE_SYM_W = 8;
 /** 密な階で記号を箱の右隣に置けるか（隙間 CELL-ROOM が足りないほど密なら出さない。枠色で区別は残る）。 */
 export function symbolFits(layout: MapLayout): boolean {
+  // 縦持ち（charW 指定）の疎な階は箱の中央に 10×10 の記号を置くので、箱が 10px 未満（HUD が極端に高い画面）なら出さない
+  if (layout.charW !== undefined && !isDense(layout)) return layout.ROOM >= 10;
   return !isDense(layout) || layout.CELL - layout.ROOM >= DENSE_SYM_W + 1;
 }
 export function isDense(layout: MapLayout): boolean {
@@ -192,10 +272,14 @@ export function isDense(layout: MapLayout): boolean {
  * "config.read()" → "read"（モジュール名と () を省く）。箱の幅（CELL）に収まる文字数で切る。
  * 未踏・密な階は null（未踏は「?」、密な階は箱が小さく文字が入らないため記号と枠色で区別）。
  */
-export function roomLabelText(r: RoomState, layout: MapLayout): string | null {
+export function roomLabelText(r: RoomState, layout: MapLayout, isHere = false): string | null {
   if (!r.visited || isDense(layout)) return null;
   const name = r.label.replace(/\(\)$/, "").split(".").pop() ?? "";
-  const max = Math.max(1, Math.floor((layout.CELL - 2) / CHAR_W));
+  const max = Math.max(1, Math.floor((layout.CELL - 2) / (layout.charW ?? CHAR_W)));
+  // 縦持ち（charW 指定）の現在地は名前を省略しない（#121）。ただし箱の幅（CELL-2）に収まるときだけ。
+  // 収まらない小さい画面では省略して、隣の部屋のラベルと重ならないようにする（Codex P2）
+  if (isHere && layout.charW !== undefined && name.length * layout.charW <= layout.CELL - 2)
+    return name;
   return name.length > max ? `${name.slice(0, max - 1)}…` : name;
 }
 
@@ -203,20 +287,23 @@ export function roomLabelText(r: RoomState, layout: MapLayout): string | null {
  * 部屋の四角・ラベル・記号・未踏「?」が描かれる矩形（px、近似）。MapScene の配置と同じ式。
  * 密な階: ラベルなし、記号=箱の右隣（中央揃え縦）。
  * 疎な階: ラベル（探索済みのみ、関数名）=箱の真下に中央揃え（#114）、記号=箱の中央。
+ * isHere: 現在地の部屋か（縦持ちは名前を省略しないので、その幅で判定する）。
  * 未踏「?」（疎な階のみ）は箱の中央（箱が接続線を隠す）。
  */
 export function partRects(
   r: RoomState,
   layout: MapLayout,
   hasSymbolIn: boolean,
+  isHere = false,
 ): { box: Rect; id: Rect | null; symbol: Rect | null; unknown: Rect | null } {
   const cx = layout.ORIGIN_X + r.x * layout.CELL;
-  const cy = layout.ORIGIN_Y + r.y * layout.CELL;
+  const cy = layout.ORIGIN_Y + r.y * (layout.CELL_Y ?? layout.CELL);
   const R = layout.ROOM;
   const hasSymbol = hasSymbolIn && symbolFits(layout);
   const box = { x: cx - R / 2, y: cy - R / 2, w: R, h: R };
-  const text = roomLabelText(r, layout);
-  const idW = (text?.length ?? 0) * CHAR_W;
+  // 描画（MapScene）と同じ引数で文字列を決める。現在地は全部出すので、その幅で重なりを判定する
+  const text = roomLabelText(r, layout, isHere);
+  const idW = (text?.length ?? 0) * (layout.charW ?? CHAR_W);
   // 密な階は上の段の ID と干渉するので「?」は出さない（未踏は暗い箱＋弱い色の ID で区別）
   const unknown =
     r.visited || isDense(layout) || hasSymbol
@@ -237,7 +324,7 @@ export function partRects(
   }
   return {
     box,
-    id: text ? { x: cx - idW / 2, y: cy + R / 2, w: idW, h: ID_H } : null,
+    id: text ? { x: cx - idW / 2, y: cy + R / 2, w: idW, h: layout.idH ?? ID_H } : null,
     symbol: hasSymbol ? { x: cx - 5, y: cy - 5, w: 10, h: 10 } : null,
     unknown,
   };
@@ -248,9 +335,13 @@ export function partCollisions(
   rooms: readonly RoomState[],
   layout: MapLayout,
   hasSymbol: (r: RoomState) => boolean,
+  currentId?: string,
 ): string[] {
   const hits: string[] = [];
-  const parts = rooms.map((r) => ({ rid: r.id, ...partRects(r, layout, hasSymbol(r)) }));
+  const parts = rooms.map((r) => ({
+    rid: r.id,
+    ...partRects(r, layout, hasSymbol(r), r.id === currentId),
+  }));
   for (const a of parts) {
     for (const b of parts) {
       if (a === b) continue;

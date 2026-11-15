@@ -13,7 +13,7 @@ async function waitForFont(): Promise<void> {
   if (!document.fonts) return; // polyfill なし環境はスキップ
   try {
     await Promise.race([
-      document.fonts.load('12px "DotGothic16"'),
+      document.fonts.load('16px "DotGothic16"'),
       // 5秒タイムアウトは失敗時のフォールバック（e2e をブロックしない）
       new Promise<void>((_res) => setTimeout(_res, 5000)),
     ]);
@@ -45,7 +45,7 @@ export class BootScene extends Phaser.Scene {
     this.add
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40, TITLE, {
         fontFamily: FONT_FAMILY,
-        fontSize: "12px",
+        fontSize: "16px",
         color: "#e4f1ec",
       })
       .setOrigin(0.5)

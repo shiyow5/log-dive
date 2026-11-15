@@ -68,9 +68,12 @@ test("縦切り: ?seed= → 1部屋移動 → バグ1種と戦闘 → 終了（�
   // 戦闘: 決まった手順を打つ（reproduce → patch …）
   // 未再現のうちはパッチを押せず、理由が出ている
   await expect(page.getByRole("button", { name: /修正パッチ/ })).toBeDisabled();
-  await expect(page.getByRole("list", { name: "使えない理由" })).toContainText(
+  // 理由はボタン内2行目（短文）と aria-describedby（全文）に出る（#94）
+  await expect(page.getByRole("button", { name: /修正パッチ/ })).toContainText("再現が必要");
+  await expect(page.getByRole("button", { name: /修正パッチ/ })).toHaveAccessibleDescription(
     "再現できていないバグは直せません",
   );
+  await expect(page.getByRole("list", { name: "使えない理由" })).toHaveCount(0);
   await page.getByRole("button", { name: /再現手順/ }).click();
   await expect(page.getByRole("region", { name: "症状" }).getByRole("listitem")).toHaveCount(1);
   await page.getByRole("button", { name: /修正パッチ/ }).click();

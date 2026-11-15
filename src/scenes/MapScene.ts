@@ -1,9 +1,11 @@
 import Phaser from "phaser";
 import { setupView } from "./view";
-import { FONT_FAMILY, GAME_HEIGHT, RENDER_SCALE } from "../config";
+import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
-import { button, el, renderHud } from "../ui/hud";
+import { button, el, renderHud, setHudBusy } from "../ui/hud";
+import { fxEnabled, markFade } from "../ui/flags";
+import { IMPACT, chestOpenFx } from "../fx/impact-fx";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
 import type { Action, RoomState, RunState } from "./run-port";
@@ -13,8 +15,8 @@ import {
   isDense,
   symbolFits,
   roomLabelText,
-  PORTRAIT_AVAIL_H,
   PORTRAIT_ID_FONT_PX,
+  portraitCanvasH,
   isShownOnMap,
   ID_FONT_PX,
   UNKNOWN_H,
@@ -27,6 +29,11 @@ import {
 
 /** 横持ちでマップの下端と HUD パネルの上端を空ける余白（内部px）。 */
 const HUD_GAP = 4;
+
+/** 部屋名ラベルの depth。pixelfx の front レイヤー(10)・宝箱(25)より手前（#115）。 */
+const LABEL_DEPTH = 30;
+/** 宝箱の中心の上限は「部屋中心 + 部屋の半分 - この値」。箱(16px)の下端がラベル上端(部屋下端-2px)より1px上に来る値。ラベルが箱に重なる小さい部屋だけ上にずれる。 */
+const CHEST_LIFT_PX = 13;
 
 /** "#rrggbb" → Phaser の数値色。 */
 const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
@@ -85,6 +92,14 @@ export function moveLabel(r: RoomState, s: RunState): string {
 
 export class MapScene extends Phaser.Scene {
   private fx?: FxDirector;
+  /** 直近に描いたマップの部屋中心（宝箱演出の位置）。 */
+  private roomCenters = new Map<string, { x: number; y: number }>();
+  /** 部屋の一辺(px)。宝箱の演出位置をラベルの逆側に寄せるために使う（drawMap で更新）。 */
+  private roomPx = 0;
+  /** 直近に描いた縦持ちマップの描画条件（同じ階で描く行範囲が変わった再配置だけ滑らせるために使う）。 */
+  private prevVert: { floor: number; rowMin: number; spanH: number; topY: number } | null = null;
+  /** 再配置の滑らせ（200ms）。次の描き直しで止める。 */
+  private reflowTween: Phaser.Tweens.Tween | null = null;
 
   constructor() {
     super("map");
@@ -100,16 +115,68 @@ export class MapScene extends Phaser.Scene {
     fx.emitRunEvents(s.events);
     // HUD を先に描く（マップの下端は HUD パネルの実測位置で決まるため）
     this.renderHud(s);
+    // 縦持ちは HUD の実測高さから canvas の高さを決める（HUD を描いた後でないと測れない）
+    this.applyView();
     this.drawMap(s);
     // 端末を回したとき・画面サイズが変わったとき（マップの大きさや HUD の高さが変わる）に描き直す
     const mq = window.matchMedia("(max-aspect-ratio: 1/1)");
-    const onTurn = (): void => this.redrawMap();
+    const onTurn = (): void => {
+      this.applyView();
+      this.redrawMap();
+    };
     mq.addEventListener("change", onTurn);
     this.scale.on(Phaser.Scale.Events.RESIZE, onTurn);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       mq.removeEventListener("change", onTurn);
       this.scale.off(Phaser.Scale.Events.RESIZE, onTurn);
+      this.resetView();
     });
+  }
+
+  /**
+   * 縦持ちのとき canvas を縦に伸ばし、HUD をその下に置く（#121）。
+   * 横持ちは 320×180 のまま。canvas の内部高さが変わったときだけ作り直す（RESIZE から呼ばれても止まる）。
+   */
+  private applyView(): void {
+    const portrait = window.matchMedia("(max-aspect-ratio: 1/1)").matches;
+    if (!portrait) {
+      this.resetView();
+      return;
+    }
+    const h = portraitCanvasH(window.innerWidth, window.innerHeight, this.hudNeedH());
+    if (this.scale.gameSize.height !== h * RENDER_SCALE) {
+      this.scale.setGameSize(GAME_WIDTH * RENDER_SCALE, h * RENDER_SCALE);
+      this.cameras.main.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, h / 2);
+    }
+    const cssH = this.game.canvas.getBoundingClientRect().height;
+    document.documentElement.style.setProperty("--ld-canvas-h", `${cssH}px`);
+  }
+
+  /**
+   * 縦持ちで HUD（パネル）が必要とする高さ（画面 px）。#hud の上下 padding とパネル間の gap を含む。
+   * パネルは overflow:auto で縮められるので、見えている高さと中身の高さ（scrollHeight）の大きい方を使う。
+   */
+  private hudNeedH(): number {
+    const hud = document.getElementById("hud");
+    if (!hud) return 0;
+    const cs = getComputedStyle(hud);
+    const panels = [...hud.children].filter((c): c is HTMLElement => c instanceof HTMLElement);
+    const sum = panels.reduce((acc, p) => {
+      const rect = p.getBoundingClientRect().height;
+      const content = p.scrollHeight + (p.offsetHeight - p.clientHeight);
+      return acc + Math.max(rect, content);
+    }, 0);
+    const gap = parseFloat(cs.rowGap) || 0;
+    const pad = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    return Math.ceil(sum + gap * Math.max(0, panels.length - 1) + pad);
+  }
+
+  /** 横持ち・マップを離れるときは canvas を 320×180 に戻し、HUD の位置も元に戻す。 */
+  private resetView(): void {
+    document.documentElement.style.removeProperty("--ld-canvas-h");
+    if (this.scale.gameSize.height === GAME_HEIGHT * RENDER_SCALE) return;
+    this.scale.setGameSize(GAME_WIDTH * RENDER_SCALE, GAME_HEIGHT * RENDER_SCALE);
+    this.cameras?.main?.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
   }
 
   /**
@@ -134,6 +201,8 @@ export class MapScene extends Phaser.Scene {
 
   /** 演出レイヤー(fx-*)は消さずに、マップの描画物だけ消す。 */
   private clearMapObjects(): void {
+    this.reflowTween?.stop();
+    this.reflowTween = null;
     for (const o of [...this.children.list]) {
       if (!(o instanceof Phaser.GameObjects.Image && o.texture.key.startsWith("fx-"))) o.destroy();
     }
@@ -147,28 +216,60 @@ export class MapScene extends Phaser.Scene {
       return;
     }
     this.fx?.emitRunEvents(next.events);
-    this.clearMapObjects();
-    this.renderHud(next);
-    this.drawMap(next);
+    const redraw = (): void => {
+      // HUD の高さが変わると canvas の高さも変わる（RESIZE で描き直されることがあるので、消してから描く）
+      this.renderHud(next);
+      this.applyView();
+      this.clearMapObjects();
+      this.drawMap(next);
+    };
+    if (next.events.some((e) => e.t === "descended") && fxEnabled()) {
+      // 階段: 暗転 out 200ms → 描き直し → in 200ms（Issue #104）
+      setHudBusy(true);
+      markFade(IMPACT.stairsOutMs + IMPACT.stairsInMs);
+      const { r, g, b } = IMPACT.stairsFade;
+      const cam = this.cameras.main;
+      cam.fadeOut(IMPACT.stairsOutMs, r, g, b);
+      cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        redraw();
+        setHudBusy(false);
+        cam.fadeIn(IMPACT.stairsInMs, r, g, b);
+      });
+      return;
+    }
+    redraw();
+    if (next.events.some((e) => e.t === "looted")) {
+      const c = this.roomCenters.get(next.roomId);
+      // 箱（16px）を部屋ラベル（箱の下端付近）と逆側＝上にずらし、ラベルに重ならないようにする（P2 #147）
+      if (c) chestOpenFx(this, c.x, Math.min(c.y, c.y + this.roomPx / 2 - CHEST_LIFT_PX));
+    }
   }
 
   private drawMap(s: RunState): void {
     const rooms = s.floor.rooms;
     const visible = rooms.filter((r) => isShownOnMap(r, s));
-    // 縦持ち（aspect<1）は HUD が canvas の下なので、マップに全高を使う（#114）
+    // 縦持ち（aspect<1）は HUD が canvas の下なので、マップに canvas の全高を使う（#114、#121 で canvas 自体を伸ばした）
     const portrait = window.matchMedia("(max-aspect-ratio: 1/1)").matches;
+    const drawnFrom = this.children.list.length;
     // 横持ちは HUD パネルの上端より上（余白 HUD_GAP を空けて）に収める（#89 の差し戻し）
+    // 縦持ちは描く部屋の行範囲（bbox）で縦を決める（#121 A）。横の格子は全部屋で決まったまま。
     const layout = calcMapLayout(
       rooms,
-      portrait ? { availH: PORTRAIT_AVAIL_H } : { mapBottom: this.hudTopInCanvas() - HUD_GAP },
+      portrait
+        ? { availH: this.scale.gameSize.height / RENDER_SCALE, shown: visible }
+        : { mapBottom: this.hudTopInCanvas() - HUD_GAP },
     );
     const { CELL, ROOM, ORIGIN_X, ORIGIN_Y } = layout;
+    const CELL_Y = layout.CELL_Y ?? CELL;
+    this.roomPx = ROOM;
     const dense = isDense(layout);
 
     function center(r: RoomState): { x: number; y: number } {
-      return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL };
+      return { x: ORIGIN_X + r.x * CELL, y: ORIGIN_Y + r.y * CELL_Y };
     }
 
+    this.roomCenters.clear();
+    for (const r of rooms) this.roomCenters.set(r.id, center(r));
     const g = this.add.graphics();
     g.lineStyle(1, COLOR.line, 1);
     for (const r of visible) {
@@ -242,20 +343,81 @@ export class MapScene extends Phaser.Scene {
           .setResolution(RENDER_SCALE);
       }
       // 探索済みの部屋は関数名を箱の真下に（#114）。部屋 ID はキャンバスに出さない。未踏は上の「?」。
-      const label = roomLabelText(r, layout);
+      const label = roomLabelText(r, layout, isHere);
       if (label) {
-        this.add
-          .text(x, y + ROOM / 2 - 2, label, {
+        // ラベルの下地: 縦の接続線がラベルの文字を貫通して読みにくくなるのを防ぐ（#120）。
+        // 線は描いたまま、文字の背後だけ背景色で抜く（lines → 下地 → 文字 の順）
+        const plate = this.add.graphics();
+        const text = this.add
+          .text(x, y + ROOM / 2 + (portrait ? 2 : -2), label, {
             fontFamily: FONT_FAMILY,
             fontSize: `${portrait ? PORTRAIT_ID_FONT_PX : ID_FONT_PX}px`,
             color: isHere ? COLOR.text : COLOR.weak,
             stroke: "#0f1a1c",
-            strokeThickness: 1,
+            strokeThickness: portrait ? 4 : 1,
           })
           .setOrigin(0.5, 0)
           .setResolution(RENDER_SCALE);
+        const tb = text.getBounds();
+        // 箱の枠（下端）は削らない: 下地の上端は箱の下端より下にそろえる
+        const top = Math.max(tb.y, y + ROOM / 2 + 1);
+        plate.fillStyle(COLOR.bg, 1).fillRect(tb.x - 1, top, tb.width + 2, tb.bottom - top);
+        // #115: 演出の front レイヤー(depth 10)より手前に置き、撃破・階段の演出中も部屋名を読めるようにする
+        // 下地は文字より下、文字は下地より上（#120）
+        plate.setDepth(LABEL_DEPTH);
+        text.setDepth(LABEL_DEPTH + 0.1);
       }
     }
+    if (portrait) {
+      // 描く行が増減して bbox が変わった再配置だけ滑らせる。同じ配置の描き直しや画面サイズ変更では動かさない。
+      const rowMin = Math.min(...visible.map((r) => r.y));
+      const spanH = Math.max(...visible.map((r) => r.y)) - rowMin + 1;
+      const topY = ORIGIN_Y + rowMin * CELL_Y;
+      const prev = this.prevVert;
+      this.prevVert = { floor: s.floor.number, rowMin, spanH, topY };
+      if (
+        prev &&
+        prev.floor === s.floor.number &&
+        (prev.rowMin !== rowMin || prev.spanH !== spanH)
+      ) {
+        const created = this.children.list
+          .slice(drawnFrom)
+          .filter(
+            (o): o is Phaser.GameObjects.Graphics | Phaser.GameObjects.Text =>
+              o instanceof Phaser.GameObjects.Graphics || o instanceof Phaser.GameObjects.Text,
+          );
+        this.slideMap(created, prev.topY - topY);
+      }
+    }
+  }
+
+  /**
+   * 描き直したマップを、旧位置（dy だけずれた位置）から 200ms で新位置へ滑らせる（#121 A）。
+   * OS の「視差効果を減らす」が有効なら滑らせず即時に新位置へ置く。
+   */
+  private slideMap(
+    objs: (Phaser.GameObjects.Graphics | Phaser.GameObjects.Text)[],
+    dy: number,
+  ): void {
+    if (dy === 0) return;
+    const reduced =
+      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced || !fxEnabled()) return;
+    const base = objs.map((o) => o.y);
+    const place = (k: number): void => {
+      objs.forEach((o, i) => {
+        o.y = (base[i] ?? o.y) + dy * k;
+      });
+    };
+    place(1);
+    this.reflowTween = this.tweens.addCounter({
+      from: 1,
+      to: 0,
+      duration: 200,
+      ease: "Sine.easeOut",
+      onUpdate: (tween) => place(tween.getValue() ?? 0),
+      onComplete: () => place(0),
+    });
   }
 
   private renderHud(s: RunState): void {
