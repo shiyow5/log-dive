@@ -106,7 +106,7 @@ export const UNKNOWN_H = 10;
 
 /** CELL の下限（全階で維持。密な階は #66 の ID 規則）と上限（minori 指定 #89: 疎な階は最大 24px）。 */
 export const MIN_CELL = 12;
-export const MAX_CELL = 24;
+export const MAX_CELL = 32;
 /**
  * 横持ちのマップ領域の既定値（内部 px、minori 指定 #89）。下端は既定で y=106 だが、
  * 実際の下端は MapScene が HUD パネルの実測位置から求めて `mapBottom` で渡す（HUD の高さは画面サイズで変わるため）。
