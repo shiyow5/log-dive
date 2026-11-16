@@ -146,6 +146,38 @@ describe("MapTutorial", () => {
     expect(t.currentStep).toBe(3);
   });
 
+  it("ステップ2: 訪問済みの空き部屋（戻るだけ）は強調せず、未踏の部屋を強調する（kyoya P2）", () => {
+    const rooms = [
+      room("r0", ["r1", "r2"], { kind: "empty" }),
+      room("r1", ["r0"], { kind: "empty" }),
+      room("r2", ["r0"], { kind: "bug", bugs: ["off-by-one"] }),
+    ].map((r) => (r.id === "r1" ? { ...r, visited: true } : r));
+    const t = new MapTutorial(new MemoryStorage(), false);
+    t.start(st(rooms, "r0"));
+    t.observe(st(rooms, "r0", [moved("r1")]));
+    expect(t.currentStep).toBe(2);
+    expect(t.view(st(rooms, "r0"))).toMatchObject({
+      step: 2,
+      target: { kind: "move", rooms: ["r2"] },
+    });
+  });
+
+  it("ステップ3を宝箱に会えず飛ばしたら、ステップ4の文言でスキルに触れる（kyoya P3）", () => {
+    const { t } = begin();
+    t.start(st(noChest(), "r0"));
+    t.observe(st(noChest(), "r1", [moved("r1")]));
+    t.observe(
+      st(noChest(), "r1", [moved("r1"), { t: "battleStart", room: "r1" }], { phase: "battle" }),
+    );
+    t.observe(st(noChest(), "r1"));
+    for (const id of ["r2", "r3", "r4"]) t.observe(st(noChest(), id, [moved(id)]));
+    expect(t.currentStep).toBe(4);
+    const stairs = noChest().map((r) =>
+      r.id === "r4" ? { ...r, content: { kind: "stairs" as const } } : r,
+    );
+    expect(t.view(st(stairs, "r3"))?.text).toContain("スキル");
+  });
+
   it("スキップで終了して保存し、以後 view は null", () => {
     const { t, storage } = begin();
     t.skip();

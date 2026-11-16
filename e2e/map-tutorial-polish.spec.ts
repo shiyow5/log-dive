@@ -31,16 +31,13 @@ test("375px 幅で案内が出て、HUD ボタンと重ならず、スキップ�
   await expect(bubble).toHaveCount(0);
 });
 
-test("キーボードの Tab だけでスキップに届き、Enter で閉じられる", async ({ page }) => {
+test("キーボードの Shift+Tab 1回でスキップに届き、Enter で閉じられる", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await startWithSeed(page, "/?fx=0&qa=1");
   const skip = page.locator(".map-tutorial").getByRole("button", { name: "スキップ" });
-  let reached = false;
-  for (let i = 0; i < 20 && !reached; i++) {
-    await page.keyboard.press("Tab");
-    reached = await skip.evaluate((el) => el === document.activeElement);
-  }
-  expect(reached).toBe(true);
+  // 初期フォーカスは操作ボタン。Shift+Tab 1回でスキップに届く（吹き出しは DOM の先頭）
+  await page.keyboard.press("Shift+Tab");
+  await expect(skip).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator(".map-tutorial")).toHaveCount(0);
 });

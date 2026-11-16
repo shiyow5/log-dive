@@ -547,7 +547,8 @@ export class MapScene extends Phaser.Scene {
       ),
       logLine(s),
     );
-    renderHud("map", panel, tut ? this.tutorialBubble(tut) : null);
+    // 吹き出しを先頭に置く: Shift+Tab 1回でスキップへ届く（初期フォーカスは focusFirst が吹き出しを除いて決める）
+    renderHud("map", tut ? this.tutorialBubble(tut) : null, panel);
     document.documentElement.classList.toggle("has-map-tutorial", tut !== null);
   }
 
