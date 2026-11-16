@@ -707,7 +707,8 @@
   }
   .hud-battle-head {
     grid-area: head;
-    padding: 4px 10px;
+    /* #181: 症状4行が症状欄（.hud-cols）の下端からはみ出さないよう、上段の縦余白を 4→2px に詰める */
+    padding: 2px 10px;
     border-bottom: 0;
     font-size: 13px;
     line-height: 1.35;
