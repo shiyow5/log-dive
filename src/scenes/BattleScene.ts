@@ -161,7 +161,7 @@ export class BattleScene extends Phaser.Scene {
     this.hpText = this.add
       .text(this.barX - 4, BAR_Y + 2, "", {
         fontFamily: FONT_FAMILY,
-        fontSize: "12px",
+        fontSize: "14px",
         color: "#e4f1ec",
       })
       .setOrigin(1, 0.5)
