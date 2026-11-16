@@ -1,0 +1,24 @@
+import { chromium } from "/root/log-dive/node_modules/playwright/index.mjs";
+const [, , port, tag, out] = process.argv;
+const vps = { "390x844": [390, 844], "844x390": [844, 390], "1280x720": [1280, 720] };
+const b = await chromium.launch();
+for (const fx of ["0", "1"]) for (const [n, [w, h]] of Object.entries(vps)) {
+  if (fx === "1" && n !== "1280x720") continue;
+  const page = await b.newPage({ viewport: { width: w, height: h } });
+  await page.goto(`http://localhost:${port}/?fx=${fx}&qa=1&seed=e2e-7`);
+  await page.getByRole("button", { name: "新しいラン" }).click();
+  await page.getByRole("button", { name: /r1へ移動/ }).click();
+  await page.waitForFunction(() => document.body.dataset.scene === "battle");
+  await page.getByRole("button", { name: /再現手順/ }).click();
+  await page.evaluate(() => window.__qa.waitForIdle());
+  await page.getByRole("button", { name: /ホットフィックス/ }).click();
+  await page.waitForTimeout(40);
+  await page.screenshot({ path: `${out}/${tag}-${n}-fx${fx}-enemyhit.png` });
+  await page.evaluate(() => window.__qa.waitForIdle());
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "ターン終了" }).first().click();
+  await page.waitForTimeout(40);
+  await page.screenshot({ path: `${out}/${tag}-${n}-fx${fx}-playerhit.png` });
+  await page.close();
+}
+await b.close();
