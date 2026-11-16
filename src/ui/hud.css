@@ -786,7 +786,7 @@
     min-height: 36px;
   }
   .hud-battle-body .hud-cols h3 {
-    margin-bottom: 2px;
+    margin-bottom: 0;
   }
   /*
    * #166 sota レビュー: 症状 4 つでも 4 行とも読めるよう、候補・症状の文字を 14px / 行高 1.25 に詰める。
@@ -795,7 +795,7 @@
   .hud-battle-body .hud-cols li,
   .hud-battle-body .hud-cols p {
     font-size: 14px;
-    line-height: 1.25;
+    line-height: 1.2;
   }
   /* 上段の行間を詰めて、中段（候補・症状）の高さを確保する（#142 差し戻し） */
   .hud-battle-head p,
