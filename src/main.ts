@@ -10,6 +10,7 @@ import { playSfx, startBgmOnFirstInput } from "./audio/player";
 import { sfxForRun } from "./audio/sounds";
 import { subscribe } from "./scenes/run-port";
 import { installAudioToggle } from "./ui/audio-toggle";
+import { TOKEN_DEFAULTS } from "./ui/tokens";
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -17,7 +18,7 @@ const game = new Phaser.Game({
   width: GAME_WIDTH * RENDER_SCALE,
   height: GAME_HEIGHT * RENDER_SCALE,
   pixelArt: true,
-  backgroundColor: "#0f1a1c",
+  backgroundColor: TOKEN_DEFAULTS.bg,
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_HORIZONTALLY },
   scene: [BootScene, TitleScene, MapScene, BattleScene, ResultScene],
 });
