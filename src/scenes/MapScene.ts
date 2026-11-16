@@ -7,6 +7,7 @@ import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
 import { button, el, renderHud, setHudBusy } from "../ui/hud";
 import { fxEnabled, markFade } from "../ui/flags";
+import { mapTutorial, type TutorialView } from "../ui/map-tutorial";
 import { IMPACT, chestOpenFx } from "../fx/impact-fx";
 import { abandonButton, logLine, statsRow } from "./hud-parts";
 import { apply, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
@@ -142,6 +143,7 @@ export class MapScene extends Phaser.Scene {
     this.backdrop = addBackdrop(this);
     fadeIn(this);
     const s = current();
+    mapTutorial().observe(s);
     const fx = createSceneFx(this, "fx-map");
     this.fx = fx;
     fx.emit("mapAmbient");
@@ -160,6 +162,7 @@ export class MapScene extends Phaser.Scene {
     mq.addEventListener("change", onTurn);
     this.scale.on(Phaser.Scale.Events.RESIZE, onTurn);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      document.documentElement.classList.remove("has-map-tutorial");
       mq.removeEventListener("change", onTurn);
       this.scale.off(Phaser.Scale.Events.RESIZE, onTurn);
       this.resetView();
@@ -245,6 +248,7 @@ export class MapScene extends Phaser.Scene {
 
   private act(a: Action): void {
     const next = dispatch(a);
+    mapTutorial().observe(next);
     const to = sceneFor(next);
     if (to !== "map") {
       goTo(this, to);
@@ -472,15 +476,25 @@ export class MapScene extends Phaser.Scene {
       .filter((r): r is RoomState => r !== undefined);
     const legal = legality(s);
 
+    const tut = mapTutorial().view(s);
+    const hl = (b: HTMLButtonElement, on: boolean): HTMLButtonElement => {
+      if (on) {
+        b.classList.add("hud-btn--tutorial");
+        if (fxEnabled()) b.classList.add("hud-btn--pulse");
+      }
+      return b;
+    };
+
     // 宝箱ボタンの生成
     const chestBtn = (() => {
       if (here?.content.kind !== "chest") return null;
       const skill = here.content.skill;
       const name = skillInfo(skill).name;
       const a: Action = { t: "loot", pick: skill };
-      return button(`宝箱を開ける: ${name}`, () => this.act(a), {
-        disabled: !legal.can(a),
-      });
+      return hl(
+        button(`宝箱を開ける: ${name}`, () => this.act(a), { disabled: !legal.can(a) }),
+        tut?.target.kind === "chest",
+      );
     })();
 
     // 宝箱が disabled の場合のエラーメッセージ
@@ -505,7 +519,10 @@ export class MapScene extends Phaser.Scene {
           { class: "hud-row" },
           ...neighbors.map((r) => {
             const a: Action = { t: "move", room: r.id };
-            return button(moveLabel(r, s), () => this.act(a), { disabled: !legal.can(a) });
+            return hl(
+              button(moveLabel(r, s), () => this.act(a), { disabled: !legal.can(a) }),
+              tut?.target.kind === "move" && tut.target.rooms.includes(r.id),
+            );
           }),
         ),
       ),
@@ -530,6 +547,26 @@ export class MapScene extends Phaser.Scene {
       ),
       logLine(s),
     );
-    renderHud("map", panel);
+    renderHud("map", panel, tut ? this.tutorialBubble(tut) : null);
+    document.documentElement.classList.toggle("has-map-tutorial", tut !== null);
+  }
+
+  /** 下部固定の1行吹き出し（ステップ n/4・role="status"）とスキップボタン。 */
+  private tutorialBubble(tut: TutorialView): HTMLElement {
+    return el(
+      "div",
+      { class: "map-tutorial" },
+      el(
+        "p",
+        { class: "map-tutorial__text", role: "status" },
+        `ステップ ${tut.step}/${tut.total}: ${tut.text}`,
+      ),
+      button("スキップ", () => {
+        mapTutorial().skip();
+        this.renderHud(current());
+        this.applyView();
+        this.redrawMap();
+      }),
+    );
   }
 }
