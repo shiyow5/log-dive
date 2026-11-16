@@ -1258,3 +1258,45 @@
     min-height: 30px;
   }
 }
+
+/* マップのチュートリアル（#64）: 下部固定の1行吹き出し＋対象ボタンの強調 */
+.map-tutorial {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 20;
+  /* #hud は pointer-events: none。吹き出し（スキップ）は兄弟として描かれるので、ここで戻す */
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--ld-bg);
+  border: 2px solid var(--ld-accent);
+  color: var(--ld-text, inherit);
+}
+.map-tutorial__text {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+}
+/* 吹き出しがボタンや HUD に被らないよう、案内中は下に余白を空ける */
+html.has-map-tutorial #hud {
+  padding-bottom: 72px;
+}
+/* 強調は太枠（脈動なしでも分かる）。脈動は ?fx=0 / 視差軽減では付けない（.hud-btn--pulse を付けない） */
+.hud-btn--tutorial {
+  outline: 3px solid var(--ld-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hud-btn--pulse {
+    animation: map-tutorial-pulse 1.2s ease-in-out infinite;
+  }
+}
+@keyframes map-tutorial-pulse {
+  50% {
+    outline-offset: 5px;
+  }
+}

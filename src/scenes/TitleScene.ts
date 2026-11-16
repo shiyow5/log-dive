@@ -5,6 +5,7 @@ import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { loadGameData } from "../core/data";
 import { playSfx } from "../audio/player";
 import { flags } from "../ui/flags";
+import { mapTutorial } from "../ui/map-tutorial";
 import { button, el, renderHud } from "../ui/hud";
 import { sceneFor, skillInfo, startRun } from "./run-port";
 import { fadeIn, goTo } from "./transition";
@@ -173,6 +174,7 @@ export class TitleScene extends Phaser.Scene {
       started = true;
       const seed = input.value.trim() || newSeed();
       const s = startRun(seed);
+      mapTutorial().start(s);
       playSfx("start");
       goTo(this, sceneFor(s));
     };

@@ -3,6 +3,7 @@ import Phaser from "phaser";
 import { setupView } from "./view";
 import { createSceneFx } from "../fx/scene-fx";
 import { button, el, renderHud } from "../ui/hud";
+import { mapTutorial } from "../ui/map-tutorial";
 import { bugName, current, runSerial, sceneFor, startRun } from "./run-port";
 import { browserStorage, recordOf, resultDiffs, takePrevRun } from "./prev-run";
 import { enemySpriteDataUrl } from "../art/enemy-sprites";
@@ -35,6 +36,8 @@ export class ResultScene extends Phaser.Scene {
     const defeat = defeatSummary(s);
     const retry = () => {
       const next = startRun(s.seed);
+      // リトライでも案内を最初から（未完了ならステップ1。前ランのステップを持ち越さない）
+      mapTutorial().start(next);
       goTo(this, sceneFor(next));
     };
     // #95 指定値(minori 11/10 14:14): 見出し → 結果表 → 一言ヒント → 主「同じシードでもう一度」/副「タイトルへ」。
