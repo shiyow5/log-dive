@@ -181,6 +181,19 @@ describe("MapTutorial", () => {
     expect(t.active).toBe(true);
   });
 
+  it("リトライ（新しいランの start）では、途中・敗北で終わった案内もステップ1から始まる", () => {
+    const { t } = begin();
+    t.observe(st(chain(), "r1", [moved("r1")]));
+    t.observe(st(chain(), "r1", [], { phase: "battle" }));
+    expect(t.currentStep).toBe(3);
+    t.observe(st(chain(), "r1", [], { phase: "lost" }));
+    expect(t.active).toBe(false);
+    t.start(st(chain(), "r0"));
+    expect(t.active).toBe(true);
+    expect(t.currentStep).toBe(1);
+    expect(t.isPaused).toBe(false);
+  });
+
   it("1階以外・戦闘中の開始では始めない", () => {
     const t = new MapTutorial(new MemoryStorage(), false);
     t.start({ ...st(chain(), "r0"), floor: { number: 2, rooms: chain() } });

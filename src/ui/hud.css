@@ -1266,6 +1266,8 @@
   right: 8px;
   bottom: 8px;
   z-index: 20;
+  /* #hud は pointer-events: none。吹き出し（スキップ）は兄弟として描かれるので、ここで戻す */
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 8px;
