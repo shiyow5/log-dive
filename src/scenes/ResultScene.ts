@@ -3,7 +3,8 @@ import Phaser from "phaser";
 import { setupView } from "./view";
 import { createSceneFx } from "../fx/scene-fx";
 import { button, el, renderHud } from "../ui/hud";
-import { bugName, current, sceneFor, startRun } from "./run-port";
+import { bugName, current, runSerial, sceneFor, startRun } from "./run-port";
+import { browserStorage, recordOf, resultDiffs, takePrevRun } from "./prev-run";
 import { enemySpriteDataUrl } from "../art/enemy-sprites";
 import { RESULT_HINT, defeatSummary, resultEnemyKind, resultRows } from "./result-text";
 import type { RunPhase } from "./run-port";
@@ -37,7 +38,9 @@ export class ResultScene extends Phaser.Scene {
       goTo(this, sceneFor(next));
     };
     // #95 指定値(minori 11/10 14:14): 見出し → 結果表 → 一言ヒント → 主「同じシードでもう一度」/副「タイトルへ」。
-    // 背景に敵ドット絵を薄く（パネル背面中央）。前回比は保留（rei 判断待ち）。
+    // 背景に敵ドット絵を薄く（パネル背面中央）。前回比は値の右に小さく（rei 判断 11/17）。
+    const cur = recordOf(s);
+    const diffs = resultDiffs(cur, takePrevRun(runSerial(), cur, browserStorage()));
     const sprite = enemySpriteDataUrl(resultEnemyKind(s));
     const panel = el(
       "section",
@@ -72,7 +75,22 @@ export class ResultScene extends Phaser.Scene {
             "div",
             { class: "result-row" },
             el("dt", {}, k),
-            el("dd", { "data-testid": `result-${k}` }, v),
+            el(
+              "dd",
+              {},
+              el("span", { "data-testid": `result-${k}` }, v),
+              diffs[k]
+                ? el(
+                    "span",
+                    {
+                      class: `result-diff result-diff--${diffs[k].tone}`,
+                      "data-testid": `result-diff-${k}`,
+                    },
+                    el("span", { class: "visually-hidden" }, "前回比 "),
+                    diffs[k].text,
+                  )
+                : null,
+            ),
           ),
         ),
       ),

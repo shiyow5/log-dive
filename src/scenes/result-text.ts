@@ -4,7 +4,7 @@ import { enemyKindFor, type EnemyKind } from "../art/enemy-sprites";
 
 /**
  * リザルトの結果表（#95 minori 指定値 11/10 14:14）。ラベルは指定の原文どおり。
- * 前回比は保留（rei 判断待ち・sota 11/16）なので出さない。
+ * 前回比は prev-run.ts（値の右に小さく出す）。
  */
 export function resultRows(s: RunState): [label: string, value: string][] {
   return [

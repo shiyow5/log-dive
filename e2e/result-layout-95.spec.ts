@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Issue #95: リザルトのレイアウト（minori 指定値 11/10 14:14 ＋ sota 11/16 の差分。前回比は保留）。
+ * Issue #95: リザルトのレイアウト（minori 指定値 11/10 14:14 ＋ sota 11/16 の差分。前回比は 11/17 rei 判断で実装）。
  * 放棄リザルトで、結果表4行・一言ヒント・主/副ボタンの寸法・背景の敵ドット絵・同じシードの引き継ぎを見る。
  */
 async function abandonRun(page: Page, seed: string): Promise<void> {
@@ -87,4 +87,33 @@ test("844x390: 主ボタンも画面内に収まる", async ({ page }) => {
     const box = (await page.getByRole("button", { name }).boundingBox())!;
     expect(box.y + box.height).toBeLessThanOrEqual(390);
   }
+});
+
+test("前回比: 初回・壊れた記録では出さず例外も出ない。2回目は値の右に記号付きで出る", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto("/?fx=0&qa=1&seed=e2e-95d");
+  await page.evaluate(() => localStorage.setItem("log-dive:prev-run", "{broken"));
+  await abandonRun(page, "e2e-95d");
+  await expect(page.getByTestId("result-到達階")).toHaveText("1階");
+  await expect(page.locator(".result-diff")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "同じシードでもう一度" }).click();
+  await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
+  await page.getByRole("button", { name: /ランを放棄/ }).click();
+  await page.getByRole("button", { name: /放棄する/ }).click();
+  await expect(page.getByTestId("result-到達階")).toHaveText("1階");
+  const diff = page.getByTestId("result-diff-到達階");
+  await expect(diff).toHaveText("前回比 ±0 階");
+  await expect(diff).toHaveCSS("font-size", "14px");
+  await expect(page.getByTestId("result-diff-倒したバグ")).toHaveText("前回比 ±0");
+  await expect(page.getByTestId("result-diff-今回のシード")).toHaveCount(0);
+  // 値の右に並ぶ
+  const v = (await page.getByTestId("result-到達階").boundingBox())!;
+  const d = (await diff.boundingBox())!;
+  expect(d.x).toBeGreaterThan(v.x + v.width);
+  expect(errors).toEqual([]);
 });
