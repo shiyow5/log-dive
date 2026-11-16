@@ -839,6 +839,34 @@
   .hud-cands li {
     white-space: nowrap;
   }
+  /*
+   * #198: 候補が5件あると候補・症状（.hud-cols）が固定の高さを取り、操作列が最低高さ（104px）まで潰れて
+   * スキルの1行目がスクロール領域の上に隠れていた。縦持ちでは操作列を優先し（縮めない）、
+   * 足りない分は候補・症状の側を高さ制限して内部スクロールにする。見出しは sticky で残す（#166 の意図）。
+   * 候補・症状の最低高さ（見出し＋約2行）を下回る画面では、中段全体のスクロール（安全網）に任せる。
+   */
+  .hud-battle-body .hud-cols {
+    flex: 0 1 auto;
+    min-height: 96px;
+    overflow-y: auto;
+  }
+  .hud-battle-body .hud-cols > section > h3,
+  .hud-battle-body .hud-sym-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--ld-panel);
+  }
+  .hud-battle-body .hud-battle-actions {
+    flex: 1 0 auto;
+  }
+  /* 候補は読むだけの表示（ボタンではない）。ボス戦（#169）と同じ値に詰め、5件でもなるべく全件が見えるようにする */
+  .hud-battle-body .hud-cands {
+    gap: 4px;
+  }
+  .hud-battle-body .hud-cands li {
+    min-height: 30px;
+  }
 }
 /*
  * 横持ちスマホ（高さが低い横長）: パネルを2列にして高さを画面の45%に収める（#113）。
