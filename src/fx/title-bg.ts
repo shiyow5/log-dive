@@ -1,5 +1,6 @@
 import { hex, mix, rand } from "pixelfx";
 import type { Painter } from "pixelfx";
+import { TITLE_BG_DEFAULTS } from "../ui/tokens";
 
 /**
  * タイトル背景（Issue #110）。桜と賑やかな蛍をやめ、「ログに潜る」に合う暗いログ画面にする。
@@ -30,12 +31,8 @@ export interface TitleBgColors {
   fly: [string, string, string];
 }
 export const TITLE_BG_FALLBACK: TitleBgColors = {
-  bgTop: "#070f0b",
-  bgBottom: "#0c1a12",
-  logStamp: "#3f6e40",
-  logBody: "#2b5232",
-  logEmph: "#7ebeab",
-  fly: ["#9ad02a", "#d6ff5a", "#f4ffb8"],
+  ...TITLE_BG_DEFAULTS,
+  fly: [...TITLE_BG_DEFAULTS.fly],
 };
 
 function cssVar(name: string, fallback: string): string {
