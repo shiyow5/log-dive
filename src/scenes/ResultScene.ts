@@ -86,7 +86,8 @@ export class ResultScene extends Phaser.Scene {
                       class: `result-diff result-diff--${diffs[k].tone}`,
                       "data-testid": `result-diff-${k}`,
                     },
-                    el("span", { class: "visually-hidden" }, "前回比 "),
+                    // 何との比較か初見で分かるよう「前回比」は見える文字で出す（#95 kyoya P3）
+                    el("span", { class: "result-diff-label" }, "前回比 "),
                     diffs[k].text,
                   )
                 : null,

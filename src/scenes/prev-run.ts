@@ -55,12 +55,15 @@ export function savePrevRun(store: SaveStore<RunRecord>, rec: RunRecord): void {
 export type DiffTone = "up" | "down" | "same";
 
 export interface Diff {
-  /** 「+2 階」「−1」「±0」。符号は U+2212 のマイナス（#95 指定の表記）。色だけに頼らず記号で増減を示す。 */
+  /** 「+2」「−1」「±0」。符号は U+2212 のマイナス（#95 指定の表記）。色だけに頼らず記号で増減を示す。 */
   readonly text: string;
   readonly tone: DiffTone;
 }
 
-/** 今回 − 前回 の差分ラベル。unit は「階」など（指定の「+2 階」の形）。 */
+/**
+ * 今回 − 前回 の差分ラベル。unit は任意（既定は無し）。
+ * 結果表の値側に単位が付く（「1階」）ので、差分には単位を付けない（「1階 前回比 ±0 階」の重複を避ける・#95 kyoya P3）。
+ */
 export function diffOf(cur: number, prev: number, unit = ""): Diff {
   const d = cur - prev;
   const suffix = unit ? ` ${unit}` : "";
@@ -73,7 +76,7 @@ export function diffOf(cur: number, prev: number, unit = ""): Diff {
 export function resultDiffs(cur: RunRecord, prev: RunRecord | null): Record<string, Diff> {
   if (!prev) return {};
   return {
-    到達階: diffOf(cur.floor, prev.floor, "階"),
+    到達階: diffOf(cur.floor, prev.floor),
     倒したバグ: diffOf(cur.bugsClosed, prev.bugsClosed),
     使ったターン: diffOf(cur.turns, prev.turns),
   };

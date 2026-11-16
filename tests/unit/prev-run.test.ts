@@ -69,7 +69,7 @@ describe("前回比の符号（#95）", () => {
   it("結果表の3行に前回比が付き、シードには付かない", () => {
     const d = resultDiffs(rec(3, 2, 30), rec(1, 3, 30));
     expect(Object.keys(d)).toEqual(["到達階", "倒したバグ", "使ったターン"]);
-    expect(d["到達階"]?.text).toBe("+2 階");
+    expect(d["到達階"]?.text).toBe("+2");
     expect(d["倒したバグ"]?.text).toBe("−1");
     expect(d["使ったターン"]?.text).toBe("±0");
   });
