@@ -25,6 +25,14 @@
   --ld-frame-corner: #c5ddd5; /* 角飾り 3×3px。panel 10.25:1 */
   --ld-frame-bright: #e4f1ec; /* 主ボタンの明枠 */
   --ld-bracket: #e8c468; /* 選択の角ブラケット（長さ6px・太さ2px・外へ4px） */
+  /* タイトル背景（#110）の装飾色。ロゴ・本文より必ず暗く（不透明度も掛ける） */
+  --ld-title-bg-top: #070f0b;
+  --ld-title-bg-bottom: #0c1a12;
+  --ld-title-log-stamp: #3f6e40; /* タイムスタンプ列 不透明度40% */
+  --ld-title-log-body: #2b5232; /* 本文 不透明度35% */
+  --ld-title-fly-1: #9ad02a;
+  --ld-title-fly-2: #d6ff5a;
+  --ld-title-fly-3: #f4ffb8;
   /* フォントは1か所で管理。Phaser Text 側は src/config.ts の FONT_FAMILY（同じ値） */
   --ld-font: "DotGothic16", monospace;
 }
