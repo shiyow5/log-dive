@@ -376,7 +376,14 @@ export class BattleScene extends Phaser.Scene {
         { class: "hud-battle-body" },
         el("div", { class: "hud-cols" }, candidates, symptoms),
         // 操作ボタン群。横持ちスマホ（hud.css の @media）では右列に分けて、情報と操作を並べる（#113）
-        el("div", { class: "hud-battle-actions" }, skillRow, picker, logLine(s)),
+        el(
+          "div",
+          { class: "hud-battle-actions" },
+          skillRow,
+          picker,
+          logLine(s),
+          el("div", { class: "hud-battle-fade", "aria-hidden": "true" }),
+        ),
       ),
       el(
         "footer",
@@ -411,10 +418,19 @@ export class BattleScene extends Phaser.Scene {
   }
 }
 
+/** #117: 操作列ごとの ResizeObserver（回転・リサイズで overflow 状態が変わるため） */
+const scrollIndicatorObservers = new WeakMap<HTMLElement, ResizeObserver>();
+
 /** #117: 中段操作列のスクロール状態に基づきインジケーターを表示/非表示 */
 function updateScrollIndicator(panel: HTMLElement): void {
   const el = panel.querySelector<HTMLElement>(".hud-battle-actions");
   if (!el) return;
+  // #117 Codex P2: レンダー時だけでは端末の回転・リサイズ後に古いままになるので、サイズ変化のたびに判定し直す
+  if (!scrollIndicatorObservers.has(el) && typeof ResizeObserver !== "undefined") {
+    const observer = new ResizeObserver(() => updateScrollIndicator(panel));
+    observer.observe(el);
+    scrollIndicatorObservers.set(el, observer);
+  }
   const isScrollable = el.scrollHeight > el.clientHeight;
   el.classList.toggle("is-scrollable", isScrollable);
   if (isScrollable) {
