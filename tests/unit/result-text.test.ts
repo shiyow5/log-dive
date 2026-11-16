@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadGameData } from "../../src/core/data";
 import { apply, initRun, type RunState } from "../../src/core/run";
-import { defeatHint, defeatSummary } from "../../src/scenes/result-text";
+import { defeatSummary, resultEnemyKind, resultRows } from "../../src/scenes/result-text";
 import { symptomGuide } from "../../src/scenes/symptom-guide";
 
 import { initFixedRun } from "./fixed-run";
@@ -38,9 +38,24 @@ describe("defeatSummary（#118）", () => {
     const lost: RunState = { ...s, phase: "lost", stats: { ...s.stats, degrades: 3 } };
     expect(defeatSummary(lost)).toEqual({ bug: "off-by-one", boss: false, wrongPatches: 3 });
   });
-  it("ヒントは誤パッチ0回かどうかで変わる", () => {
-    expect(defeatHint({ bug: "race", boss: false, wrongPatches: 0 })).not.toBe(
-      defeatHint({ bug: "race", boss: false, wrongPatches: 2 }),
-    );
+});
+
+describe("resultRows / resultEnemyKind（#95）", () => {
+  const base = initRun("t95", data);
+  it("指定値の4行（到達階・倒したバグ・使ったターン・今回のシード）。前回比は無い", () => {
+    const s: RunState = { ...base, phase: "lost", stats: { bugsClosed: 2, turns: 7, degrades: 1 } };
+    expect(resultRows(s)).toEqual([
+      ["到達階", "1階"],
+      ["倒したバグ", "2"],
+      ["使ったターン", "7"],
+      ["今回のシード", "t95"],
+    ]);
+  });
+  it("背景の敵: クリアはボス・戦闘なしは通常のバグ・戦闘中はその部屋の敵", () => {
+    expect(resultEnemyKind({ ...base, phase: "won" })).toBe("boss");
+    expect(resultEnemyKind({ ...base, phase: "abandoned", battle: null })).toBe("bug");
+    const s = apply(initFixedRun("t95"), { t: "move", room: "r1" }, data);
+    expect(s.battle).not.toBeNull();
+    expect(["bug", "blob", "ghost"]).toContain(resultEnemyKind({ ...s, phase: "lost" }));
   });
 });

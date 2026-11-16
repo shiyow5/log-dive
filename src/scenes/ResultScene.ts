@@ -4,7 +4,8 @@ import { setupView } from "./view";
 import { createSceneFx } from "../fx/scene-fx";
 import { button, el, renderHud } from "../ui/hud";
 import { bugName, current, sceneFor, startRun } from "./run-port";
-import { defeatHint, defeatSummary } from "./result-text";
+import { enemySpriteDataUrl } from "../art/enemy-sprites";
+import { RESULT_HINT, defeatSummary, resultEnemyKind, resultRows } from "./result-text";
 import type { RunPhase } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 
@@ -16,7 +17,7 @@ const HEADLINE: Record<RunPhase, string> = {
   battle: "",
 };
 
-/** リザルト（数値表示のみ。曲線は完成版 = spec-a v0.2 §12）。 */
+/** リザルト（数値表示のみ。曲線は完成版 = spec-a v0.2 §12）。レイアウトは #95 の指定値。 */
 export class ResultScene extends Phaser.Scene {
   constructor() {
     super("result");
@@ -30,20 +31,26 @@ export class ResultScene extends Phaser.Scene {
     // バグ出現の雷など）が残っているので、まるごと再生すると戦闘の絵がリザルトに映ってしまう（#122）。
     const fx = createSceneFx(this, "fx-result");
     if (s.phase === "won") fx.emit("result");
-    const rows: [string, string][] = [
-      ["閉じたバグ票", String(s.stats.bugsClosed)],
-      ["ターン終了の回数", String(s.stats.turns)],
-      ["デグレ回数", String(s.stats.degrades)],
-      ["シード", s.seed],
-    ];
     const defeat = defeatSummary(s);
     const retry = () => {
       const next = startRun(s.seed);
       goTo(this, sceneFor(next));
     };
+    // #95 指定値(minori 11/10 14:14): 見出し → 結果表 → 一言ヒント → 主「同じシードでもう一度」/副「タイトルへ」。
+    // 背景に敵ドット絵を薄く（パネル背面中央）。前回比は保留（rei 判断待ち）。
+    const sprite = enemySpriteDataUrl(resultEnemyKind(s));
     const panel = el(
       "section",
-      { class: "hud-panel", "aria-label": "リザルト" },
+      { class: "hud-panel result-panel", "aria-label": "リザルト" },
+      sprite
+        ? el("img", {
+            class: "result-sprite",
+            src: sprite,
+            alt: "",
+            "aria-hidden": "true",
+            "data-testid": "result-sprite",
+          })
+        : null,
       el("h1", { class: s.phase === "won" ? "hud-ok" : "hud-danger" }, HEADLINE[s.phase]),
       s.phase === "won" ? el("p", { class: "hud-ok hud-lines" }, STORY.clearEpilogue) : null,
       s.phase === "won"
@@ -55,23 +62,28 @@ export class ResultScene extends Phaser.Scene {
             { class: "result-defeat", "data-testid": "result-defeat" },
             el("p", {}, `最後のバグ: ${bugName(defeat.bug)}${defeat.boss ? "（ボス）" : ""}`),
             el("p", {}, `誤パッチ: ${defeat.wrongPatches}回`),
-            el("p", { class: "hud-hint" }, defeatHint(defeat)),
           )
         : null,
       el(
         "dl",
-        { class: "hud-dl" },
-        ...rows.flatMap(([k, v]) => [
-          el("dt", { class: "hud-stat" }, k),
-          el("dd", { "data-testid": `result-${k}` }, v),
-        ]),
+        { class: "result-table" },
+        ...resultRows(s).map(([k, v]) =>
+          el(
+            "div",
+            { class: "result-row" },
+            el("dt", {}, k),
+            el("dd", { "data-testid": `result-${k}` }, v),
+          ),
+        ),
       ),
-      s.phase === "won" ? el("p", { class: "hud-ok" }, STORY.clearCoda) : null,
+      s.phase === "won"
+        ? el("p", { class: "hud-ok" }, STORY.clearCoda)
+        : el("p", { class: "result-hint", "data-testid": "result-hint" }, RESULT_HINT),
       el(
         "div",
-        { class: "hud-row" },
-        s.phase === "lost" ? button("同じシードでもう一度", retry, { primary: true }) : null,
-        button("タイトルへ", () => goTo(this, "title"), { primary: s.phase !== "lost" }),
+        { class: "result-actions" },
+        button("同じシードでもう一度", retry, { primary: true }),
+        button("タイトルへ", () => goTo(this, "title")),
       ),
     );
     renderHud("result", panel);
