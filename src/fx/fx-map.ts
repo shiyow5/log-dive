@@ -9,8 +9,7 @@ import * as hitFlash from "pixelfx/fx/impacts/hit-flash";
 import * as hitSpark from "pixelfx/fx/impacts/hit-spark";
 import * as lightningStrike from "pixelfx/fx/lightning/lightning-strike";
 import * as thunderclap from "pixelfx/fx/lightning/thunderclap";
-import * as fireflies from "pixelfx/fx/weather/fireflies";
-import * as cherryBlossoms from "pixelfx/fx/weather/cherry-blossoms";
+import * as titleBg from "./title-bg";
 import type { FxModule, FxOptions } from "pixelfx";
 import { BUG_POS } from "../config";
 import type { RunEvent } from "../scenes/run-port";
@@ -46,10 +45,8 @@ export interface FxSpec {
 
 export const FX_MAP: Readonly<Record<FxEventName, readonly FxSpec[]>> = {
   boot: [{ mod: glitch, x: 160, y: 90, ttl: 0.6, layer: "front" }],
-  title: [
-    { mod: fireflies, x: 160, y: 170, layer: "back" },
-    { mod: cherryBlossoms, x: 160, y: 170, layer: "back" },
-  ],
+  // #110: 桜はやめ、流れるログ文字＋少数の蛍。ロゴ帯・パネルに重ねない（title-bg.ts）
+  title: [{ mod: titleBg, x: 0, y: 0, layer: "back" }],
   // 敵・敵名・HP バーに重ならないよう、全部 back レイヤー（描画物の後ろ）に置く。
   // 雷は敵の左右に振り分け、glitch は短く(0.6 秒)。Issue #106
   battleStart: [
