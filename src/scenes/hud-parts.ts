@@ -1,4 +1,5 @@
 import { button, el } from "../ui/hud";
+import { logTone } from "./log-tone";
 import { lastLogLine } from "./run-port";
 import type { RunState } from "./run-port";
 
@@ -8,7 +9,16 @@ export function statsRow(s: RunState, opts: { cpu?: boolean } = {}): HTMLElement
   return el(
     "p",
     { class: "hud-row", "aria-label": "ステータス" },
-    el("span", { class: "hud-stat" }, "稼働率 ", el("strong", {}, `${p.hp}/${p.maxHp}`)),
+    el(
+      "span",
+      { class: "hud-stat" },
+      "稼働率 ",
+      el(
+        "strong",
+        logTone(s.events) === "damage" ? { class: "hud-hp-hit" } : {},
+        `${p.hp}/${p.maxHp}`,
+      ),
+    ),
     opts.cpu === false
       ? null
       : el("span", { class: "hud-stat" }, "CPU ", el("strong", {}, `${p.cpu}/${p.cpuMax}`)),
@@ -50,6 +60,9 @@ export function logLine(s: RunState): HTMLElement {
   } else {
     const line = lastLogLine();
     if (line) p.textContent = line;
+    // ?fx=0 でも出る静的な強調（#116）。色だけに頼らず、左の太線＋行頭の記号も付ける
+    const tone = logTone(s.events);
+    if (tone && line) p.dataset.tone = tone;
   }
   return p;
 }

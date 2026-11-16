@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { token, tokenNum } from "../ui/tokens";
 import { setupView } from "./view";
 import { addBackdrop, isBackdropObject, type Backdrop } from "../art/backdrop";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
@@ -39,24 +40,53 @@ const CHEST_LIFT_PX = 13;
 /** "#rrggbb" → Phaser の数値色。 */
 const num = (hex: string): number => Number.parseInt(hex.slice(1), 16);
 
+/** 宝箱の図形（#96）: 色だけに頼らず 8×8px の箱（ふた＋鍵穴）で区別する。 */
+const CHEST_ICON_PX = 8;
+
 // 記号色は COLORS（map-symbols.ts）から作る。二重定義しない。
+// 値は CSS の --ld-*（tokens.ts 経由）。getter にして描画時に読む（CSS の読み込み順に依存しない）。
 const COLOR = {
-  // #89 minori 指定（背景 #0f1a1c 比）: 接続線・未踏枠 #5a7a80 = 3.82:1、訪問済み枠 #8fa9a3 = 7.07:1。
-  // 訪問済みの塗り #33494e は単体で 3:1 に届かないため、非文字 3:1 は枠線で満たす。
-  bg: num(COLORS.bg),
-  line: num(MAP_SHAPE_COLORS.line),
-  unknownEdge: num(MAP_SHAPE_COLORS.line),
-  visitedFill: num(MAP_SHAPE_COLORS.visitedFill),
-  visitedEdge: num(MAP_SHAPE_COLORS.visitedEdge),
-  current: num(COLORS.hint),
+  get bg() {
+    return tokenNum("bg");
+  },
+  get line() {
+    return num(MAP_SHAPE_COLORS.line);
+  },
+  get unknownEdge() {
+    return num(MAP_SHAPE_COLORS.line);
+  },
+  get visitedFill() {
+    return num(MAP_SHAPE_COLORS.visitedFill);
+  },
+  get visitedEdge() {
+    return num(MAP_SHAPE_COLORS.visitedEdge);
+  },
+  get current() {
+    return num(COLORS.hint);
+  },
   // 現在地の箱の塗り（暗い金）。宝箱の金枠と同じ枠でも、塗りで現在地と区別できるようにする
-  currentFill: 0x4a3f1c,
-  bug: num(COLORS.bug),
-  chest: num(COLORS.hint),
-  stairs: num(COLORS.stairs),
-  boss: num(COLORS.boss),
-  text: COLORS.visited,
-  weak: "#8fa9a3",
+  get currentFill() {
+    return tokenNum("current-fill");
+  },
+  get bug() {
+    return num(COLORS.bug);
+  },
+  // 宝箱もヒントも同じ --ld-accent（#96）
+  get chest() {
+    return num(COLORS.hint);
+  },
+  get stairs() {
+    return num(COLORS.stairs);
+  },
+  get boss() {
+    return num(COLORS.boss);
+  },
+  get text() {
+    return COLORS.visited;
+  },
+  get weak() {
+    return token("border");
+  },
 };
 
 /** 現在地 a から見た b の向き（マップ上の位置との対応用）。y は下向きが正。 */
@@ -313,7 +343,17 @@ export class MapScene extends Phaser.Scene {
       }
       // 記号（未踏は出さない。ただし開いた階段の ▼ は出す。判定は roomSymbol）
       const sym = roomSymbol(r, s);
-      if (sym && symbolFits(layout)) {
+      const chestIcon =
+        r.visited && r.content.kind === "chest" && !dense && ROOM >= CHEST_ICON_PX + 4;
+      if (chestIcon) {
+        const ix = Math.round(x - CHEST_ICON_PX / 2);
+        const iy = Math.round(y - CHEST_ICON_PX / 2);
+        g.fillStyle(COLOR.chest, 1).fillRect(ix, iy, CHEST_ICON_PX, CHEST_ICON_PX);
+        g.fillStyle(COLOR.bg, 1)
+          .fillRect(ix, iy + 3, CHEST_ICON_PX, 1)
+          .fillRect(ix + 3, iy + 4, 2, 2);
+      }
+      if (sym && !chestIcon && symbolFits(layout)) {
         // 密な階は箱の右隣（上下に余白がなく隣の部屋と重なるため）
         const symPos = dense
           ? { x: x + ROOM / 2 + 1, y, ox: 0, oy: 0.5, px: "7px" }
@@ -359,7 +399,7 @@ export class MapScene extends Phaser.Scene {
             fontFamily: FONT_FAMILY,
             fontSize: `${portrait ? PORTRAIT_ID_FONT_PX : ID_FONT_PX}px`,
             color: isHere ? COLOR.text : COLOR.weak,
-            stroke: "#0f1a1c",
+            stroke: COLORS.bg,
             strokeThickness: portrait ? 4 : 1,
           })
           .setOrigin(0.5, 0)
@@ -478,7 +518,7 @@ export class MapScene extends Phaser.Scene {
               { class: "hud-row" },
               el(
                 "span",
-                { style: "color: #ff6b5e; font-size: 12px;", "aria-live": "polite" },
+                { style: "color: var(--ld-danger); font-size: 12px;", "aria-live": "polite" },
                 chestMsg,
               ),
             ),
