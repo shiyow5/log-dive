@@ -1,4 +1,5 @@
 import { button, el } from "../ui/hud";
+import { logTone } from "./log-tone";
 import { lastLogLine } from "./run-port";
 import type { RunState } from "./run-port";
 
@@ -14,7 +15,7 @@ export function statsRow(s: RunState, opts: { cpu?: boolean } = {}): HTMLElement
       "稼働率 ",
       el(
         "strong",
-        s.events.some((e) => e.t === "playerDamaged") ? { class: "hud-hp-hit" } : {},
+        logTone(s.events) === "damage" ? { class: "hud-hp-hit" } : {},
         `${p.hp}/${p.maxHp}`,
       ),
     ),
@@ -60,13 +61,7 @@ export function logLine(s: RunState): HTMLElement {
     const line = lastLogLine();
     if (line) p.textContent = line;
     // ?fx=0 でも出る静的な強調（#116）。色だけに頼らず、左の太線＋行頭の記号も付ける
-    const tone = s.events.some((e) => e.t === "playerDamaged")
-      ? "damage"
-      : s.events.some((e) => e.t === "bugClosed")
-        ? "clear"
-        : s.events.some((e) => e.t === "stairsOpened" || e.t === "descended" || e.t === "looted")
-          ? "progress"
-          : null;
+    const tone = logTone(s.events);
     if (tone && line) p.dataset.tone = tone;
   }
   return p;
