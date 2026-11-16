@@ -10,6 +10,7 @@ import { sceneFor, skillInfo, startRun } from "./run-port";
 import { fadeIn, goTo } from "./transition";
 import { TITLE } from "./BootScene";
 import { symptomGuide } from "./symptom-guide";
+import { token } from "../ui/tokens";
 
 // ---- 遊び方モーダル ----
 
@@ -150,7 +151,7 @@ export class TitleScene extends Phaser.Scene {
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 48, TITLE, {
         fontFamily: FONT_FAMILY,
         fontSize: "16px",
-        color: "#7ebeab",
+        color: token("info"),
       })
       .setOrigin(0.5)
       .setResolution(RENDER_SCALE);

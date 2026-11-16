@@ -5,6 +5,7 @@ import { createSceneFx } from "../fx/scene-fx";
 import { Rng } from "../core/rng";
 import { fxEnabled } from "../ui/flags";
 import { goTo } from "./transition";
+import { token } from "../ui/tokens";
 
 export const TITLE = "ログ潜り ― Log Dive";
 
@@ -46,7 +47,7 @@ export class BootScene extends Phaser.Scene {
       .text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 40, TITLE, {
         fontFamily: FONT_FAMILY,
         fontSize: "16px",
-        color: "#e4f1ec",
+        color: token("text"),
       })
       .setOrigin(0.5)
       .setResolution(RENDER_SCALE);
