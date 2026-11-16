@@ -6,6 +6,7 @@
  */
 import { floorCount } from "../core/floor";
 import type { RoomState, RunState } from "../core/run";
+import { token } from "../ui/tokens";
 
 /** その階のバグが全部閉じていて、階段で次の階へ進めるか。 */
 export function stairsOpen(state: RunState): boolean {
@@ -64,26 +65,46 @@ export function roomSymbol(r: RoomState, s: RunState): string | null {
   return null;
 }
 
-/** Color tokens for map symbols. */
+/** Color tokens for map symbols. 値は src/ui/tokens.ts（CSS の --ld-*）から読む（#96）。宝箱とヒントは同じ accent。 */
 export const COLORS = {
-  hint: "#e8c468",
-  accent: "#7ebeab",
-  stairs: "#88c0d0",
-  boss: "#b48ead",
-  bug: "#ff6b5e",
-  visited: "#e4f1ec",
-  bg: "#0f1a1c",
-} as const;
+  get hint(): string {
+    return token("accent");
+  },
+  get accent(): string {
+    return token("info");
+  },
+  get stairs(): string {
+    return token("stairs");
+  },
+  get boss(): string {
+    return token("boss");
+  },
+  get bug(): string {
+    return token("danger");
+  },
+  get visited(): string {
+    return token("text");
+  },
+  get bg(): string {
+    return token("bg");
+  },
+};
 
 /** マップ図形の色（#89 minori 指定。背景 COLORS.bg 比は tests/unit/map-labels.test.ts で検証）。 */
 export const MAP_SHAPE_COLORS = {
   /** 接続線・未踏部屋の枠（1px）。3.82:1 */
-  line: "#5a7a80",
+  get line(): string {
+    return token("line");
+  },
   /** 訪問済み部屋の塗り。単体では 3:1 に届かない（1.86:1）ので枠線と併用する */
-  visitedFill: "#33494e",
+  get visitedFill(): string {
+    return token("visited-fill");
+  },
   /** 訪問済み部屋の枠（1px）。7.07:1 */
-  visitedEdge: "#8fa9a3",
-} as const;
+  get visitedEdge(): string {
+    return token("border");
+  },
+};
 
 /** 記号の色。 */
 export function symbolColor(r: RoomState): string {

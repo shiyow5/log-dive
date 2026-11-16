@@ -10,21 +10,30 @@
 }
 
 :root {
+  /* 配色トークン（#96 minori 指定）。ここが唯一の定義元。Phaser 側は src/ui/tokens.ts が getComputedStyle で読む */
   --ld-bg: #0f1a1c;
-  --ld-surface: #1b2b2e;
-  --ld-surface-up: #26393d;
+  --ld-panel: #1b2b2e;
+  --ld-panel-up: #26393d;
   --ld-text: #e4f1ec;
-  --ld-text-weak: #8fa9a3;
-  --ld-accent: #7ebeab;
-  --ld-hint: #e8c468;
+  --ld-text-weak: #a9c2bc;
+  --ld-border: #8fa9a3; /* ボタン枠など。bg 7.07:1 */
+  --ld-border-weak: #4a6a70; /* パネル枠 2px。bg 3.03:1 */
+  --ld-line: #5a7a80; /* マップ接続線・未踏枠。bg 3.82:1 */
+  --ld-accent: #e8c468; /* 宝箱・ヒント・選択。bg 10.57:1 */
   --ld-danger: #ff6b5e;
+  /* 上記以外の用途別色（#96 で名前を付けた。値は変更なし） */
+  --ld-info: #7ebeab;
   --ld-ok: #8fd694;
-  /* 枠トークン（#102）: 外枠 1px 明色 → 内側 2px 暗色 → 角飾り 3px の四角。主ボタン=塗り＋明枠、副=枠のみ。無効は #94 の指定（2px 破線 #8fa9a3・文字 #a9c2bc）に従う */
-  --ld-frame-outer: #8fa9a3; /* 外枠 1px。bg 7.07:1 / panel 5.85:1 */
+  --ld-stairs: #88c0d0;
+  --ld-boss: #b48ead;
+  --ld-visited-fill: #33494e;
+  --ld-current-fill: #4a3f1c;
+  /* 枠トークン（#102）: パネル枠 2px(--ld-border-weak) → 内側 2px 暗色 → 角飾り 3px の四角。主ボタン=塗り＋明枠、副=枠のみ */
+  --ld-frame-outer: var(--ld-border-weak);
   --ld-frame-inner: #070d0e; /* 内側 2px（inset） */
   --ld-frame-corner: #c5ddd5; /* 角飾り 3×3px。panel 10.25:1 */
-  --ld-frame-bright: #e4f1ec; /* 主ボタンの明枠 */
-  --ld-bracket: #e8c468; /* 選択の角ブラケット（長さ6px・太さ2px・外へ4px） */
+  --ld-frame-bright: var(--ld-text); /* 主ボタンの明枠 */
+  --ld-bracket: var(--ld-accent); /* 選択の角ブラケット（長さ6px・太さ2px・外へ4px） */
   /* フォントは1か所で管理。Phaser Text 側は src/config.ts の FONT_FAMILY（同じ値） */
   --ld-font: "DotGothic16", monospace;
 }
@@ -59,7 +68,7 @@
 
 .hud-panel {
   pointer-events: auto;
-  background-color: var(--ld-surface);
+  background-color: var(--ld-panel);
   background-image:
     linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner)),
     linear-gradient(var(--ld-frame-corner), var(--ld-frame-corner)),
@@ -72,7 +81,7 @@
     calc(100% - 2px) 2px,
     2px calc(100% - 2px),
     calc(100% - 2px) calc(100% - 2px);
-  border: 1px solid var(--ld-frame-outer);
+  border: 2px solid var(--ld-frame-outer);
   box-shadow: inset 0 0 0 2px var(--ld-frame-inner);
   padding: 8px 16px;
   max-width: 960px;
@@ -120,7 +129,7 @@
 }
 .hud-panel h2 {
   font-size: 16px;
-  color: var(--ld-accent);
+  color: var(--ld-info);
 }
 .hud-panel h3 {
   font-size: 16px;
@@ -145,8 +154,8 @@
 .help-footer {
   flex: none;
   padding: 8px 16px;
-  border-top: 2px solid var(--ld-surface-up);
-  background: var(--ld-surface);
+  border-top: 2px solid var(--ld-panel-up);
+  background: var(--ld-panel);
 }
 .help-footer .hud-btn {
   min-height: 44px;
@@ -198,7 +207,7 @@
   font: inherit;
   color: var(--ld-text);
   background: transparent; /* 副ボタン=枠のみ */
-  border: 2px solid var(--ld-text-weak);
+  border: 2px solid var(--ld-border);
   padding: 4px 12px;
   min-height: 40px;
   cursor: pointer;
@@ -207,20 +216,20 @@
     border-color 150ms ease-out;
 }
 .hud-btn:hover:not(:disabled) {
-  border-color: var(--ld-accent);
+  border-color: var(--ld-info);
 }
 .hud-btn:focus-visible {
-  outline: 2px solid var(--ld-hint);
+  outline: 2px solid var(--ld-accent);
   outline-offset: 2px;
 }
 .hud-btn:active:not(:disabled) {
   transform: translateY(1px);
-  background: var(--ld-surface-up);
+  background: var(--ld-panel-up);
 }
 /* #94 minori 指定: 無効は文字 #a9c2bc（地 #26393d で 6.41:1）・枠 2px 破線 #8fa9a3。opacity で薄くしない */
 .hud-btn:disabled {
-  color: #a9c2bc;
-  border: 2px dashed var(--ld-text-weak);
+  color: var(--ld-text-weak);
+  border: 2px dashed var(--ld-border);
   cursor: not-allowed;
 }
 /* 理由つきの無効ボタン: 1行目=ボタン名 16px / 2行目=理由 12px。高さ 44→52px */
@@ -237,7 +246,7 @@
   display: block;
   font-size: 14px;
   line-height: 16px;
-  color: #a9c2bc;
+  color: var(--ld-text-weak);
   white-space: nowrap;
 }
 /* ホバーで全文を補足（地 #0f1a1c・枠 1px #8fa9a3・16px）。disabled はフォーカスできないので読み上げは aria-describedby */
@@ -254,23 +263,23 @@
   white-space: nowrap;
   color: var(--ld-text);
   background: var(--ld-bg);
-  border: 1px solid var(--ld-text-weak);
+  border: 1px solid var(--ld-border);
   pointer-events: none;
 }
 .hud-btn--primary {
   border-color: var(--ld-frame-bright); /* 主ボタン=塗り＋明枠 */
   color: var(--ld-bg);
-  background: var(--ld-accent);
+  background: var(--ld-info);
 }
 .hud-btn--primary:active:not(:disabled) {
-  background: var(--ld-accent);
+  background: var(--ld-info);
   filter: brightness(0.85);
 }
 .hud-btn--primary:disabled {
   /* 主ボタンも無効時は塗りを外し、#94 の無効表示（文字 #a9c2bc・2px 破線）にそろえる */
-  color: #a9c2bc;
-  background: var(--ld-surface-up);
-  border: 2px dashed var(--ld-text-weak);
+  color: var(--ld-text-weak);
+  background: var(--ld-panel-up);
+  border: 2px dashed var(--ld-border);
 }
 
 .hud-field {
@@ -280,7 +289,7 @@
 }
 .hud-field label {
   font-size: 14px;
-  color: #a9c2bc;
+  color: var(--ld-text-weak);
 }
 #seed-input {
   font: inherit;
@@ -289,23 +298,23 @@
   height: 40px;
   padding: 0 12px;
   width: 16ch;
-  color: #e4f1ec;
-  background: #0f1a1c;
-  border: 2px solid #8fa9a3;
+  color: var(--ld-text);
+  background: var(--ld-bg);
+  border: 2px solid var(--ld-border);
   border-radius: 0;
 }
 #seed-input::placeholder {
-  color: #a9c2bc;
+  color: var(--ld-text-weak);
 }
 #seed-input:focus,
 #seed-input:focus-visible {
-  border-color: #e8c468;
+  border-color: var(--ld-accent);
   outline: none;
 }
 .title-lead {
   margin: 0 0 8px;
   font-size: 16px;
-  color: #a9c2bc;
+  color: var(--ld-text-weak);
 }
 .title-seed-row {
   align-items: flex-end;
@@ -322,9 +331,9 @@
 }
 .title-actions .hud-btn--primary {
   min-height: 52px;
-  background: #e8c468;
-  border-color: #e8c468;
-  color: #0f1a1c;
+  background: var(--ld-accent);
+  border-color: var(--ld-accent);
+  color: var(--ld-bg);
 }
 
 .hud-stat {
@@ -341,7 +350,7 @@
   color: var(--ld-ok);
 }
 .hud-hint {
-  color: var(--ld-hint);
+  color: var(--ld-accent);
 }
 
 .hud-lines {
@@ -366,7 +375,7 @@
   content: "▼ ";
 }
 .hud-log[data-tone="clear"] {
-  color: var(--ld-hint);
+  color: var(--ld-accent);
 }
 .hud-log[data-tone="clear"]::before {
   content: "★ ";
@@ -435,13 +444,13 @@
   font-family: var(--ld-font);
   font-size: 16px;
   color: var(--ld-text);
-  background: var(--ld-surface);
-  border: 1px solid var(--ld-accent);
+  background: var(--ld-panel);
+  border: 1px solid var(--ld-info);
   border-radius: 6px;
   cursor: pointer;
 }
 .audio-toggle:focus-visible {
-  outline: 2px solid var(--ld-accent);
+  outline: 2px solid var(--ld-info);
   outline-offset: 2px;
 }
 
@@ -456,7 +465,7 @@
 .hud-battle-head {
   flex: none;
   padding: 8px 12px;
-  border-bottom: 2px solid #4a6a70;
+  border-bottom: 2px solid var(--ld-border-weak);
 }
 .hud-battle-head h2 {
   margin: 0 0 4px;
@@ -521,8 +530,8 @@
   gap: 8px;
   align-items: center;
   padding: 6px 12px;
-  background: var(--ld-surface);
-  border-top: 2px solid #4a6a70;
+  background: var(--ld-panel);
+  border-top: 2px solid var(--ld-border-weak);
 }
 .hud-battle-foot .hud-btn {
   min-height: 36px;
@@ -535,10 +544,10 @@
 .hud-battle-head p,
 .hud-battle-head .hud-stat {
   font-size: 16px;
-  color: #a9c2bc;
+  color: var(--ld-text-weak);
 }
 .hud-battle-head h2 {
-  color: #e4f1ec;
+  color: var(--ld-text);
 }
 .hud-battle-head p .hud-danger {
   color: var(--ld-danger);
@@ -549,11 +558,11 @@
   gap: 8px;
   margin: 4px 0;
   font-size: 16px;
-  color: #e4f1ec;
+  color: var(--ld-text);
 }
 .hud-cpu-label {
   font-size: 14px;
-  color: #a9c2bc;
+  color: var(--ld-text-weak);
 }
 .cpu-dots {
   display: inline-flex;
@@ -564,12 +573,12 @@
   height: 12px;
   box-sizing: border-box;
   border-radius: 50%;
-  border: 2px solid #5a7a80;
+  border: 2px solid var(--ld-line);
   background: transparent;
 }
 .cpu-dot.is-on {
-  border-color: #e8c468;
-  background: #e8c468;
+  border-color: var(--ld-accent);
+  background: var(--ld-accent);
 }
 .hud-battle-body .hud-cols {
   grid-template-columns: 1fr 1fr;
@@ -578,7 +587,7 @@
   margin: 0 0 4px;
   font-size: 14px;
   font-weight: bold;
-  color: #a9c2bc;
+  color: var(--ld-text-weak);
 }
 .hud-battle-body .hud-cols li,
 .hud-battle-body .hud-cols p {
@@ -593,12 +602,12 @@
   height: 44px;
   min-height: 44px;
   box-sizing: border-box;
-  border: 1px solid #8fa9a3;
+  border: 1px solid var(--ld-border);
   position: relative;
 }
 /* #94: スキル欄でも無効は 2px 破線。理由つきは 52px（2行目の分だけ高くする） */
 .hud-skills .hud-btn:disabled {
-  border: 2px dashed #8fa9a3;
+  border: 2px dashed var(--ld-border);
 }
 .hud-skills .hud-btn--why {
   height: 52px;
@@ -626,7 +635,7 @@
   white-space: nowrap;
 }
 .hud-skills .hud-btn[data-recommended] {
-  border: 2px solid #e8c468;
+  border: 2px solid var(--ld-accent);
   padding-left: 22px;
 }
 /* 選択（おすすめ）: 実線2px＋角ブラケット（::after） */
@@ -653,7 +662,7 @@
   width: 8px;
   height: 8px;
   margin-top: -4px;
-  background: #e8c468;
+  background: var(--ld-accent);
   clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 /* #142: 広い画面ではスキル・候補を 3 列にして、5 スキルが中段にスクロールなしで収まる高さにする */
@@ -702,9 +711,9 @@
   flex: 1 1 100%;
   min-height: 44px;
   height: 44px;
-  background: #e8c468;
-  border-color: #e8c468;
-  color: #0f1a1c;
+  background: var(--ld-accent);
+  border-color: var(--ld-accent);
+  color: var(--ld-bg);
 }
 .hud-cands {
   display: grid;
@@ -716,7 +725,7 @@
   display: flex;
   align-items: center;
   padding: 0 8px;
-  border: 1px solid #4a6a70;
+  border: 1px solid var(--ld-border-weak);
   box-sizing: border-box;
 }
 .hud-cands li::before {
@@ -836,7 +845,7 @@
     overflow-y: auto;
     min-height: 0;
     padding: 4px 10px;
-    border-left: 2px solid #4a6a70;
+    border-left: 2px solid var(--ld-border-weak);
   }
   .hud-battle-actions .hud-row {
     margin: 0 0 4px;
@@ -877,7 +886,7 @@
   }
   .hud-battle-foot {
     grid-area: foot;
-    border-left: 2px solid #4a6a70;
+    border-left: 2px solid var(--ld-border-weak);
     padding: 4px 10px;
   }
 }
@@ -900,17 +909,17 @@
 /* ---- ランを放棄（#119）: 危険操作はゴースト＋主操作から離す ---- */
 .hud-btn--ghost {
   background: transparent;
-  border: 1px solid #5c6b6e;
-  color: #9fb3b6;
+  border: 1px solid var(--ld-line);
+  color: var(--ld-text-weak);
   min-height: 44px;
 }
 .hud-btn--ghost:hover:not(:disabled) {
-  border-color: #ff6b5e;
-  color: #ff6b5e;
+  border-color: var(--ld-danger);
+  color: var(--ld-danger);
 }
 .hud-btn--danger {
-  border-color: #ff6b5e;
-  color: #ff6b5e;
+  border-color: var(--ld-danger);
+  color: var(--ld-danger);
 }
 /* 戦闘: パネル右上（タイトル行の右端）。タップ領域は 44px 以上 */
 .hud-battle-title {
@@ -969,12 +978,12 @@
   animation: hud-fade 150ms ease-out;
 }
 .hud-modal-box {
-  background: #1b2b2e;
-  border: 1px solid #7ebeab;
+  background: var(--ld-panel);
+  border: 1px solid var(--ld-info);
   border-radius: 8px;
   padding: 16px 20px;
   width: min(420px, calc(100% - 32px));
-  color: #e4f1ec;
+  color: var(--ld-text);
 }
 @media (max-width: 480px) {
   .hud-modal-box {
@@ -988,12 +997,12 @@
 /* 見出しの ▲ は図形（色＋形の二重表示。色覚対応） */
 .hud-modal-title::before {
   content: "▲";
-  color: #ff6b5e;
+  color: var(--ld-danger);
   margin-right: 6px;
 }
 .hud-modal-note {
   margin: 4px 0 0;
-  color: #9fb3b6;
+  color: var(--ld-text-weak);
   font-size: 13px;
 }
 .hud-modal-actions {
@@ -1006,19 +1015,19 @@
 }
 /* 続ける（既定・安全）: 塗り accent */
 .hud-modal-box .hud-btn--primary {
-  background: #7ebeab;
-  border: 2px solid #7ebeab;
-  color: #0f1a1c;
+  background: var(--ld-info);
+  border: 2px solid var(--ld-info);
+  color: var(--ld-bg);
 }
 /* 放棄する（危険）: 塗りなし・danger 枠。hover/押下で danger 塗り */
 .hud-modal-box .hud-btn--danger {
   background: transparent;
-  border: 2px solid #ff6b5e;
-  color: #ff6b5e;
+  border: 2px solid var(--ld-danger);
+  color: var(--ld-danger);
 }
 .hud-modal-box .hud-btn--danger:hover:not(:disabled) {
-  background: #ff6b5e;
-  color: #0f1a1c;
+  background: var(--ld-danger);
+  color: var(--ld-bg);
 }
 @media (max-width: 480px) {
   /* SP は縦積み（続ける → 放棄する）、各 48px・全幅 */
