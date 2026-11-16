@@ -54,6 +54,25 @@ describe("sfxForRun", () => {
   it("何も起きなければ鳴らさない", () => {
     expect(sfxForRun({ lastError: null, events: [] })).toBeNull();
   });
+
+  it("ボス戦の開始なら bossBattle", () => {
+    const events: RunEvent[] = [{ t: "battleStart", room: "boss" }];
+    const battle = { boss: true } as never;
+    expect(sfxForRun({ lastError: null, events, battle })).toBe("bossBattle");
+  });
+
+  it("通常戦の開始なら battleStart のまま", () => {
+    const events: RunEvent[] = [{ t: "battleStart", room: "r1" }];
+    const battle = { boss: false } as never;
+    expect(sfxForRun({ lastError: null, events, battle })).toBe("battleStart");
+  });
+
+  it("bossBattle の音の長さ（attack+decay+sustain+release+delay）が正", () => {
+    const p = SFX.bossBattle as readonly number[];
+    const len = (p[3] ?? 0) + (p[18] ?? 0) + (p[4] ?? 0) + (p[5] ?? 0) + (p[16] ?? 0);
+    expect(p[18] ?? 0).toBeGreaterThanOrEqual(0);
+    expect(len).toBeGreaterThan(0);
+  });
 });
 
 describe("BGM", () => {

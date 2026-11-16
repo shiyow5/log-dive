@@ -36,7 +36,7 @@ export const SFX = {
   lost: [0.9, 0, 220, 0, 0.3, 0.6, 2, 1, -8],
   abandoned: [0.6, 0, 330, 0, 0.05, 0.2, 1, 1, -20],
   /** ボス戦開始時。通常の battleStart より重厚に（のこぎり波＋低音スライド）。 */
-  bossBattle: [0.9, 0, 110, 0.01, 0.1, 0.4, 2, 1, -30, 0, 0, 0, 0.15, 0, 0, 0, 0.1, 0.8, -15, 0],
+  bossBattle: [0.9, 0, 110, 0.01, 0.1, 0.4, 2, 1, -30, 0, 0, 0, 0.15, 0, 0, 0, 0.1, 0.8, 0, 0],
 } satisfies Record<string, Params>;
 
 export type SfxName = keyof typeof SFX;
