@@ -198,7 +198,7 @@ test("戦闘HUD(#94): 押せないボタンの理由がボタン内2行目に出
   expect(st.color).toBe("rgb(169, 194, 188)"); // #a9c2bc
   expect(st.border).toBe("2px dashed rgb(143, 169, 163)"); // #8fa9a3
   expect(st.opacity).toBe("1");
-  expect(st.whySize).toBe("12px");
+  expect(st.whySize).toBe("14px"); // #105/#177: caption は 14px 以上
   expect(st.inside).toBe(true);
 
   // ホバーで全文のツールチップ（16px）
