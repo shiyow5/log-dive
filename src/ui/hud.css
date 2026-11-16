@@ -182,6 +182,15 @@
   font-size: 16px;
   color: var(--ld-text);
 }
+/* #95 前回比: 値の右に小さく。増 = accent(+2 階)、減・同じ = 弱い文字(−1 / ±0)。記号でも増減を示す */
+.result-diff {
+  margin-left: 8px;
+  font-size: 14px;
+  color: var(--ld-text-weak);
+}
+.result-diff--up {
+  color: var(--ld-accent);
+}
 .result-hint {
   margin: 16px 0 0;
   font-size: 16px;
