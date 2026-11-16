@@ -461,6 +461,27 @@
   min-height: 104px;
   overflow-y: auto;
 }
+/*
+ * #117: スクロール可能であることを示す下端のフェード。
+ * 末尾の子要素として置き、sticky（bottom: 0）で見えている下端に張り付かせる。
+ * absolute の ::after だと、スクロールすると中身と一緒に動いて下端から外れてしまう（Codex P2）。
+ */
+.hud-battle-fade {
+  position: sticky;
+  bottom: 0;
+  height: 24px;
+  margin-top: -24px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.35));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hud-battle-actions.is-scrollable .hud-battle-fade {
+  opacity: 1;
+}
+.hud-battle-actions.is-scrollable.at-bottom .hud-battle-fade {
+  opacity: 0;
+}
 /* 最低高さの合計が中段を超える低い画面でも、中段全体をスクロールして操作列へ届く（安全網） */
 .hud-battle-body {
   overflow-y: auto;
