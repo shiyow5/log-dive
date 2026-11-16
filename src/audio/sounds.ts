@@ -35,6 +35,8 @@ export const SFX = {
   won: [0.9, 0, 523, 0, 0.2, 0.5, 1, 1, 0, 0, 262, 0.1, 0.2],
   lost: [0.9, 0, 220, 0, 0.3, 0.6, 2, 1, -8],
   abandoned: [0.6, 0, 330, 0, 0.05, 0.2, 1, 1, -20],
+  /** ボス戦開始時。通常の battleStart より重厚に（のこぎり波＋低音スライド）。 */
+  bossBattle: [0.9, 0, 110, 0.01, 0.1, 0.4, 2, 1, -30, 0, 0, 0, 0.15, 0, 0, 0, 0.1, 0.8, -15, 0],
 } satisfies Record<string, Params>;
 
 export type SfxName = keyof typeof SFX;
@@ -69,8 +71,14 @@ function sfxForEvent(e: RunEvent): SfxName {
  * 操作の結果（dispatch 後の状態）から鳴らす SE を決める。鳴らすものが無ければ null。
  * エラーならエラー音、そうでなければ起きた出来事のうち一番優先度が高いもの。
  */
-export function sfxForRun(s: Pick<RunState, "lastError" | "events">): SfxName | null {
+export function sfxForRun(
+  s: Pick<RunState, "lastError" | "events"> & { battle?: RunState["battle"] },
+): SfxName | null {
   if (s.lastError) return "error";
+  // ボス戦開始時は bossBattle SE を優先
+  if (s.battle?.boss && s.events.some((e) => e.t === "battleStart")) {
+    return "bossBattle";
+  }
   let best: RunEvent | null = null;
   for (const e of s.events) {
     if (!best || EVENT_PRIORITY.indexOf(e.t) < EVENT_PRIORITY.indexOf(best.t)) best = e;
