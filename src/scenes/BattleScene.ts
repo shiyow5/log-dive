@@ -11,7 +11,7 @@ import {
   ensureEnemyTextures,
   type EnemyKind,
 } from "../art/enemy-sprites";
-import { button, el, renderHud, setHudBusy } from "../ui/hud";
+import { button, el, renderHud, setHudBusy, initScrollIndicator, initSymptomScrollIndicator } from "../ui/hud";
 import { abandonButton, cpuDots, logLine, statsRow } from "./hud-parts";
 import { recommend } from "./battle-hint";
 import { bugName, current, dispatch, legality, sceneFor, skillInfo } from "./run-port";
@@ -27,15 +27,6 @@ function guideButton(): HTMLButtonElement {
   const b = button("症状の読み方", () => openSymptomOverlay(b), { label: "症状の読み方を開く" });
   b.classList.add("hud-guide");
   return b;
-}
-
-/**
- * スキルボタンの「（CPU n）」を nowrap の子要素にまとめる（#142 の 844×390 で「（CPU」と「1）」が割れないように）。
- * textContent は「名前（CPU n）」のままなので、ボタンの名前・テストの照合は変わらない。
- */
-function withCpuTag(btn: HTMLButtonElement, name: string, cpu: number): HTMLButtonElement {
-  btn.replaceChildren(name, el("span", { class: "hud-cpu-tag" }, `（CPU ${cpu}）`));
-  return btn;
 }
 
 /**
@@ -99,6 +90,9 @@ export class BattleScene extends Phaser.Scene {
       this.time.delayedCall(600, () => setHudBusy(false));
     }
     this.renderHud(s);
+    // #117: スクロールインジケーター初期化
+    initScrollIndicator();
+    initSymptomScrollIndicator();
   }
 
   private act(a: Action): void {
@@ -109,6 +103,9 @@ export class BattleScene extends Phaser.Scene {
     this.impact(next.events);
     this.drawHp(next.battle);
     this.renderHud(next);
+    // #117: スクロールインジケーター更新
+    initScrollIndicator();
+    initSymptomScrollIndicator();
     if (next.events.some((e) => e.t === "candidateRemoved")) flashLogLine();
     if (to !== "battle") {
       // 終局の一撃・致死被弾も、ダメージ数字と被弾演出を見せてから遷移する（PR #147 review）
@@ -178,6 +175,14 @@ export class BattleScene extends Phaser.Scene {
     this.drawHp(b);
   }
 
+  /** アニメーション中の HP バー状態。 */
+  private hpBarAnim?: {
+    from: number;
+    to: number;
+    startTime: number;
+    duration: number;
+  };
+
   private drawHp(b: BattleState | null): void {
     const g = this.hpBar;
     if (!g || !b) return;
@@ -185,12 +190,50 @@ export class BattleScene extends Phaser.Scene {
     const x = this.barX;
     g.fillStyle(0x1b2b2e, 1);
     g.fillRect(x, BAR_Y, BAR_W, 4);
-    g.fillStyle(0xff6b5e, 1);
-    g.fillRect(x, BAR_Y, Math.round((BAR_W * b.hp) / b.maxHp), 4);
+    // 被弾時のみ滑らかに変化（500ms イーズアウト）
+    if (b.hp < this.lastHp) {
+      const prevHp = this.lastHp;
+      const fromW = Math.round((BAR_W * prevHp) / b.maxHp);
+      const toW = Math.round((BAR_W * b.hp) / b.maxHp);
+      const animStart = this.time.now;
+      const duration = 500;
+      this.hpBarAnim = { from: fromW, to: toW, startTime: animStart, duration };
+      // アニメーション中にバーを描画し続ける
+      const barColor = 0xff6b5e;
+      const tick = (): void => {
+        if (!g.active || !this.hpBarAnim) return;
+        const elapsed = this.time.now - this.hpBarAnim.startTime;
+        const progress = Math.min(elapsed / this.hpBarAnim.duration, 1);
+        // イーズアウト（sinカーブ）
+        const eased = 1 - Math.cos((progress * Math.PI) / 2);
+        const w = this.hpBarAnim.from + (this.hpBarAnim.to - this.hpBarAnim.from) * eased;
+        // バックグラウンドと目盛りを再描画
+        g.fillStyle(0x1b2b2e, 1);
+        g.fillRect(x, BAR_Y, BAR_W, 4);
+        g.fillStyle(0xe4f1ec, 1);
+        for (let i = 0; i <= 5; i++) {
+          g.fillRect(x + Math.min(Math.round((BAR_W * i) / 5), BAR_W - 1), BAR_Y + 4, 1, 2);
+        }
+        // 赤いバー
+        g.fillStyle(barColor, 1);
+        g.fillRect(x, BAR_Y, Math.round(w), 4);
+        if (progress < 1) {
+          this.time.addEvent({ callback: tick, delay: 16, repeat: -1 });
+        } else {
+          this.hpBarAnim = undefined;
+        }
+      };
+      tick();
+    } else {
+      g.fillStyle(0xff6b5e, 1);
+      g.fillRect(x, BAR_Y, Math.round((BAR_W * b.hp) / b.maxHp), 4);
+    }
     // 5 分割の目盛り（色だけに頼らない）。赤いバーの連続を切らないよう、バーの直下に 1 本ずつ置く
-    g.fillStyle(0xe4f1ec, 1);
-    for (let i = 0; i <= 5; i++) {
-      g.fillRect(x + Math.min(Math.round((BAR_W * i) / 5), BAR_W - 1), BAR_Y + 4, 1, 2);
+    if (!this.hpBarAnim) {
+      g.fillStyle(0xe4f1ec, 1);
+      for (let i = 0; i <= 5; i++) {
+        g.fillRect(x + Math.min(Math.round((BAR_W * i) / 5), BAR_W - 1), BAR_Y + 4, 1, 2);
+      }
     }
     // 数値はバーの左に（右上の『?』と重ねない）（色だけに頼らない）
     this.hpText?.setText(`${b.hp}/${b.maxHp}`);

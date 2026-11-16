@@ -115,3 +115,103 @@ export function focusFirst(container: HTMLElement): void {
   // 初期フォーカスで中段が勝手にスクロールしないよう preventScroll（#87: scrollTop=0 を保つ）
   target?.focus({ preventScroll: true });
 }
+
+// #117: 操作列（.hud-battle-actions）が溢れているときにスクロールインジケーターを表示・制御
+const scrollHintEl = el("div", { class: "scroll-hint", "aria-hidden": "true" },
+  el("span", { class: "scroll-arrow" }, "▼"),
+);
+let scrollObserver: IntersectionObserver | null = null;
+let scrollThrottleTimer: number | null = null;
+
+/** 操作列のスクロール状態を監視し、is-scrollable / is-at-bottom を切替える。 */
+export function initScrollIndicator(): void {
+  const actions = document.querySelector<HTMLElement>(".hud-battle-actions");
+  if (!actions) return;
+
+  // 既にインジケーターがあればスキップ
+  if (actions.querySelector(".scroll-hint")) return;
+  actions.style.position = "relative";
+  actions.append(scrollHintEl);
+
+  // bottom 付近を監視: 下端が見えれば is-at-bottom（もっと下がない）
+  const sentinel = el("div", { style: "position:absolute;bottom:0;left:0;right:0;height:1px;pointer-events:none;" });
+  actions.append(sentinel);
+
+  scrollObserver?.disconnect();
+  scrollObserver = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.target === sentinel) {
+        scrollHintEl.classList.toggle("is-at-bottom", e.isIntersecting);
+      }
+    }
+  }, { root: actions, threshold: 1 });
+  scrollObserver.observe(sentinel);
+
+  // スクロールイベント（throttle）: 溢れているか判定
+  actions.removeEventListener("scroll", onScroll);
+  actions.addEventListener("scroll", onScroll, { passive: true });
+}
+
+function onScroll(): void {
+  if (scrollThrottleTimer !== null) return;
+  scrollThrottleTimer = window.setTimeout(() => {
+    scrollThrottleTimer = null;
+  }, 50);
+  const actions = document.querySelector<HTMLElement>(".hud-battle-actions");
+  if (!actions) return;
+  const { scrollTop, scrollHeight, clientHeight } = actions;
+  const isScrollable = scrollHeight > clientHeight + 1;
+  actions.classList.toggle("is-scrollable", isScrollable);
+  // 下端にいれば is-at-bottom（IntersectionObserver との整合用）
+  const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
+  scrollHintEl.classList.toggle("is-at-bottom", atBottom);
+}
+
+// #117: 横持ちスマホ（#166）では症状欄（.hud-cols）が overflow-y:auto になるので監視
+const symptomScrollEl = el("div", { class: "scroll-hint", "aria-hidden": "true" },
+  el("span", { class: "scroll-arrow" }, "▼"),
+);
+let symptomScrollObserver: IntersectionObserver | null = null;
+let symptomScrollThrottleTimer: number | null = null;
+
+export function initSymptomScrollIndicator(): void {
+  // 横持ちレイアウトでのみ有効（.hud-cols がスクロール対象）
+  const cols = document.querySelector<HTMLElement>(".hud-battle-body .hud-cols");
+  if (!cols) return;
+  if (cols.querySelector(".scroll-hint")) return;
+  // hud-cols がスクロールしているか確認（CSSでoverflow-y:autoになっているか）
+  const overflowY = getComputedStyle(cols).overflowY;
+  if (overflowY !== "auto" && overflowY !== "scroll") return;
+  cols.style.position = "relative";
+  cols.append(symptomScrollEl);
+
+  const sentinel = el("div", { style: "position:absolute;bottom:0;left:0;right:0;height:1px;pointer-events:none;" });
+  cols.append(sentinel);
+
+  symptomScrollObserver?.disconnect();
+  symptomScrollObserver = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.target === sentinel) {
+        symptomScrollEl.classList.toggle("is-at-bottom", e.isIntersecting);
+      }
+    }
+  }, { root: cols, threshold: 1 });
+  symptomScrollObserver.observe(sentinel);
+
+  cols.removeEventListener("scroll", onSymptomScroll);
+  cols.addEventListener("scroll", onSymptomScroll, { passive: true });
+}
+
+function onSymptomScroll(): void {
+  if (symptomScrollThrottleTimer !== null) return;
+  symptomScrollThrottleTimer = window.setTimeout(() => {
+    symptomScrollThrottleTimer = null;
+  }, 50);
+  const cols = document.querySelector<HTMLElement>(".hud-battle-body .hud-cols");
+  if (!cols) return;
+  const { scrollTop, scrollHeight, clientHeight } = cols;
+  const isScrollable = scrollHeight > clientHeight + 1;
+  cols.classList.toggle("is-scrollable", isScrollable);
+  const atBottom = scrollTop + clientHeight >= scrollHeight - 1;
+  symptomScrollEl.classList.toggle("is-at-bottom", atBottom);
+}

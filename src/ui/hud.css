@@ -465,6 +465,47 @@
 .hud-battle-body {
   overflow-y: auto;
 }
+
+/* #117: 操作列にスクロール可能であることを示すインジケーター（フェード＋矢印）。
+ * is-scrollable クラスは JS で content が溢れるときに付与する。
+ */
+.hud-battle-actions .scroll-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--ld-surface) 80%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.hud-battle-actions.is-scrollable .scroll-hint {
+  opacity: 1;
+}
+.hud-battle-actions.is-scrollable .scroll-hint.is-at-bottom {
+  /* スクロール下端に到達したらフェードアウト（もう下がない） */
+  opacity: 0 !important;
+}
+.scroll-hint .scroll-arrow {
+  font-size: 14px;
+  color: var(--ld-text-weak);
+  line-height: 1;
+  animation: scroll-bounce 1.2s ease-in-out infinite;
+}
+@keyframes scroll-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
 .hud-battle-foot {
   flex: none;
   display: flex;
@@ -830,6 +871,19 @@
     grid-area: foot;
     border-left: 2px solid #4a6a70;
     padding: 4px 10px;
+  }
+  /* 横持ち: 右列の操作列にもスクロールインジケーター（左端からフェード） */
+  .hud-battle-actions .scroll-hint {
+    height: 100%;
+    width: 24px;
+    background: linear-gradient(to right, transparent, var(--ld-surface) 70%);
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 4px;
+  }
+  .scroll-hint .scroll-arrow {
+    transform: rotate(-90deg);
   }
 }
 @media (max-aspect-ratio: 1/1) {
