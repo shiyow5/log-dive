@@ -1,6 +1,7 @@
 import { STORY } from "./story-text";
 import Phaser from "phaser";
 import { setupView } from "./view";
+import { addBackdrop } from "../art/backdrop";
 import { BUG_POS, FONT_FAMILY, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
@@ -78,6 +79,7 @@ export class BattleScene extends Phaser.Scene {
 
   create(): void {
     setupView(this);
+    addBackdrop(this);
     fadeIn(this);
     this.picking = false;
     const s = current();

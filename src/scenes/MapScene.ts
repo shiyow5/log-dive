@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { setupView } from "./view";
+import { addBackdrop, type Backdrop } from "../art/backdrop";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
@@ -92,6 +93,7 @@ export function moveLabel(r: RoomState, s: RunState): string {
 
 export class MapScene extends Phaser.Scene {
   private fx?: FxDirector;
+  private backdrop?: Backdrop;
   /** 直近に描いたマップの部屋中心（宝箱演出の位置）。 */
   private roomCenters = new Map<string, { x: number; y: number }>();
   /** 部屋の一辺(px)。宝箱の演出位置をラベルの逆側に寄せるために使う（drawMap で更新）。 */
@@ -107,6 +109,7 @@ export class MapScene extends Phaser.Scene {
 
   create(): void {
     setupView(this);
+    this.backdrop = addBackdrop(this);
     fadeIn(this);
     const s = current();
     const fx = createSceneFx(this, "fx-map");
@@ -147,6 +150,7 @@ export class MapScene extends Phaser.Scene {
     if (this.scale.gameSize.height !== h * RENDER_SCALE) {
       this.scale.setGameSize(GAME_WIDTH * RENDER_SCALE, h * RENDER_SCALE);
       this.cameras.main.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, h / 2);
+      this.backdrop?.resize(h);
     }
     const cssH = this.game.canvas.getBoundingClientRect().height;
     document.documentElement.style.setProperty("--ld-canvas-h", `${cssH}px`);
@@ -177,6 +181,7 @@ export class MapScene extends Phaser.Scene {
     if (this.scale.gameSize.height === GAME_HEIGHT * RENDER_SCALE) return;
     this.scale.setGameSize(GAME_WIDTH * RENDER_SCALE, GAME_HEIGHT * RENDER_SCALE);
     this.cameras?.main?.setZoom(RENDER_SCALE).centerOn(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    this.backdrop?.resize(GAME_HEIGHT);
   }
 
   /**
