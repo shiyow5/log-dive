@@ -29,7 +29,7 @@ test("敗北: 最後のバグ・誤パッチ回数が出て、同じシードで
   const d = page.getByTestId("result-defeat");
   await expect(d).toContainText("最後のバグ:");
   await expect(d).toContainText("誤パッチ: 0回");
-  await expect(page.getByTestId("result-シード")).toHaveText("e2e-7");
+  await expect(page.getByTestId("result-今回のシード")).toHaveText("e2e-7");
   await page.screenshot({
     path: process.env.SHOT_DIR ? `${process.env.SHOT_DIR}/defeat.png` : "test-results/defeat.png",
   });
@@ -37,7 +37,7 @@ test("敗北: 最後のバグ・誤パッチ回数が出て、同じシードで
   await expect(page.locator("body")).toHaveAttribute("data-scene", "map");
   // 同じシードで始まっている: もう一度負けるとリザルトのシードが同じ
   await endTurnsUntilResult(page);
-  await expect(page.getByTestId("result-シード")).toHaveText("e2e-7");
+  await expect(page.getByTestId("result-今回のシード")).toHaveText("e2e-7");
 });
 
 test("戦闘中に「症状の読み方」を開いて閉じられる (#118)", async ({ page }) => {

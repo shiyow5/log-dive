@@ -115,9 +115,109 @@
     font-size: 24px;
     margin-bottom: 4px;
   }
-  #hud[data-scene="result"] .hud-dl {
-    grid-template-columns: max-content 1fr max-content 1fr;
-    margin: 4px 0;
+  /* #95: 指定値は1列4行。背が低いときだけ2列×2行に詰める（行高 36px・区切り線は維持） */
+  #hud[data-scene="result"] .result-table {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+  }
+  #hud[data-scene="result"] .result-row:nth-child(2) {
+    border-top: none;
+  }
+  #hud[data-scene="result"] .result-panel {
+    padding-top: 12px;
+  }
+  #hud[data-scene="result"] .result-hint,
+  #hud[data-scene="result"] .result-actions {
+    margin-top: 8px;
+  }
+}
+
+/* ---- リザルト（#95 minori 指定値 11/10 14:14 ＋ sota 11/16 の差分。前回比は保留） ---- */
+#hud[data-scene="result"] .result-panel {
+  position: relative;
+  isolation: isolate; /* 背景絵（z-index:-1）をパネル地の上・文字の下に置く */
+  width: min(560px, 100% - 32px);
+  max-width: none;
+  padding: 24px 24px 16px;
+  background-color: var(--ld-panel); /* 絵と文字が重なっても 4.5:1 を割らないための地 */
+}
+.result-panel h1 {
+  font-size: 24px;
+  line-height: 32px;
+  margin-bottom: 12px;
+}
+.result-sprite {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 256px;
+  height: 256px;
+  transform: translate(-50%, -50%);
+  opacity: 0.12;
+  image-rendering: pixelated;
+  pointer-events: none;
+  z-index: -1;
+}
+.result-table {
+  margin: 0;
+}
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 36px;
+  border-top: 1px solid var(--ld-panel-up);
+}
+.result-row:first-child {
+  border-top: none;
+}
+.result-row dt {
+  font-size: 16px;
+  color: var(--ld-text-weak);
+}
+.result-row dd {
+  margin: 0;
+  font-size: 16px;
+  color: var(--ld-text);
+}
+.result-hint {
+  margin: 16px 0 0;
+  font-size: 16px;
+  color: var(--ld-accent);
+}
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 16px 0 0;
+}
+.result-actions .hud-btn {
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+  width: 160px;
+  font-size: 16px;
+}
+.result-actions .hud-btn--primary,
+.result-actions .hud-btn--primary:active:not(:disabled) {
+  width: 220px;
+  color: var(--ld-bg);
+  background: var(--ld-accent);
+}
+/* SP は縦積み（主が上・幅 100%・gap 12px） */
+@media (max-width: 640px) {
+  #hud[data-scene="result"] .result-panel {
+    padding: 24px 16px 16px;
+  }
+  .result-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .result-actions .hud-btn,
+  .result-actions .hud-btn--primary {
+    width: 100%;
   }
 }
 
@@ -428,16 +528,6 @@
   .hud-btn {
     transition: none;
   }
-}
-
-.hud-dl {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
-  margin: 8px 0;
-}
-.hud-dl dd {
-  margin: 0;
 }
 
 /* 音のオン/オフ（#hud の外。src/ui/audio-toggle.ts） */

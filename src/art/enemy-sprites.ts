@@ -132,24 +132,42 @@ export type EnemyFrame = "idle" | "hit";
 export const enemyTextureKey = (kind: EnemyKind, frame: EnemyFrame): string =>
   `enemy-${kind}-${frame}`;
 
+/** 1 ドット = 1px で ctx の (0,0) から描く。 */
+function drawEnemy(ctx: CanvasRenderingContext2D, kind: EnemyKind, frame: EnemyFrame): void {
+  const spr = ENEMY_SPRITES[kind];
+  spr[frame].forEach((row, y) => {
+    [...row].forEach((ch, x) => {
+      const c = spr.palette[ch];
+      if (c === undefined) return;
+      ctx.fillStyle = `#${c.toString(16).padStart(6, "0")}`;
+      ctx.fillRect(x, y, 1, 1);
+    });
+  });
+}
+
+/**
+ * DOM 用に idle フレームを PNG の data URL にする（リザルト背景 #95。CSS で拡大し image-rendering: pixelated）。
+ * canvas が使えない環境では null。
+ */
+export function enemySpriteDataUrl(kind: EnemyKind): string | null {
+  const c = document.createElement("canvas");
+  c.width = ENEMY_SIZE;
+  c.height = ENEMY_SIZE;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  drawEnemy(ctx, kind, "idle");
+  return c.toDataURL("image/png");
+}
+
 /** Phaser のテクスチャとして登録する（既にあれば何もしない）。 */
 export function ensureEnemyTextures(textures: Phaser.Textures.TextureManager): void {
   for (const kind of Object.keys(ENEMY_SPRITES) as EnemyKind[]) {
-    const spr = ENEMY_SPRITES[kind];
     for (const frame of ["idle", "hit"] as const) {
       const key = enemyTextureKey(kind, frame);
       if (textures.exists(key)) continue;
       const tex = textures.createCanvas(key, ENEMY_SIZE, ENEMY_SIZE);
       if (!tex) continue;
-      const ctx = tex.getContext();
-      spr[frame].forEach((row, y) => {
-        [...row].forEach((ch, x) => {
-          const c = spr.palette[ch];
-          if (c === undefined) return;
-          ctx.fillStyle = `#${c.toString(16).padStart(6, "0")}`;
-          ctx.fillRect(x, y, 1, 1);
-        });
-      });
+      drawEnemy(tex.getContext(), kind, frame);
       tex.refresh();
       tex.setFilter(1 /* Phaser.Textures.FilterMode.NEAREST */);
     }

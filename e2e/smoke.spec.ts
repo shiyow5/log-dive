@@ -48,7 +48,7 @@ test("?fx=0: タイトル→r1 移動→再現→パッチ→マップに戻る�
   await page.getByRole("button", { name: /ランを放棄/ }).click();
   await page.getByRole("button", { name: /放棄する/ }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "result");
-  await expect(page.getByTestId("result-閉じたバグ票")).toHaveText("1");
+  await expect(page.getByTestId("result-倒したバグ")).toHaveText("1");
   await page.getByRole("button", { name: "タイトルへ" }).click();
   await expect(page.locator("body")).toHaveAttribute("data-scene", "title");
   expect(errors).toEqual([]);

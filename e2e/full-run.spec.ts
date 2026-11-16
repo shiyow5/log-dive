@@ -110,7 +110,7 @@ test("通し: 1階→2階→3階→ボス撃破→リザルト（毎手 stateHas
   ).toBeVisible();
   await expect(page.getByText("夜が、明けていく。")).toBeVisible();
   await expect(page.getByText(/^全バグ票 \d+ 件クローズ$/)).toBeVisible();
-  await expect(page.getByTestId("result-閉じたバグ票")).not.toHaveText("0");
+  await expect(page.getByTestId("result-倒したバグ")).not.toHaveText("0");
   await shot("clear");
   expect(errors).toEqual([]);
 });

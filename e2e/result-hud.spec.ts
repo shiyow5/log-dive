@@ -74,7 +74,7 @@ for (const vp of [
     await page.setViewportSize(vp);
     await reachResult(page);
     await expect(page.getByRole("heading", { name: "復旧完了" })).toBeVisible();
-    await expect(page.getByTestId("result-ターン終了の回数")).toBeVisible();
+    await expect(page.getByTestId("result-使ったターン")).toBeVisible();
     await page.waitForTimeout(800);
     expect(await redBarPixels(page)).toBe(0);
   });
