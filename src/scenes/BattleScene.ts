@@ -22,6 +22,7 @@ import { fadeIn, goTo } from "./transition";
 import { IMPACT, damagePop, edgeFlash, shakeX } from "../fx/impact-fx";
 import { flashLogLine } from "../ui/hud-flash";
 import { openSymptomOverlay } from "./symptom-overlay";
+import { createHitHighlight, shouldHighlightBar } from "./hit-highlight";
 import { token, tokenNum } from "../ui/tokens";
 
 /** 戦闘中に症状の読み方を開くボタン（#118）。 */
@@ -72,8 +73,8 @@ export class BattleScene extends Phaser.Scene {
   private enemyKind: EnemyKind = "bug";
   private lastHp = 0;
   private maxHp = 1;
-  /** 連続被弾で古いタイマーが色を戻さないための通し番号 */
-  private hitSeq = 0;
+  /** 被弾ハイライトの保持（連続被弾で古いタイマーが色を戻さない・非ダメージ更新でも保つ #201） */
+  private hl = createHitHighlight();
   /** patch の種類を選んでいる途中か */
   private picking = false;
 
@@ -86,6 +87,7 @@ export class BattleScene extends Phaser.Scene {
     addBackdrop(this);
     fadeIn(this);
     this.picking = false;
+    this.hl.reset();
     const s = current();
     const fx = createSceneFx(this, "fx-battle");
     this.fx = fx;
@@ -180,21 +182,22 @@ export class BattleScene extends Phaser.Scene {
     // 被弾直後 200ms だけ accent（hpText と同じタイミング。静的な強調で fx=0 でも気づける #195）
     const hit = b.hp < this.lastHp;
     this.maxHp = b.maxHp;
-    this.paintHpBar(b.hp, hit);
+    this.paintHpBar(b.hp, shouldHighlightBar(hit, this.hl));
     // 数値はバーの左に（右上の『?』と重ねない）（色だけに頼らない）
     this.hpText?.setText(`${b.hp}/${b.maxHp}`);
     if (hit && this.hpText) {
       const t = this.hpText;
       t.setColor(hitNumColor());
       t.setFontStyle("bold");
-      const seq = ++this.hitSeq;
+      const seq = this.hl.hit();
       this.time.delayedCall(200, () => {
-        if (t.active && seq === this.hitSeq) {
+        if (!this.hl.release(seq)) return;
+        if (t.active) {
           t.setColor(token("text"));
           t.setFontStyle("normal");
         }
         // 戻すときは最新の HP で描き直す（連続被弾で古い幅を描かない）
-        if (seq === this.hitSeq && this.hpBar?.active) this.paintHpBar(this.lastHp, false);
+        if (this.hpBar?.active) this.paintHpBar(this.lastHp, false);
       });
     }
     // 被弾フレーム（HP が減ったとき 250ms だけ）
