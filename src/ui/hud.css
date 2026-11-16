@@ -375,7 +375,7 @@
   content: "▼ ";
 }
 .hud-log[data-tone="clear"] {
-  color: var(--ld-hint);
+  color: var(--ld-accent);
 }
 .hud-log[data-tone="clear"]::before {
   content: "★ ";
