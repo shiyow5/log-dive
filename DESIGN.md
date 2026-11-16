@@ -188,6 +188,21 @@ Individual room/area tiles use a slightly lighter background (#13132B) with the 
 - Boss sits 8px higher than normal enemies so its face is not hidden by the HUD panel at 1280×720.
 - HP bar is 48px wide, 4px high, with a numeric `hp/max` on its left.
 
+### Backdrop (Issue #101)
+
+Map and battle share one backdrop so parts no longer float on a flat color. Code: `src/art/backdrop.ts` (`BACKDROP` holds the values; keep both in sync). Pixel-art only, drawn in code; integer-dot tiles scaled with `pixelArt: true` (nearest neighbor, no blur).
+
+| Layer (back→front) | Content                                                | Tile  | Colors (face / seam / light) |
+| ------------------ | ------------------------------------------------------ | ----- | ---------------------------- |
+| Far wall           | Stone bricks, 2 courses, half-brick offset, fixed dirt | 32×16 | #122024 / #0C1517 / #16262A  |
+| Near floor         | Flagstones, bottom 30% of canvas (multiple of 16)      | 16×16 | #0D171A / #091113 / #111D20  |
+| Vignette           | Elliptical edge darkening, 6 steps (pixel-stepped)     | 80×45 | #060B0C, max 78% opacity     |
+
+- The floor is darker than the wall (the front reads as "closer and dimmer"); the brightest backdrop color is #16262A.
+- Text stays readable on every backdrop color: #E4F1EC ≥ 13.45:1, #A9C2BC ≥ 8.28:1, #8FA9A3 ≥ 6.23:1 (worst case on #16262A). All ≥ 4.5:1.
+- Portrait map: the backdrop is resized with the canvas (`Backdrop.resize`).
+- Rendered as a CSS background on the `#game` container (the canvas is transparent; rei decision on PR #182). The three layers are pre-composited into one dot-resolution PNG (data URL) and set as `background-image` of the `#game` container (sized/positioned to the canvas rect) with `image-rendering: pixelated`, so Phaser draws no backdrop at all. It is removed on scene shutdown (Title/Result have none), so `MapScene.clearMapObjects()` no longer needs to special-case it.
+
 ### Impact FX (Issue #104)
 
 Phaser tweens only (no new canvas). Values live in `IMPACT` in `src/fx/impact-fx.ts`; keep both in sync. Nothing covers text: HUD, log, enemy name and HP bar are never overlapped.
