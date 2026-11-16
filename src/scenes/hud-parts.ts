@@ -1,14 +1,21 @@
 import { button, el } from "../ui/hud";
 import { logTone } from "./log-tone";
-import { lastLogLine } from "./run-port";
+import { lastLogLine, runSerial } from "./run-port";
 import { createChangeTracker } from "./stat-change";
 import type { RunState } from "./run-port";
 
-const hpChanged = createChangeTracker();
+// 前のランの稼働率を持ち越すと、新ラン直後の 30/30 が「変化」扱いで太字になる（#195 QA）。
+// ランが変わったら作り直す
+let hpChanged = createChangeTracker();
+let hpChangedRun = runSerial();
 
 /** 稼働率・CPU・ターンの行。稼働率が前回の描画から変わったときだけ太字（#195）。 */
 export function statsRow(s: RunState, opts: { cpu?: boolean } = {}): HTMLElement {
   const p = s.player;
+  if (hpChangedRun !== runSerial()) {
+    hpChanged = createChangeTracker();
+    hpChangedRun = runSerial();
+  }
   const changed = hpChanged(p.hp, s.events);
   const hpClass = [
     logTone(s.events) === "damage" ? "hud-hp-hit" : "",
