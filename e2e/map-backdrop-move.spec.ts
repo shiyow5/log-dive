@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// #101 / PR #182: マップで1歩動いても背景（壁・床の TileSprite 2つとビネットの Image）が消えない。
+// #101 / PR #182: マップで1歩動いても背景（壁・床・ビネットを合成した Image 1つ）が消えない。
 // 以前は MapScene.clearMapObjects() が背景まで destroy していた（Codex P2）。
 // seed=bd-0 は最初の移動（r0→r1）で戦闘にならず、マップのまま描き直される。
 const SEED = "bd-0";
@@ -8,7 +8,7 @@ const SIZES: [number, number][] = [
   [390, 844],
   [1280, 720],
 ];
-const EXPECTED = ["Image:ld-backdrop-vignette", "TileSprite", "TileSprite"];
+const EXPECTED = ["Image:ld-backdrop-map"];
 
 type Obj = {
   type: string;
@@ -25,7 +25,7 @@ async function backdropObjects(page: Page): Promise<string[]> {
     };
     return scene.children.list
       .filter((o) => o.active && o.getData("ld-backdrop") === true)
-      .map((o) => (o.type === "Image" ? `Image:${o.texture?.key}` : o.type))
+      .map((o) => `${o.type}:${o.texture?.key ?? ""}`)
       .sort();
   });
 }

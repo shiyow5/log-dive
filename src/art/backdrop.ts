@@ -5,7 +5,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from "../config";
  * 背景（Issue #101）。単色の暗背景に部屋が浮いて見えるのを、遠景タイル＋ビネットで奥行きに変える。
  * すべてコードで描くドット絵（外部画像なし）。整数ドットのまま pixelArt（最近傍）で拡大するのでぼやけない。
  *
- * 層（奥→手前）:
+ * 層（奥→手前。表示は合成済みの1枚）:
  *  1. 遠景 = 石壁のレンガ（32×16 ドットのタイル）。背景色 #0f1a1c にごく近い明るさ。
  *  2. 手前 = 床の石畳（16×16）。壁より暗く、画面下 FLOOR_RATIO の帯だけ。
  *  3. ビネット = 周辺ほど暗くする（段階を数ドット単位で落とす）。
@@ -30,9 +30,8 @@ export const BACKDROP = {
   vignetteMax: 0.78,
 } as const;
 
-const TILE_WALL = "ld-backdrop-wall";
-const TILE_FLOOR = "ld-backdrop-floor";
-const VIGNETTE = "ld-backdrop-vignette";
+/** 合成済みの背景テクスチャのキー（シーンごとに1枚）。 */
+const TEXTURE_PREFIX = "ld-backdrop-";
 const VIG_W = 80;
 const VIG_H = 45;
 
@@ -40,18 +39,18 @@ function hex(c: number): string {
   return `#${c.toString(16).padStart(6, "0")}`;
 }
 
+/** タイル・ビネットの元絵（DOM の canvas）。Phaser のテクスチャにはしない（合成の材料にだけ使う）。 */
 function makeCanvas(
-  textures: Phaser.Textures.TextureManager,
-  key: string,
   w: number,
   h: number,
   paint: (ctx: CanvasRenderingContext2D) => void,
-): void {
-  if (textures.exists(key)) return;
-  const tex = textures.createCanvas(key, w, h);
-  if (!tex) return;
-  paint(tex.getContext());
-  tex.refresh();
+): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  if (ctx) paint(ctx);
+  return c;
 }
 
 /** 石壁。32×16 に 2 段のレンガ（段ごとに半個ずらす）。 */
@@ -139,24 +138,50 @@ export interface Backdrop {
   resize(height: number): void;
 }
 
-/** 背景を足す。マップ・戦闘の create() の先頭（他の描画より前）で呼ぶ。 */
+/** 壁・床・ビネットを W×h（ドット）の1枚に描く。 */
+function paintComposite(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, w, h);
+  const wall = ctx.createPattern(makeCanvas(32, 16, paintWall), "repeat");
+  if (wall) {
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 0, w, h);
+  }
+  // 床は 16 ドットの整数倍の高さに揃える（タイルが途中で切れない）。タイルは床の上端から敷く。
+  const fh = Math.max(16, Math.round((h * BACKDROP.floorRatio) / 16) * 16);
+  const floor = ctx.createPattern(makeCanvas(16, 16, paintFloor), "repeat");
+  if (floor) {
+    ctx.save();
+    ctx.translate(0, h - fh);
+    ctx.fillStyle = floor;
+    ctx.fillRect(0, 0, w, fh);
+    ctx.restore();
+  }
+  ctx.drawImage(makeCanvas(VIG_W, VIG_H, paintVignette), 0, 0, w, h);
+}
+
+/**
+ * 背景を足す。マップ・戦闘の create() の先頭（他の描画より前）で呼ぶ。
+ * 3層を毎フレーム重ねて描くと全画面の塗りが3回になり重い（CI のソフトウェア描画で e2e が時間切れになった）。
+ * そこで3層をドット解像度の canvas 1枚に合成し、Image 1つで出す。見た目は同じ（カメラの最近傍拡大）。
+ */
 export function addBackdrop(scene: Phaser.Scene, height: number = GAME_HEIGHT): Backdrop {
-  makeCanvas(scene.textures, TILE_WALL, 32, 16, paintWall);
-  makeCanvas(scene.textures, TILE_FLOOR, 16, 16, paintFloor);
-  makeCanvas(scene.textures, VIGNETTE, VIG_W, VIG_H, paintVignette);
-
   const W = GAME_WIDTH;
-  const wall = scene.add.tileSprite(0, 0, W, height, TILE_WALL).setOrigin(0, 0).setDepth(-100);
-  const floor = scene.add.tileSprite(0, 0, W, 0, TILE_FLOOR).setOrigin(0, 0).setDepth(-99);
-  const vig = scene.add.image(0, 0, VIGNETTE).setOrigin(0, 0).setDepth(-98);
-  for (const o of [wall, floor, vig]) o.setData(BACKDROP_DATA_KEY, true);
+  const key = `${TEXTURE_PREFIX}${scene.scene.key}`;
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  const tex = scene.textures.createCanvas(key, W, height);
+  const img = scene.add.image(0, 0, key).setOrigin(0, 0).setDepth(-100);
+  img.setData(BACKDROP_DATA_KEY, true);
 
+  let drawnH = -1;
   const layout = (h: number): void => {
-    wall.setSize(W, h);
-    // 床は 16 ドットの整数倍の高さに揃える（タイルが途中で切れない）
-    const fh = Math.max(16, Math.round((h * BACKDROP.floorRatio) / 16) * 16);
-    floor.setSize(W, fh).setPosition(0, h - fh);
-    vig.setDisplaySize(W, h);
+    // シーン終了時（resetView）にも呼ばれる。破棄済みなら何もしない。
+    if (!tex || !img.scene || h === drawnH) return;
+    drawnH = h;
+    tex.setSize(W, h);
+    paintComposite(tex.getContext(), W, h);
+    tex.refresh();
+    img.setTexture(key).setOrigin(0, 0);
   };
   layout(height);
   return { resize: layout };

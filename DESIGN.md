@@ -201,6 +201,7 @@ Map and battle share one backdrop so parts no longer float on a flat color. Code
 - The floor is darker than the wall (the front reads as "closer and dimmer"); the brightest backdrop color is #16262A.
 - Text stays readable on every backdrop color: #E4F1EC ≥ 13.45:1, #A9C2BC ≥ 8.28:1, #8FA9A3 ≥ 6.23:1 (worst case on #16262A). All ≥ 4.5:1.
 - Portrait map: the backdrop is resized with the canvas (`Backdrop.resize`).
+- The three layers are pre-composited into one canvas texture at dot resolution and shown as a single Image (one full-screen draw per frame instead of three). It is tagged with data `ld-backdrop`, so `MapScene.clearMapObjects()` keeps it when the map is redrawn (move / resize / rotate).
 
 ### Impact FX (Issue #104)
 
