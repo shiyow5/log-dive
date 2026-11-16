@@ -38,6 +38,16 @@ export function tokenNum(name: TokenName): number {
   return parseInt(token(name).slice(1), 16);
 }
 
+/** タイトル背景（#110）の既定色。定義元は src/ui/hud.css の --ld-title-*。CSS 変数が読めないときに使う。 */
+export const TITLE_BG_DEFAULTS = {
+  bgTop: "#070f0b",
+  bgBottom: "#0c1a12",
+  logStamp: "#3f6e40",
+  logBody: "#2b5232",
+  logEmph: "#7ebeab",
+  fly: ["#9ad02a", "#d6ff5a", "#f4ffb8"],
+} as const;
+
 /** 戦闘などの演出色（CSS 変数にしない固定色）。ハードコード色チェックはこのファイルを除外する。 */
 export const FX_COLORS = {
   playerHit: "#ff6b6b",
