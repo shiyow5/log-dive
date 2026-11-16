@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { token, tokenNum } from "../ui/tokens";
 import { setupView } from "./view";
-import { addBackdrop, isBackdropObject, type Backdrop } from "../art/backdrop";
+import { addBackdrop, type Backdrop } from "../art/backdrop";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { createSceneFx } from "../fx/scene-fx";
 import type { FxDirector } from "../fx/FxDirector";
@@ -234,12 +234,11 @@ export class MapScene extends Phaser.Scene {
     this.drawMap(current());
   }
 
-  /** 演出レイヤー(fx-*)と背景(addBackdrop)は消さずに、マップの描画物だけ消す。 */
+  /** 演出レイヤー(fx-*)は消さずに、マップの描画物だけ消す。 */
   private clearMapObjects(): void {
     this.reflowTween?.stop();
     this.reflowTween = null;
     for (const o of [...this.children.list]) {
-      if (isBackdropObject(o)) continue;
       if (!(o instanceof Phaser.GameObjects.Image && o.texture.key.startsWith("fx-"))) o.destroy();
     }
   }

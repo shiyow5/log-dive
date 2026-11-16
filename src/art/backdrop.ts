@@ -5,7 +5,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from "../config";
  * 背景（Issue #101）。単色の暗背景に部屋が浮いて見えるのを、遠景タイル＋ビネットで奥行きに変える。
  * すべてコードで描くドット絵（外部画像なし）。整数ドットのまま pixelArt（最近傍）で拡大するのでぼやけない。
  *
- * 層（奥→手前。表示は合成済みの1枚）:
+ * 層（奥→手前。表示は合成済みの1枚の CSS background）:
  *  1. 遠景 = 石壁のレンガ（32×16 ドットのタイル）。背景色 #0f1a1c にごく近い明るさ。
  *  2. 手前 = 床の石畳（16×16）。壁より暗く、画面下 FLOOR_RATIO の帯だけ。
  *  3. ビネット = 周辺ほど暗くする（段階を数ドット単位で落とす）。
@@ -30,8 +30,6 @@ export const BACKDROP = {
   vignetteMax: 0.78,
 } as const;
 
-/** 合成済みの背景テクスチャのキー（シーンごとに1枚）。 */
-const TEXTURE_PREFIX = "ld-backdrop-";
 const VIG_W = 80;
 const VIG_H = 45;
 
@@ -39,7 +37,7 @@ function hex(c: number): string {
   return `#${c.toString(16).padStart(6, "0")}`;
 }
 
-/** タイル・ビネットの元絵（DOM の canvas）。Phaser のテクスチャにはしない（合成の材料にだけ使う）。 */
+/** タイル・ビネットの元絵（DOM の canvas）。合成して PNG にし、CSS background に使う。 */
 function makeCanvas(
   w: number,
   h: number,
@@ -125,14 +123,6 @@ function paintVignette(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-/** 背景オブジェクトに付ける data キー。マップの描き直し（clearMapObjects）で消さない目印。 */
-export const BACKDROP_DATA_KEY = "ld-backdrop";
-
-/** 背景（addBackdrop が足した壁・床・ビネット）かどうか。 */
-export function isBackdropObject(o: Phaser.GameObjects.GameObject): boolean {
-  return o.getData(BACKDROP_DATA_KEY) === true;
-}
-
 export interface Backdrop {
   /** canvas の内部高さ（ドット）が変わったとき（縦持ちマップ）に呼ぶ。 */
   resize(height: number): void;
@@ -160,29 +150,55 @@ function paintComposite(ctx: CanvasRenderingContext2D, w: number, h: number): vo
   ctx.drawImage(makeCanvas(VIG_W, VIG_H, paintVignette), 0, 0, w, h);
 }
 
+/** 背景を載せるのはコンテナ要素（#game）の CSS background。canvas 自体は透過。 */
+const CSS_BG_PROPS = [
+  "backgroundImage",
+  "backgroundSize",
+  "backgroundPosition",
+  "backgroundRepeat",
+] as const;
+
 /**
- * 背景を足す。マップ・戦闘の create() の先頭（他の描画より前）で呼ぶ。
- * 3層を毎フレーム重ねて描くと全画面の塗りが3回になり重い（CI のソフトウェア描画で e2e が時間切れになった）。
- * そこで3層をドット解像度の canvas 1枚に合成し、Image 1つで出す。見た目は同じ（カメラの最近傍拡大）。
+ * 背景を足す（Issue #101 / rei 判断: canvas 描画ではなく CSS background で出す）。
+ * 壁・床・ビネットを 320×h ドットの PNG 1枚に合成し、canvas の親（#game）の CSS background-image に張る。
+ * Phaser は背景を描かない（canvas は transparent。毎フレームの全画面描画ゼロ・clearMapObjects の対象外）。
+ * 画像は canvas の表示矩形（FIT で拡縮・中央寄せされる）に合わせて size/position を更新し、
+ * 拡大は image-rendering: pixelated（親の CSS）で最近傍のまま。
+ * シーン終了時に外すので、背景の無いシーン（タイトル等）には残らない。
  */
 export function addBackdrop(scene: Phaser.Scene, height: number = GAME_HEIGHT): Backdrop {
   const W = GAME_WIDTH;
-  const key = `${TEXTURE_PREFIX}${scene.scene.key}`;
-  if (scene.textures.exists(key)) scene.textures.remove(key);
-  const tex = scene.textures.createCanvas(key, W, height);
-  const img = scene.add.image(0, 0, key).setOrigin(0, 0).setDepth(-100);
-  img.setData(BACKDROP_DATA_KEY, true);
-
+  const canvas = scene.game.canvas;
+  const host = canvas.parentElement;
+  if (!host) return { resize: () => undefined };
   let drawnH = -1;
+  let active = true;
+  const place = (): void => {
+    if (!active) return;
+    const c = canvas.getBoundingClientRect();
+    const p = host.getBoundingClientRect();
+    host.style.backgroundSize = `${c.width}px ${c.height}px`;
+    host.style.backgroundPosition = `${c.left - p.left}px ${c.top - p.top}px`;
+  };
   const layout = (h: number): void => {
-    // シーン終了時（resetView）にも呼ばれる。破棄済みなら何もしない。
-    if (!tex || !img.scene || h === drawnH) return;
+    if (!active || h === drawnH) return;
     drawnH = h;
-    tex.setSize(W, h);
-    paintComposite(tex.getContext(), W, h);
-    tex.refresh();
-    img.setTexture(key).setOrigin(0, 0);
+    const img = makeCanvas(W, h, (ctx) => paintComposite(ctx, W, h));
+    host.style.backgroundImage = `url(${img.toDataURL("image/png")})`;
+    host.style.backgroundRepeat = "no-repeat";
+    place();
+  };
+  const observer = new ResizeObserver(place);
+  observer.observe(canvas);
+  observer.observe(host);
+  const clear = (): void => {
+    if (!active) return;
+    active = false;
+    observer.disconnect();
+    for (const k of CSS_BG_PROPS) host.style[k] = "";
   };
   layout(height);
+  scene.events.once("shutdown", clear);
+  scene.events.once("destroy", clear);
   return { resize: layout };
 }
