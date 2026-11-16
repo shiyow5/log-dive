@@ -34,6 +34,7 @@ type Listener = (s: RunState) => void;
 const data = loadGameData();
 let state: RunState | null = null;
 let lastLog: string | null = null;
+let runNo = 0;
 const listeners = new Set<Listener>();
 
 /** バグの日本語名（data/bugs.json の name）。 */
@@ -51,7 +52,13 @@ export function skillInfo(id: SkillId): { name: string; cpu: number } {
 export function startRun(seed: string): RunState {
   state = initRun(seed, data);
   lastLog = null;
+  runNo++;
   return state;
+}
+
+/** 何回目のランか（startRun のたびに増える）。ランをまたぐ画面側の状態を捨てる目印（#195）。 */
+export function runSerial(): number {
+  return runNo;
 }
 
 export function current(): RunState {

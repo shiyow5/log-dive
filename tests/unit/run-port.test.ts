@@ -5,6 +5,7 @@ import {
   describeEvents,
   dispatch,
   lastLogLine,
+  runSerial,
   legality,
   sceneFor,
   skillInfo,
@@ -107,5 +108,14 @@ describe("run-port（画面 ↔ core/run.ts）", () => {
 
   it("describeEvents: イベントが無ければ null", () => {
     expect(describeEvents(startRun(T), [])).toBeNull();
+  });
+});
+
+describe("runSerial（#195 ランをまたぐ画面状態の目印）", () => {
+  it("startRun のたびに増える（同じシードでも別のラン）", () => {
+    startRun(T);
+    const a = runSerial();
+    startRun(T);
+    expect(runSerial()).toBe(a + 1);
   });
 });

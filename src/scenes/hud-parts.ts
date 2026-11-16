@@ -1,11 +1,28 @@
 import { button, el } from "../ui/hud";
 import { logTone } from "./log-tone";
-import { lastLogLine } from "./run-port";
+import { lastLogLine, runSerial } from "./run-port";
+import { createChangeTracker } from "./stat-change";
 import type { RunState } from "./run-port";
 
-/** 稼働率・CPU・ターンの行。 */
+// 前のランの稼働率を持ち越すと、新ラン直後の 30/30 が「変化」扱いで太字になる（#195 QA）。
+// ランが変わったら作り直す
+let hpChanged = createChangeTracker();
+let hpChangedRun = runSerial();
+
+/** 稼働率・CPU・ターンの行。稼働率が前回の描画から変わったときだけ太字（#195）。 */
 export function statsRow(s: RunState, opts: { cpu?: boolean } = {}): HTMLElement {
   const p = s.player;
+  if (hpChangedRun !== runSerial()) {
+    hpChanged = createChangeTracker();
+    hpChangedRun = runSerial();
+  }
+  const changed = hpChanged(p.hp, s.events);
+  const hpClass = [
+    logTone(s.events) === "damage" ? "hud-hp-hit" : "",
+    changed ? "hud-stat-changed" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
   return el(
     "p",
     { class: "hud-row", "aria-label": "ステータス" },
@@ -13,11 +30,7 @@ export function statsRow(s: RunState, opts: { cpu?: boolean } = {}): HTMLElement
       "span",
       { class: "hud-stat" },
       "稼働率 ",
-      el(
-        "strong",
-        logTone(s.events) === "damage" ? { class: "hud-hp-hit" } : {},
-        `${p.hp}/${p.maxHp}`,
-      ),
+      el("strong", hpClass ? { class: hpClass } : {}, `${p.hp}/${p.maxHp}`),
     ),
     opts.cpu === false
       ? null

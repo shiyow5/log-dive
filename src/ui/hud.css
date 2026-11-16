@@ -493,6 +493,9 @@
 .hud-log[data-tone="progress"]::before {
   content: "▶ ";
 }
+.hud-stat strong.hud-stat-changed {
+  font-weight: bold;
+}
 .hud-stat strong.hud-hp-hit {
   color: var(--ld-danger);
   text-decoration: underline;

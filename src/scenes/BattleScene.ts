@@ -71,6 +71,9 @@ export class BattleScene extends Phaser.Scene {
   private enemyImg?: Phaser.GameObjects.Image;
   private enemyKind: EnemyKind = "bug";
   private lastHp = 0;
+  private maxHp = 1;
+  /** 連続被弾で古いタイマーが色を戻さないための通し番号 */
+  private hitSeq = 0;
   /** patch の種類を選んでいる途中か */
   private picking = false;
 
@@ -173,26 +176,25 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawHp(b: BattleState | null): void {
-    const g = this.hpBar;
-    if (!g || !b) return;
-    g.clear();
-    const x = this.barX;
-    g.fillStyle(tokenNum("panel"), 1);
-    g.fillRect(x, BAR_Y, BAR_W, 4);
-    g.fillStyle(tokenNum("danger"), 1);
-    g.fillRect(x, BAR_Y, Math.round((BAR_W * b.hp) / b.maxHp), 4);
-    // 5 分割の目盛り（色だけに頼らない）。赤いバーの連続を切らないよう、バーの直下に 1 本ずつ置く
-    g.fillStyle(tokenNum("text"), 1);
-    for (let i = 0; i <= 5; i++) {
-      g.fillRect(x + Math.min(Math.round((BAR_W * i) / 5), BAR_W - 1), BAR_Y + 4, 1, 2);
-    }
+    if (!this.hpBar || !b) return;
+    // 被弾直後 200ms だけ accent（hpText と同じタイミング。静的な強調で fx=0 でも気づける #195）
+    const hit = b.hp < this.lastHp;
+    this.maxHp = b.maxHp;
+    this.paintHpBar(b.hp, hit);
     // 数値はバーの左に（右上の『?』と重ねない）（色だけに頼らない）
     this.hpText?.setText(`${b.hp}/${b.maxHp}`);
-    if (b.hp < this.lastHp && this.hpText) {
+    if (hit && this.hpText) {
       const t = this.hpText;
       t.setColor(hitNumColor());
+      t.setFontStyle("bold");
+      const seq = ++this.hitSeq;
       this.time.delayedCall(200, () => {
-        if (t.active) t.setColor(token("text"));
+        if (t.active && seq === this.hitSeq) {
+          t.setColor(token("text"));
+          t.setFontStyle("normal");
+        }
+        // 戻すときは最新の HP で描き直す（連続被弾で古い幅を描かない）
+        if (seq === this.hitSeq && this.hpBar?.active) this.paintHpBar(this.lastHp, false);
       });
     }
     // 被弾フレーム（HP が減ったとき 250ms だけ）
@@ -204,6 +206,23 @@ export class BattleScene extends Phaser.Scene {
       });
     }
     this.lastHp = b.hp;
+  }
+
+  /** HP バー本体（塗り＋5 分割の目盛り）。位置・幅・目盛りは色に関わらず同じ。 */
+  private paintHpBar(hp: number, hit: boolean): void {
+    const g = this.hpBar;
+    if (!g) return;
+    g.clear();
+    const x = this.barX;
+    g.fillStyle(tokenNum("panel"), 1);
+    g.fillRect(x, BAR_Y, BAR_W, 4);
+    g.fillStyle(tokenNum(hit ? "accent" : "danger"), 1);
+    g.fillRect(x, BAR_Y, Math.round((BAR_W * hp) / this.maxHp), 4);
+    // 5 分割の目盛り（色だけに頼らない）。赤いバーの連続を切らないよう、バーの直下に 1 本ずつ置く
+    g.fillStyle(tokenNum("text"), 1);
+    for (let i = 0; i <= 5; i++) {
+      g.fillRect(x + Math.min(Math.round((BAR_W * i) / 5), BAR_W - 1), BAR_Y + 4, 1, 2);
+    }
   }
 
   private renderHud(s: RunState): void {
