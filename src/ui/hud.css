@@ -460,6 +460,23 @@
   /* 症状が4つ並んでも操作列が高さ0まで潰れない（スキル2行分＋余白。#166 Codex P2: 800×481） */
   min-height: 104px;
   overflow-y: auto;
+  position: relative;
+}
+/* #117: スクロール可能であることを示すインジケーター */
+.hud-battle-actions::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 70%, rgba(0, 0, 0, 0.15) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hud-battle-actions.is-scrollable::after {
+  opacity: 1;
+}
+.hud-battle-actions.is-scrollable.at-bottom::after {
+  opacity: 0;
 }
 /* 最低高さの合計が中段を超える低い画面でも、中段全体をスクロールして操作列へ届く（安全網） */
 .hud-battle-body {

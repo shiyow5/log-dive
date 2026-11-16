@@ -406,7 +406,32 @@ export class BattleScene extends Phaser.Scene {
       panel.querySelector(".hud-battle-actions")?.contains(focused)
     )
       focused.scrollIntoView({ block: "nearest" });
+    // #117: スクロールインジケーターの更新
+    updateScrollIndicator(panel);
   }
+}
+
+/** #117: 中段操作列のスクロール状態に基づきインジケーターを表示/非表示 */
+function updateScrollIndicator(panel: HTMLElement): void {
+  const el = panel.querySelector<HTMLElement>(".hud-battle-actions");
+  if (!el) return;
+  const isScrollable = el.scrollHeight > el.clientHeight;
+  el.classList.toggle("is-scrollable", isScrollable);
+  if (isScrollable) {
+    const atBottom = Math.abs(el.scrollHeight - el.scrollTop - el.clientHeight) < 2;
+    el.classList.toggle("at-bottom", atBottom);
+    // スクロールイベントで更新
+    el.removeEventListener("scroll", onScroll);
+    el.addEventListener("scroll", onScroll, { passive: true });
+  } else {
+    el.classList.remove("at-bottom");
+    el.removeEventListener("scroll", onScroll);
+  }
+}
+function onScroll(e: Event): void {
+  const target = e.target as HTMLElement;
+  const atBottom = Math.abs(target.scrollHeight - target.scrollTop - target.clientHeight) < 2;
+  target.classList.toggle("at-bottom", atBottom);
 }
 
 /** ボス見出し。「— 」の後ろ（正体不明のバグ）は途中で折り返さないよう1かたまりにする（スマホ幅）。 */
