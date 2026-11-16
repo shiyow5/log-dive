@@ -126,6 +126,14 @@ function paintVignette(ctx: CanvasRenderingContext2D): void {
   }
 }
 
+/** 背景オブジェクトに付ける data キー。マップの描き直し（clearMapObjects）で消さない目印。 */
+export const BACKDROP_DATA_KEY = "ld-backdrop";
+
+/** 背景（addBackdrop が足した壁・床・ビネット）かどうか。 */
+export function isBackdropObject(o: Phaser.GameObjects.GameObject): boolean {
+  return o.getData(BACKDROP_DATA_KEY) === true;
+}
+
 export interface Backdrop {
   /** canvas の内部高さ（ドット）が変わったとき（縦持ちマップ）に呼ぶ。 */
   resize(height: number): void;
@@ -141,6 +149,7 @@ export function addBackdrop(scene: Phaser.Scene, height: number = GAME_HEIGHT): 
   const wall = scene.add.tileSprite(0, 0, W, height, TILE_WALL).setOrigin(0, 0).setDepth(-100);
   const floor = scene.add.tileSprite(0, 0, W, 0, TILE_FLOOR).setOrigin(0, 0).setDepth(-99);
   const vig = scene.add.image(0, 0, VIGNETTE).setOrigin(0, 0).setDepth(-98);
+  for (const o of [wall, floor, vig]) o.setData(BACKDROP_DATA_KEY, true);
 
   const layout = (h: number): void => {
     wall.setSize(W, h);
