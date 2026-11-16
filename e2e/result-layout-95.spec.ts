@@ -107,7 +107,7 @@ test("前回比: 初回・壊れた記録では出さず例外も出ない。2�
   await page.getByRole("button", { name: /放棄する/ }).click();
   await expect(page.getByTestId("result-到達階")).toHaveText("1階");
   const diff = page.getByTestId("result-diff-到達階");
-  await expect(diff).toHaveText("前回比 ±0 階");
+  await expect(diff).toHaveText("前回比 ±0");
   await expect(diff).toHaveCSS("font-size", "14px");
   await expect(page.getByTestId("result-diff-倒したバグ")).toHaveText("前回比 ±0");
   await expect(page.getByTestId("result-diff-今回のシード")).toHaveCount(0);
@@ -116,4 +116,47 @@ test("前回比: 初回・壊れた記録では出さず例外も出ない。2�
   const d = (await diff.boundingBox())!;
   expect(d.x).toBeGreaterThan(v.x + v.width);
   expect(errors).toEqual([]);
+});
+
+/** 前回記録を SaveStore の形式（v・FNV-1a チェックサム・data）で直接入れる。 */
+async function seedPrevRun(
+  page: Page,
+  rec: { floor: number; bugsClosed: number; turns: number },
+): Promise<void> {
+  await page.evaluate((r) => {
+    const json = JSON.stringify(r);
+    let h = 0x811c9dc5;
+    for (let i = 0; i < json.length; i++) {
+      h ^= json.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    const sum = (h >>> 0).toString(16).padStart(8, "0");
+    localStorage.setItem("log-dive:prev-run", JSON.stringify({ v: 1, sum, data: r }));
+  }, rec);
+}
+
+test("前回比: 増は +（accent）、減は −（U+2212）で見える。「階」は重複しない", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  // 増: 前回 0 階 → 今回 1 階
+  await page.goto("/?fx=0&qa=1&seed=e2e-95u");
+  await seedPrevRun(page, { floor: 0, bugsClosed: 0, turns: 0 });
+  await abandonRun(page, "e2e-95u");
+  const up = page.getByTestId("result-diff-到達階");
+  await expect(up).toHaveText("前回比 +1");
+  await expect(up).toHaveClass(/result-diff--up/);
+  await expect(page.getByTestId("result-到達階")).toHaveText("1階");
+  await expect(page.locator(".result-row").first()).not.toContainText("階 前回比 +1 階");
+  // 見える文字として「前回比」が出ている（読み上げ専用ではない）
+  await expect(up.locator(".result-diff-label")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("prev-diff-up.png") });
+
+  // 減: 前回 3 階・バグ 2・ターン 5 → 今回 1 階・0・0
+  await page.goto("/?fx=0&qa=1&seed=e2e-95m");
+  await seedPrevRun(page, { floor: 3, bugsClosed: 2, turns: 5 });
+  await abandonRun(page, "e2e-95m");
+  await expect(page.getByTestId("result-diff-到達階")).toHaveText("前回比 −2");
+  await expect(page.getByTestId("result-diff-倒したバグ")).toHaveText("前回比 −2");
+  await expect(page.getByTestId("result-diff-使ったターン")).toHaveText("前回比 −5");
+  await expect(page.getByTestId("result-diff-到達階")).toHaveClass(/result-diff--down/);
+  await page.screenshot({ path: test.info().outputPath("prev-diff-down.png") });
 });
