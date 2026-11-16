@@ -354,6 +354,34 @@
   margin: 4px 0 0;
 }
 
+/* #116: 演出（?fx=0・視差効果を減らす）が無くても気づける静的な強調。動きは使わない */
+.hud-log[data-tone] {
+  padding-left: 8px;
+  border-left: 4px solid currentcolor;
+}
+.hud-log[data-tone="damage"] {
+  color: var(--ld-danger);
+}
+.hud-log[data-tone="damage"]::before {
+  content: "▼ ";
+}
+.hud-log[data-tone="clear"] {
+  color: var(--ld-hint);
+}
+.hud-log[data-tone="clear"]::before {
+  content: "★ ";
+}
+.hud-log[data-tone="progress"] {
+  color: var(--ld-ok);
+}
+.hud-log[data-tone="progress"]::before {
+  content: "▶ ";
+}
+.hud-stat strong.hud-hp-hit {
+  color: var(--ld-danger);
+  text-decoration: underline;
+}
+
 /* 縦長（スマホ縦持ちなど）: HUD はキャンバスの下から。キャンバスと重ねない */
 @media (max-aspect-ratio: 1/1) {
   #hud {
