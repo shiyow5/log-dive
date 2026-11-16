@@ -21,6 +21,7 @@ import { fadeIn, goTo } from "./transition";
 import { IMPACT, damagePop, edgeFlash, shakeX } from "../fx/impact-fx";
 import { flashLogLine } from "../ui/hud-flash";
 import { openSymptomOverlay } from "./symptom-overlay";
+import { token, tokenNum } from "../ui/tokens";
 
 /** 戦闘中に症状の読み方を開くボタン（#118）。 */
 function guideButton(): HTMLButtonElement {
@@ -42,9 +43,9 @@ const BUG_X = BUG_POS.x;
 const BUG_Y = BUG_POS.y;
 const BAR_W = 48;
 /** 未特定の敵のシルエット色（minori 指定 #5a7a80）。 */
-const SILHOUETTE = 0x5a7a80;
+const silhouette = (): number => tokenNum("line");
 /** HP 数値が減ったときの色（minori 指定 #e8c468・200ms）。 */
-const HIT_NUM_COLOR = "#e8c468";
+const hitNumColor = (): string => token("accent");
 // HP バーは虫の上。下に置くと PC 幅（1280×720）で HUD パネル（上端 ≒ y69）に隠れる。ボス 4 倍の頭（y12）との間に 4px 空ける。
 // #142: 敵 HP が画面上端ぎりぎり（y≈5）だったので、敵ごと 4 ドット（1280 幅で 16px）下げる。
 const ENEMY_DY = 4;
@@ -134,7 +135,7 @@ export class BattleScene extends Phaser.Scene {
     const cy = (b.boss ? BUG_Y - 8 : BUG_Y) + ENEMY_DY;
     const img = this.add.image(BUG_X, cy, enemyTextureKey(this.enemyKind, "idle")).setScale(scale);
     // 正体未特定: #5a7a80 の単色シルエットにする（形は部屋由来のまま、色で種別を教えない）
-    img.setTintFill(SILHOUETTE);
+    img.setTintFill(silhouette());
     this.enemyImg = img;
     this.lastHp = b.hp;
     // 待機: 2 フレーム目の代わりに 1px 単位でゆっくり上下（ぼやけないよう整数ピクセル）
@@ -153,7 +154,7 @@ export class BattleScene extends Phaser.Scene {
       .text(qX, Math.max(cy - 8 * scale, 9), "?", {
         fontFamily: FONT_FAMILY,
         fontSize: "16px",
-        color: "#ffd166",
+        color: token("accent"),
       })
       .setOrigin(0.5)
       .setResolution(RENDER_SCALE);
@@ -162,7 +163,7 @@ export class BattleScene extends Phaser.Scene {
       .text(this.barX - 4, BAR_Y + 2, "", {
         fontFamily: FONT_FAMILY,
         fontSize: "14px",
-        color: "#e4f1ec",
+        color: token("text"),
       })
       .setOrigin(1, 0.5)
       .setResolution(RENDER_SCALE);
@@ -174,12 +175,12 @@ export class BattleScene extends Phaser.Scene {
     if (!g || !b) return;
     g.clear();
     const x = this.barX;
-    g.fillStyle(0x1b2b2e, 1);
+    g.fillStyle(tokenNum("panel"), 1);
     g.fillRect(x, BAR_Y, BAR_W, 4);
-    g.fillStyle(0xff6b5e, 1);
+    g.fillStyle(tokenNum("danger"), 1);
     g.fillRect(x, BAR_Y, Math.round((BAR_W * b.hp) / b.maxHp), 4);
     // 5 分割の目盛り（色だけに頼らない）。赤いバーの連続を切らないよう、バーの直下に 1 本ずつ置く
-    g.fillStyle(0xe4f1ec, 1);
+    g.fillStyle(tokenNum("text"), 1);
     for (let i = 0; i <= 5; i++) {
       g.fillRect(x + Math.min(Math.round((BAR_W * i) / 5), BAR_W - 1), BAR_Y + 4, 1, 2);
     }
@@ -187,9 +188,9 @@ export class BattleScene extends Phaser.Scene {
     this.hpText?.setText(`${b.hp}/${b.maxHp}`);
     if (b.hp < this.lastHp && this.hpText) {
       const t = this.hpText;
-      t.setColor(HIT_NUM_COLOR);
+      t.setColor(hitNumColor());
       this.time.delayedCall(200, () => {
-        if (t.active) t.setColor("#e4f1ec");
+        if (t.active) t.setColor(token("text"));
       });
     }
     // 被弾フレーム（HP が減ったとき 250ms だけ）

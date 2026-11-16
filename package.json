@@ -13,7 +13,7 @@
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint ."
+    "lint": "eslint . && bash scripts/check-hardcoded-colors.sh"
   },
   "dependencies": {
     "phaser": "3.90.0",

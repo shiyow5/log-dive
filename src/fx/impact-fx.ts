@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { FONT_FAMILY, GAME_HEIGHT, GAME_WIDTH, RENDER_SCALE } from "../config";
 import { fxEnabled } from "../ui/flags";
+import { FX_COLORS, token } from "../ui/tokens";
 
 /**
  * 被弾・ダメージ数字・宝箱の演出（Issue #104）。Phaser の tween だけで作る（新規 canvas なし）。
@@ -23,9 +24,9 @@ export const IMPACT = {
   stairsInMs: 200,
   /** 終局（敗北・撃破）で遷移前にダメージ数字を見せる時間。 */
   finalHoldMs: 500,
-  playerColor: "#ff6b6b",
-  bugColor: "#ffe66d",
-  outline: "#0d0d1a",
+  playerColor: FX_COLORS.playerHit,
+  bugColor: FX_COLORS.bugHit,
+  outline: FX_COLORS.outline,
   stairsFade: { r: 13, g: 13, b: 26 },
 } as const;
 
@@ -49,7 +50,7 @@ export function edgeFlash(scene: Phaser.Scene): void {
   const w = GAME_WIDTH;
   const h = GAME_HEIGHT;
   const t = IMPACT.edgePx;
-  g.fillStyle(0xff6b6b, IMPACT.edgeFlashAlpha);
+  g.fillStyle(Number.parseInt(FX_COLORS.playerHit.slice(1), 16), IMPACT.edgeFlashAlpha);
   g.fillRect(0, 0, w, t)
     .fillRect(0, h - t, w, t)
     .fillRect(0, t, t, h - 2 * t);
@@ -141,13 +142,16 @@ const CHEST_ROWS = {
     "................",
   ],
 } as const;
-const CHEST_PALETTE: Record<string, string> = {
-  b: "#0d0d1a",
-  Y: "#e8c468",
-  y: "#b8903c",
-  K: "#ffffff",
-  G: "#ffe66d",
-};
+/** 宝箱ドット絵の色。金（Y）はマップ・ヒントと同じ --ld-accent トークン（#96）。描画時に読む。 */
+function chestPalette(): Record<string, string> {
+  return {
+    b: FX_COLORS.outline,
+    Y: token("accent"),
+    y: FX_COLORS.chestDark,
+    K: FX_COLORS.white,
+    G: FX_COLORS.bugHit,
+  };
+}
 
 function chestTexture(scene: Phaser.Scene, frame: "closed" | "open"): string {
   const key = `ld-chest-${frame}`;
@@ -155,9 +159,10 @@ function chestTexture(scene: Phaser.Scene, frame: "closed" | "open"): string {
   const tex = scene.textures.createCanvas(key, 16, 16);
   if (!tex) return key;
   const ctx = tex.getContext();
+  const palette = chestPalette();
   CHEST_ROWS[frame].forEach((row, y) => {
     [...row].forEach((c, x) => {
-      const col = CHEST_PALETTE[c];
+      const col = palette[c];
       if (!col) return;
       ctx.fillStyle = col;
       ctx.fillRect(x, y, 1, 1);
@@ -175,7 +180,9 @@ export function chestOpenFx(scene: Phaser.Scene, x: number, y: number): void {
   const cx = Math.round(x);
   const cy = Math.round(y);
   const img = scene.add.image(cx, cy, chestTexture(scene, "closed")).setScale(1).setDepth(25);
-  const glow = scene.add.circle(cx, cy, 8, 0xffe66d, 0.35).setDepth(24);
+  const glow = scene.add
+    .circle(cx, cy, 8, Number.parseInt(FX_COLORS.bugHit.slice(1), 16), 0.35)
+    .setDepth(24);
   const done = (): void => {
     img.destroy();
     glow.destroy();
