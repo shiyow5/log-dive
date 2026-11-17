@@ -1313,6 +1313,23 @@ html.has-map-tutorial #hud {
   }
 }
 
+/* #209: 縦持ち(狭い幅)ではスキップを2段目右寄せにして、本文を全幅(390pxで約346px)で1行に保つ。文言は変えない。
+   横持ち(高さ480px以下)は下の規則で1段のまま */
+@media (max-width: 480px) and (orientation: portrait) {
+  .map-tutorial {
+    flex-wrap: wrap;
+  }
+  .map-tutorial__text {
+    flex: 1 1 100%;
+  }
+  .map-tutorial button {
+    margin-left: auto;
+  }
+  html.has-map-tutorial #hud {
+    padding-bottom: 124px;
+  }
+}
+
 /* #207: 横持ち(高さ480px以下)でパネルがマップを覆う回帰の対策。見出し+稼働率、隣の部屋+放棄を1行にまとめ、パネルを薄くする（CSSのみ） */
 @media (orientation: landscape) and (max-height: 480px) {
   .hud-panel[aria-label="マップ"] {
