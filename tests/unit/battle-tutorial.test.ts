@@ -9,10 +9,11 @@ import {
 } from "../../src/scenes/battle-tutorial";
 import { TUTORIAL_KEY } from "../../src/ui/map-tutorial";
 
-const battle = (over: { reproduced?: boolean; floor?: number } = {}): RunState => {
+const battle = (over: { reproduced?: boolean; floor?: number; turns?: number } = {}): RunState => {
   const base = initRun("s") as RunState;
   return {
     ...base,
+    stats: { ...base.stats, turns: over.turns ?? 0 },
     phase: "battle",
     floor: { ...base.floor, number: over.floor ?? 1 },
     battle: { reproduced: over.reproduced ?? false } as RunState["battle"],
@@ -63,15 +64,27 @@ describe("BattleTutorial (#59 PR-1)", () => {
     expect(t2.active).toBe(false);
   });
 
-  it("ほかのボタンを押しても消えず、TIMEOUT_TURNS で自動終了", () => {
-    const t = new BattleTutorial(new MemoryStorage(), false);
+  it("ターン1でスキル相当の操作を何度しても（ターン値が同じなら）終わらず、保存もされない", () => {
+    const st = new MemoryStorage();
+    const t = new BattleTutorial(st, false);
     t.start(battle());
-    for (let i = 1; i < TIMEOUT_TURNS; i++) {
-      t.observe(battle());
+    for (let i = 0; i < 5; i++) {
+      t.observe(battle({ turns: 0 }));
       expect(t.active).toBe(true);
     }
-    t.observe(battle());
+    expect(saved(st).ok).toBe(false);
+  });
+
+  it("開始から TIMEOUT_TURNS ターン進むと自動終了し、フラグが保存される", () => {
+    const st = new MemoryStorage();
+    const t = new BattleTutorial(st, false);
+    t.start(battle({ turns: 2 }));
+    t.start(battle({ turns: 3 })); // 再入室でも開始値は保持
+    t.observe(battle({ turns: 2 + TIMEOUT_TURNS - 1 }));
+    expect(t.active).toBe(true);
+    t.observe(battle({ turns: 2 + TIMEOUT_TURNS }));
     expect(t.active).toBe(false);
+    expect(saved(st).ok).toBe(true);
   });
 
   it("スキップで終わり保存される。再入室で続きから（再開始しない）", () => {

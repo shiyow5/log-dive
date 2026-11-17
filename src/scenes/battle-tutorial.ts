@@ -27,7 +27,8 @@ export function shouldShowBattleTutorial(storage: KeyValueStorage): boolean {
 
 export class BattleTutorial {
   private running = false;
-  private turns = 0;
+  /** 開始時の s.stats.turns。経過ターン = 現在値 − これ（スキル使用ではターンが進まない）。 */
+  private startTurns = 0;
 
   constructor(
     private readonly storage: KeyValueStorage,
@@ -46,15 +47,15 @@ export class BattleTutorial {
     if (s.floor.number !== 1 || s.phase !== "battle" || !s.battle || s.battle.reproduced) return;
     if (!shouldShowBattleTutorial(this.storage)) return;
     this.running = true;
-    this.turns = 0;
+    this.startTurns = s.stats.turns;
   }
 
   /** 操作のあと（再描画の前）に最新の状態を渡す。 */
   observe(s: RunState): void {
     if (!this.running) return;
-    this.turns += 1;
     const left = s.phase !== "battle" || !s.battle;
-    if (left || s.battle?.reproduced || this.turns >= TIMEOUT_TURNS) this.finish("done");
+    if (left || s.battle?.reproduced || s.stats.turns - this.startTurns >= TIMEOUT_TURNS)
+      this.finish("done");
   }
 
   skip(): void {
