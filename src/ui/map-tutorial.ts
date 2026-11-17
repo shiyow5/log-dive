@@ -72,8 +72,6 @@ export class MapTutorial {
   private paused = false;
   private movesInStep3 = 0;
   private chestSeen = false;
-  /** ステップ3（スキル）を宝箱に会えないまま飛ばしたか。ステップ4 の文言でスキルに触れる。 */
-  private skillSkipped = false;
   /** ステップ1/2 のうちに宝箱を開けた（ステップ3 を実質済ませた）。次の moved / 戦闘復帰で 4 へ進む。 */
   private lootedEarly = false;
 
@@ -104,7 +102,6 @@ export class MapTutorial {
     this.paused = false;
     this.movesInStep3 = 0;
     this.chestSeen = false;
-    this.skillSkipped = false;
     this.lootedEarly = false;
     if (this.qaSeed) return;
     if (s.floor.number !== 1 || s.phase !== "map") return;
@@ -157,7 +154,6 @@ export class MapTutorial {
       }
       // 宝箱の部屋が出ないまま何部屋も歩いたら、詰まらないように完了扱いにして階段へ
       if (!this.chestSeen && this.movesInStep3 >= STUCK_ROOMS) {
-        this.skillSkipped = true;
         this.enter(4);
       }
     }
@@ -192,7 +188,7 @@ export class MapTutorial {
         const rooms = hop ? [hop] : unvisited.length > 0 ? unvisited : all;
         return {
           ...base,
-          text: "未踏の部屋へ進むと、バグがいれば戦闘になる",
+          text: "バグがいれば戦闘だ",
           target: { kind: "move", rooms },
         };
       }
@@ -201,8 +197,8 @@ export class MapTutorial {
           return { ...base, text: "スキルを手に入れた！ 戦闘で使えるよ", target: { kind: "none" } };
         }
         return here?.content.kind === "chest"
-          ? { ...base, text: "宝箱を開けて、スキルを手に入れよう", target: { kind: "chest" } }
-          : { ...base, text: "宝箱の部屋でスキルを手に入れよう", target: { kind: "none" } };
+          ? { ...base, text: "宝箱でスキルを取ろう", target: { kind: "chest" } }
+          : { ...base, text: "宝箱でスキルを取ろう", target: { kind: "none" } };
       case 4: {
         if (!s.floor.rooms.some((r) => r.content.kind === "stairs") || !stairsOpen(s)) {
           return { ...base, text: "バグを全部閉じると、階段が開く", target: { kind: "none" } };
@@ -210,9 +206,7 @@ export class MapTutorial {
         const hop = nextHop(s, (r) => r.content.kind === "stairs");
         return {
           ...base,
-          text: this.skillSkipped
-            ? "階段が開いた。宝箱のスキルは次の階で探そう"
-            : "階段が開いた。階段の部屋へ進もう",
+          text: "階段で次の階へ",
           target: hop ? { kind: "move", rooms: [hop] } : { kind: "none" },
         };
       }
