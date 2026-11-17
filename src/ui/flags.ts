@@ -1,16 +1,23 @@
 /**
  * URL で切り替えるフラグ。
  * - `?fx=0` … 演出（pixelfx・画面遷移のフェード）を切る。Playwright smoke 用
- * - `?seed=xxx` … タイトルのシード欄の初期値
+ * - `?seed=xxx` … タイトルのシード欄の初期値（QA フック。戦闘チュートリアルは出さない）
+ * - `?tutorial=battle` … 戦闘チュートリアルを強制表示（`?seed=` と併用。保存済みでも出し、フラグは書かない）
  */
 export interface Flags {
   fx: boolean;
   seed: string | null;
+  /** `?tutorial=battle` のときだけ true。それ以外の値は無視する。 */
+  tutorialBattle: boolean;
 }
 
 export function parseFlags(search: string): Flags {
   const p = new URLSearchParams(search);
-  return { fx: p.get("fx") !== "0", seed: p.get("seed") };
+  return {
+    fx: p.get("fx") !== "0",
+    seed: p.get("seed"),
+    tutorialBattle: p.get("tutorial") === "battle",
+  };
 }
 
 let cached: Flags | null = null;

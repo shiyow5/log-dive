@@ -25,7 +25,7 @@ import { openSymptomOverlay } from "./symptom-overlay";
 import { createHitHighlight, shouldHighlightBar } from "./hit-highlight";
 import { token, tokenNum } from "../ui/tokens";
 import { flags, fxEnabled } from "../ui/flags";
-import { BATTLE_TUTORIAL_TEXT, battleTutorial } from "./battle-tutorial";
+import { battleTutorial, type BattleTutorialView } from "./battle-tutorial";
 
 /** 戦闘中に症状の読み方を開くボタン（#118）。 */
 function guideButton(): HTMLButtonElement {
@@ -99,14 +99,14 @@ export class BattleScene extends Phaser.Scene {
       setHudBusy(true);
       this.time.delayedCall(600, () => setHudBusy(false));
     }
-    battleTutorial(flags().seed !== null).start(s);
+    tutorial().start(s);
     this.renderHud(s);
   }
 
   private act(a: Action): void {
     this.picking = false;
     const next = dispatch(a);
-    battleTutorial(flags().seed !== null).observe(next);
+    tutorial().observe(next);
     const to = sceneFor(next);
     this.fx?.emitRunEvents(next.events);
     this.impact(next.events);
@@ -298,7 +298,17 @@ export class BattleScene extends Phaser.Scene {
       return btn;
     };
 
-    const tutorialOn = battleTutorial(flags().seed !== null).active;
+    // #59: ③ で修正パッチが CPU 不足・未再現で押せないときは、行き止まりにならない案内（ターン終了 / 再現）に切り替える
+    const patchErr = patchActions[0] ? legal.error(patchActions[0]) : null;
+    const tut = tutorial().view(
+      hasPatch && !canPatch
+        ? patchErr?.code === "not_enough_cpu"
+          ? "cpu"
+          : patchErr?.code === "not_reproduced"
+            ? "reproduce"
+            : null
+        : null,
+    );
     const skillRow = el(
       "div",
       { class: "hud-row hud-skills", role: "group", "aria-label": "スキル" },
@@ -310,8 +320,8 @@ export class BattleScene extends Phaser.Scene {
           k.name,
           k.cpu,
         );
-        // #59: 戦闘チュートリアル Step1。Reproduce を太枠で強調（脈動は ?fx=0 / 視差軽減では付けない）
-        if (tutorialOn && id === reproduceId) {
+        // #59: 戦闘チュートリアル。案内中のスキルを太枠で強調（脈動は ?fx=0 / 視差軽減では付けない）
+        if (tut && id === tut.target) {
           btn.classList.add("hud-btn--tutorial");
           if (fxEnabled()) btn.classList.add("hud-btn--pulse");
         }
@@ -332,6 +342,10 @@ export class BattleScene extends Phaser.Scene {
               k.name,
               k.cpu,
             );
+            if (tut?.target === "patch") {
+              btn.classList.add("hud-btn--tutorial");
+              if (fxEnabled()) btn.classList.add("hud-btn--pulse");
+            }
             // 候補ぜんぶ押せないときは先頭の候補の理由を出す（未再現なら not_reproduced が先に来る）
             const first = patchActions[0];
             return withReason(mark(btn, rec === "patch"), first ? legal.error(first) : null);
@@ -424,17 +438,24 @@ export class BattleScene extends Phaser.Scene {
         "footer",
         { class: "hud-battle-foot" },
         mark(
-          button("ターン終了", () => this.act(endTurn), {
-            primary: true,
-            disabled: !legal.can(endTurn),
-          }),
+          (() => {
+            const btn = button("ターン終了", () => this.act(endTurn), {
+              primary: true,
+              disabled: !legal.can(endTurn),
+            });
+            if (tut?.target === "endTurn") {
+              btn.classList.add("hud-btn--tutorial");
+              if (fxEnabled()) btn.classList.add("hud-btn--pulse");
+            }
+            return btn;
+          })(),
           rec === "endTurn",
         ),
       ),
     );
     // 戦闘の最初の描画（ボス登場文を見せたい）か、操作後の再描画（フォーカスを戻したボタンを残したい）かを区別する
     const redraw = document.body.dataset.scene === "battle";
-    renderHud("battle", panel, tutorialOn ? this.tutorialBubble() : null);
+    renderHud("battle", panel, tut ? this.tutorialBubble(tut) : null);
     // #158: 新しい行（ボス登場文など）がスクロール領域の下に隠れないよう、ログ行を見える位置まで送る。
     // 画面幅ごとにスクロールする要素が違う（中段・右列・HUD全体）ので、祖先すべてに効く scrollIntoView を使う。
     // 既に見えているときは何もしない（block: "nearest"）。
@@ -452,18 +473,23 @@ export class BattleScene extends Phaser.Scene {
     updateScrollIndicator(panel);
   }
 
-  /** #59: 戦闘チュートリアル Step1 の吹き出し（role="status"）とスキップボタン。HP バーやログは隠さない。 */
-  private tutorialBubble(): HTMLElement {
+  /** #59: 戦闘チュートリアルの吹き出し（role="status"）とスキップボタン。HP バーやログは隠さない。 */
+  private tutorialBubble(tut: BattleTutorialView): HTMLElement {
     return el(
       "div",
       { class: "battle-tutorial" },
-      el("p", { class: "battle-tutorial__text", role: "status" }, BATTLE_TUTORIAL_TEXT),
+      el("p", { class: "battle-tutorial__text", role: "status" }, tut.text),
       button("スキップ", () => {
-        battleTutorial(flags().seed !== null).skip();
+        tutorial().skip();
         this.renderHud(current());
       }),
     );
   }
+}
+
+/** 戦闘チュートリアル（`?seed=` は QA フックなので出さない。`?tutorial=battle` で強制表示）。 */
+function tutorial() {
+  return battleTutorial({ qaSeed: flags().seed !== null, force: flags().tutorialBattle });
 }
 
 /** #117: 操作列ごとの ResizeObserver（回転・リサイズで overflow 状態が変わるため） */
