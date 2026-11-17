@@ -59,11 +59,13 @@ describe("MapTutorial", () => {
     expect(t.view(st(chain(), "r0"))).toMatchObject({
       step: 1,
       total: 4,
+      text: "隣の部屋へ移動しよう",
       target: { kind: "move", rooms: ["r1"] },
     });
     // 1: 移動 → 2
     t.observe(st(chain(), "r0", [moved("r1")]));
     expect(t.currentStep).toBe(2);
+    expect(t.view(st(chain(), "r1"))?.text).toBe("バグがいれば戦闘だ");
     // 2: 戦闘に入る → 一時停止して 3 へ
     t.observe(
       st(chain(), "r1", [moved("r1"), { t: "battleStart", room: "r1" }], { phase: "battle" }),
@@ -77,7 +79,11 @@ describe("MapTutorial", () => {
     expect(t.view(back)).toMatchObject({ step: 3, target: { kind: "none" } });
     // 宝箱の部屋では宝箱ボタンを強調
     t.observe(st(chain(), "r2", [moved("r2")]));
-    expect(t.view(st(chain(), "r2"))).toMatchObject({ step: 3, target: { kind: "chest" } });
+    expect(t.view(st(chain(), "r2"))).toMatchObject({
+      step: 3,
+      text: "宝箱でスキルを取ろう",
+      target: { kind: "chest" },
+    });
     // 3: 開ける → 4（バグが残っていなければ階段が開いている → 次の一歩を強調）
     const cleared = chain().map((r) =>
       r.id === "r1" ? { ...r, content: { kind: "empty" as const } } : r,
@@ -86,6 +92,7 @@ describe("MapTutorial", () => {
     expect(t.currentStep).toBe(4);
     expect(t.view(st(cleared, "r2"))).toMatchObject({
       step: 4,
+      text: "階段で次の階へ",
       target: { kind: "move", rooms: ["r3"] },
     });
     expect(flag(storage)).toBeNull();
@@ -214,7 +221,7 @@ describe("MapTutorial", () => {
     expect(t.currentStep).toBe(4);
   });
 
-  it("ステップ3を宝箱に会えず飛ばしたら、ステップ4の文言でスキルに触れる（kyoya P3）", () => {
+  it("ステップ3を宝箱に会えず飛ばしたら、ステップ4の文言にスキルの一言は足さない（fumino 確定文言）", () => {
     const { t } = begin();
     t.start(st(noChest(), "r0"));
     t.observe(st(noChest(), "r1", [moved("r1")]));
@@ -227,7 +234,7 @@ describe("MapTutorial", () => {
     const stairs = noChest().map((r) =>
       r.id === "r4" ? { ...r, content: { kind: "stairs" as const } } : r,
     );
-    expect(t.view(st(stairs, "r3"))?.text).toContain("スキル");
+    expect(t.view(st(stairs, "r3"))?.text).toBe("階段で次の階へ");
   });
 
   it("スキップで終了して保存し、以後 view は null", () => {
