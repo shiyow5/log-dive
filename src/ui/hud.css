@@ -474,9 +474,14 @@
 }
 
 .hud-log {
+  display: block;
   white-space: pre-line;
   min-height: 1.5em;
   margin: 4px 0 0;
+}
+.hud-log:empty {
+  min-height: 0;
+  margin: 0;
 }
 
 /* #116: 演出（?fx=0・視差効果を減らす）が無くても気づける静的な強調。動きは使わない */
@@ -1304,5 +1309,57 @@ html.has-map-tutorial #hud {
 @keyframes map-tutorial-pulse {
   50% {
     outline-offset: 5px;
+  }
+}
+
+/* #207: 横持ち(高さ480px以下)でパネルがマップを覆う回帰の対策。見出し+稼働率、隣の部屋+放棄を1行にまとめ、パネルを薄くする（CSSのみ） */
+@media (orientation: landscape) and (max-height: 480px) {
+  .hud-panel[aria-label="マップ"] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 16px;
+    padding: 4px 12px;
+  }
+  .hud-panel[aria-label="マップ"] > h2 {
+    margin: 0;
+    font-size: 16px;
+  }
+  .hud-panel[aria-label="マップ"] > p.hud-row:not(.hud-log) {
+    margin: 0;
+    flex: 1;
+  }
+  .hud-panel[aria-label="マップ"] > nav {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .hud-panel[aria-label="マップ"] > nav h3 {
+    margin: 0;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .hud-panel[aria-label="マップ"] > nav .hud-row {
+    margin: 0;
+  }
+  .hud-panel[aria-label="マップ"] > .hud-row--danger {
+    margin: 0 0 0 auto;
+  }
+  .hud-panel[aria-label="マップ"] > div.hud-row:not(.hud-row--danger):empty {
+    display: none;
+  }
+  .hud-panel[aria-label="マップ"] > .hud-log {
+    flex: 1 1 100%;
+    margin: 0;
+  }
+  .hud-panel[aria-label="マップ"] > .hud-log:empty {
+    display: none;
+  }
+  .map-tutorial {
+    padding: 4px 12px;
+  }
+  html.has-map-tutorial #hud {
+    padding-bottom: 64px;
   }
 }
