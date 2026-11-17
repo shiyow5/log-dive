@@ -1363,3 +1363,26 @@ html.has-map-tutorial #hud {
     padding-bottom: 64px;
   }
 }
+
+/* #59 PR-1: 戦闘チュートリアル Step1 の吹き出し。HUD の流れの中に置く（HP バー・ログを隠さない）。強調は .hud-btn--tutorial を流用 */
+.battle-tutorial {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--ld-bg);
+  border: 2px solid var(--ld-accent);
+  color: var(--ld-text, inherit);
+}
+.battle-tutorial__text {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.battle-tutorial button {
+  flex: none;
+  min-height: 44px;
+}
