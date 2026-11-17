@@ -1384,4 +1384,5 @@ html.has-map-tutorial #hud {
 }
 .battle-tutorial button {
   flex: none;
+  min-height: 44px;
 }
