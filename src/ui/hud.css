@@ -474,9 +474,14 @@
 }
 
 .hud-log {
+  display: block;
   white-space: pre-line;
   min-height: 1.5em;
   margin: 4px 0 0;
+}
+.hud-log:empty {
+  min-height: 0;
+  margin: 0;
 }
 
 /* #116: 演出（?fx=0・視差効果を減らす）が無くても気づける静的な強調。動きは使わない */
