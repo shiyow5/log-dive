@@ -74,6 +74,8 @@ export class MapTutorial {
   private chestSeen = false;
   /** ステップ3（スキル）を宝箱に会えないまま飛ばしたか。ステップ4 の文言でスキルに触れる。 */
   private skillSkipped = false;
+  /** ステップ1/2 のうちに宝箱を開けた（ステップ3 を実質済ませた）。次の moved / 戦闘復帰で 4 へ進む。 */
+  private lootedEarly = false;
 
   constructor(
     private readonly storage: KeyValueStorage,
@@ -103,6 +105,7 @@ export class MapTutorial {
     this.movesInStep3 = 0;
     this.chestSeen = false;
     this.skillSkipped = false;
+    this.lootedEarly = false;
     if (this.qaSeed) return;
     if (s.floor.number !== 1 || s.phase !== "map") return;
     if (!shouldShowTutorial(this.storage)) return;
@@ -127,12 +130,23 @@ export class MapTutorial {
       if (this.step < 3) this.enter(3);
       return;
     }
+    const wasPaused = this.paused;
     this.paused = false;
     if (s.events.some((e) => e.t === "looted")) {
-      if (this.step < 4) this.enter(4);
+      if (this.step < 3) {
+        // 1/2 のうちに宝箱を開けた: 3 にとどめて「スキルを手に入れた」を見せ、次の操作で 4 へ
+        this.lootedEarly = true;
+        this.enter(3);
+      } else if (this.step === 3) {
+        this.enter(4);
+      }
       return;
     }
     const moved = s.events.some((e) => e.t === "moved");
+    if (this.step === 3 && this.lootedEarly && (moved || wasPaused)) {
+      this.enter(4);
+      return;
+    }
     if (!moved) return;
     if (this.step === 1) {
       this.enter(2);
@@ -171,12 +185,11 @@ export class MapTutorial {
           target: { kind: "move", rooms: all },
         };
       case 2: {
-        // 訪問済みの空き部屋（戻るだけ）は強調しない。バグが分かっている部屋→未踏の部屋の順
-        const bugs = neighbors
-          .filter((r) => r.visited && r.content.kind === "bug")
-          .map((r) => r.id);
+        // 未閉鎖バグ（閉じた部屋は empty になる）のいる部屋への最短経路の次の一歩だけを強調する
+        // （訪問済みかは問わない）。経路が無いときだけ、未踏の隣室に絞る（訪問済みは戻るだけなので外す）
+        const hop = nextHop(s, (r) => r.content.kind === "bug");
         const unvisited = neighbors.filter((r) => !r.visited).map((r) => r.id);
-        const rooms = bugs.length > 0 ? bugs : unvisited.length > 0 ? unvisited : all;
+        const rooms = hop ? [hop] : unvisited.length > 0 ? unvisited : all;
         return {
           ...base,
           text: "未踏の部屋へ進むと、バグがいれば戦闘になる",
@@ -184,6 +197,9 @@ export class MapTutorial {
         };
       }
       case 3:
+        if (this.lootedEarly) {
+          return { ...base, text: "スキルを手に入れた！ 戦闘で使えるよ", target: { kind: "none" } };
+        }
         return here?.content.kind === "chest"
           ? { ...base, text: "宝箱を開けて、スキルを手に入れよう", target: { kind: "chest" } }
           : { ...base, text: "宝箱の部屋を探して、スキルを手に入れよう", target: { kind: "none" } };
@@ -205,6 +221,7 @@ export class MapTutorial {
 
   private enter(step: TutorialStep): void {
     this.step = step;
+    if (step !== 3) this.lootedEarly = false;
     if (step === 3) {
       this.movesInStep3 = 0;
       this.chestSeen = false;

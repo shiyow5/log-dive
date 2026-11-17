@@ -97,6 +97,8 @@ describe("MapTutorial", () => {
 
   it("ステップ4: 階段が閉じている間は強調なしで「階段が開く」案内", () => {
     const { t } = begin();
+    t.observe(st(chain(), "r1", [moved("r1")], { phase: "battle" }));
+    t.observe(st(chain(), "r2", [moved("r2")]));
     t.observe(st(chain(), "r2", [{ t: "looted", skill: "bisect" }]));
     const v = t.view(st(chain(), "r2"));
     expect(v).toMatchObject({ step: 4, target: { kind: "none" } });
@@ -160,6 +162,56 @@ describe("MapTutorial", () => {
       step: 2,
       target: { kind: "move", rooms: ["r2"] },
     });
+  });
+
+  it("ステップ2: 未踏の隣室にバグがいれば、その部屋への一歩だけを強調する（他の移動ボタンは金枠にしない）", () => {
+    const rooms = [
+      room("r0", ["r1", "r2", "r3"], { kind: "empty" }),
+      room("r1", ["r0"], { kind: "empty" }),
+      room("r2", ["r0"], { kind: "bug", bugs: ["off-by-one"] }),
+      { ...room("r3", ["r0"], { kind: "empty" }), visited: true },
+    ];
+    const t = new MapTutorial(new MemoryStorage(), false);
+    t.start(st(rooms, "r0"));
+    t.observe(st(rooms, "r0", [moved("r3")]));
+    expect(t.currentStep).toBe(2);
+    expect(t.view(st(rooms, "r0"))).toMatchObject({
+      step: 2,
+      target: { kind: "move", rooms: ["r2"] },
+    });
+  });
+
+  it("ステップ2: バグへの経路が無いときだけ未踏の隣室を強調する（訪問済みは外す）", () => {
+    const rooms = [
+      room("r0", ["r1", "r2"], { kind: "empty" }),
+      { ...room("r1", ["r0"], { kind: "empty" }), visited: true },
+      room("r2", ["r0"], { kind: "empty" }),
+    ];
+    const t = new MapTutorial(new MemoryStorage(), false);
+    t.start(st(rooms, "r0"));
+    t.observe(st(rooms, "r0", [moved("r1")]));
+    expect(t.view(st(rooms, "r0"))).toMatchObject({ target: { kind: "move", rooms: ["r2"] } });
+  });
+
+  it("ステップ2中に宝箱を開けたら 3 にとどまり（4 へ飛ばない）、次の移動で 4 へ進む", () => {
+    const { t } = begin();
+    t.observe(st(chain(), "r0", [moved("r1")]));
+    expect(t.currentStep).toBe(2);
+    t.observe(st(chain(), "r2", [{ t: "looted", skill: "bisect" }]));
+    expect(t.currentStep).toBe(3);
+    expect(t.view(st(chain(), "r2"))?.text).toContain("スキルを手に入れた");
+    t.observe(st(chain(), "r3", [moved("r3")]));
+    expect(t.currentStep).toBe(4);
+  });
+
+  it("ステップ2中に宝箱を開けたあと、戦闘から戻っても 4 へ進む", () => {
+    const { t } = begin();
+    t.observe(st(chain(), "r0", [moved("r1")]));
+    t.observe(st(chain(), "r2", [{ t: "looted", skill: "bisect" }]));
+    t.observe(st(chain(), "r2", [{ t: "battleStart", room: "r2" }], { phase: "battle" }));
+    expect(t.currentStep).toBe(3);
+    t.observe(st(chain(), "r2"));
+    expect(t.currentStep).toBe(4);
   });
 
   it("ステップ3を宝箱に会えず飛ばしたら、ステップ4の文言でスキルに触れる（kyoya P3）", () => {
