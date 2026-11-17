@@ -1280,6 +1280,12 @@
   flex: 1;
   margin: 0;
   font-size: 14px;
+  /* 375px 幅で「…しよ／う」のように1文字だけ折り返さない */
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.map-tutorial button {
+  flex: none;
 }
 /* 吹き出しがボタンや HUD に被らないよう、案内中は下に余白を空ける */
 html.has-map-tutorial #hud {
