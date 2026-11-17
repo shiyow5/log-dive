@@ -1291,6 +1291,7 @@
 }
 .map-tutorial button {
   flex: none;
+  min-height: 44px;
 }
 /* 吹き出しがボタンや HUD に被らないよう、案内中は下に余白を空ける */
 html.has-map-tutorial #hud {

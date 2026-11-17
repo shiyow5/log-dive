@@ -202,7 +202,7 @@ export class MapTutorial {
         }
         return here?.content.kind === "chest"
           ? { ...base, text: "宝箱を開けて、スキルを手に入れよう", target: { kind: "chest" } }
-          : { ...base, text: "宝箱の部屋を探して、スキルを手に入れよう", target: { kind: "none" } };
+          : { ...base, text: "宝箱の部屋でスキルを手に入れよう", target: { kind: "none" } };
       case 4: {
         if (!s.floor.rooms.some((r) => r.content.kind === "stairs") || !stairsOpen(s)) {
           return { ...base, text: "バグを全部閉じると、階段が開く", target: { kind: "none" } };
